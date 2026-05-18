@@ -20,7 +20,11 @@ const fullData: DesignSystemData = {
     headingSizes: { h1: "64px", h2: "40px", h3: "28px" },
   },
   spacing: { slidePadding: "80px 110px", elementGap: "20px" },
-  borders: { radius: "12px", accentWidth: "4px" },
+  borders: {
+    radius: "12px",
+    accentWidth: "4px",
+    radii: { button: "", card: "", pill: "" },
+  },
   slideDefaults: { background: "#000000", labelStyle: "uppercase" },
   logos: [],
 };
@@ -101,7 +105,14 @@ describe("designSystemToDesignMd", () => {
     const md = designSystemToDesignMd({
       title: "No Radius",
       description: "",
-      data: { ...fullData, borders: { radius: "", accentWidth: "0" } },
+      data: {
+        ...fullData,
+        borders: {
+          radius: "",
+          accentWidth: "0",
+          radii: { button: "", card: "", pill: "" },
+        },
+      },
       customInstructions: "",
     });
     expect(md).not.toMatch(/^rounded:/m);
@@ -203,5 +214,66 @@ describe("designSystemToDesignMd", () => {
     });
     expect(md).not.toMatch(/^## Colors$/m);
     expect(md).not.toMatch(/^## Typography$/m);
+  });
+
+  it("emits the semantic rounded block when radii.button/card/pill are populated", () => {
+    const md = designSystemToDesignMd({
+      title: "Pill Brand",
+      description: "",
+      data: {
+        ...fullData,
+        borders: {
+          radius: "12px",
+          accentWidth: "0",
+          radii: { button: "9999px", card: "8px", pill: "9999px" },
+        },
+      },
+      customInstructions: "",
+    });
+    expect(md).toMatch(/^rounded:$/m);
+    expect(md).toMatch(/^  md: 12px$/m);
+    expect(md).toMatch(/^  button: 9999px$/m);
+    expect(md).toMatch(/^  card: 8px$/m);
+    expect(md).toMatch(/^  pill: 9999px$/m);
+  });
+
+  it("omits empty semantic radii keys but keeps populated ones", () => {
+    const md = designSystemToDesignMd({
+      title: "Partial",
+      description: "",
+      data: {
+        ...fullData,
+        borders: {
+          radius: "12px",
+          accentWidth: "0",
+          radii: { button: "9999px", card: "", pill: "" },
+        },
+      },
+      customInstructions: "",
+    });
+    expect(md).toMatch(/^  md: 12px$/m);
+    expect(md).toMatch(/^  button: 9999px$/m);
+    expect(md).not.toMatch(/^  card:/m);
+    expect(md).not.toMatch(/^  pill:/m);
+  });
+
+  it("emits the rounded block when only semantic radii are set (no legacy md:)", () => {
+    const md = designSystemToDesignMd({
+      title: "New Only",
+      description: "",
+      data: {
+        ...fullData,
+        borders: {
+          radius: "",
+          accentWidth: "0",
+          radii: { button: "10px", card: "8px", pill: "" },
+        },
+      },
+      customInstructions: "",
+    });
+    expect(md).toMatch(/^rounded:$/m);
+    expect(md).not.toMatch(/^  md:/m);
+    expect(md).toMatch(/^  button: 10px$/m);
+    expect(md).toMatch(/^  card: 8px$/m);
   });
 });

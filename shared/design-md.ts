@@ -66,9 +66,25 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
     if (bWeight) lines.push(`    fontWeight: ${bWeight}`);
   }
 
-  if (radius) {
+  // Semantic radii — agents reading this design.md key off the explicit names.
+  // Falls back to the legacy single-value `md:` line when the semantic block
+  // isn't populated (pre-C4 design systems).
+  const radii = data.borders?.radii;
+  const buttonRadius = (radii?.button ?? "").trim();
+  const cardRadius = (radii?.card ?? "").trim();
+  const pillRadius = (radii?.pill ?? "").trim();
+  const hasAnyRadius = !!(
+    radius ||
+    buttonRadius ||
+    cardRadius ||
+    pillRadius
+  );
+  if (hasAnyRadius) {
     lines.push("rounded:");
-    lines.push(`  md: ${radius}`);
+    if (radius) lines.push(`  md: ${radius}`);
+    if (buttonRadius) lines.push(`  button: ${buttonRadius}`);
+    if (cardRadius) lines.push(`  card: ${cardRadius}`);
+    if (pillRadius) lines.push(`  pill: ${pillRadius}`);
   }
   lines.push("---");
   lines.push("");
