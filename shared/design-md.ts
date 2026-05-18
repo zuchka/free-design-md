@@ -72,7 +72,7 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
 
   lines.push("## Overview");
   lines.push("");
-  if (desc) lines.push(desc.endsWith(".") ? desc : `${desc}.`);
+  if (desc) lines.push(/[.!?]$/.test(desc) ? desc : `${desc}.`);
   if (ci) lines.push(`Custom instructions: ${ci}`);
   if (!desc && !ci) lines.push(`Design system "${title}".`);
   lines.push("");

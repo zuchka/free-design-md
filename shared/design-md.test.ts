@@ -131,4 +131,15 @@ describe("designSystemToDesignMd", () => {
     expect(md).toMatch(/fontWeight: "bold"/);
     expect(md).toMatch(/fontWeight: 400/);
   });
+
+  it("does not append a period when description already ends with ! or ?", () => {
+    const md = designSystemToDesignMd({
+      title: "Q",
+      description: "Is this the right brand?",
+      data: fullData,
+      customInstructions: "",
+    });
+    expect(md).toMatch(/Is this the right brand\?\n/);
+    expect(md).not.toMatch(/right brand\?\./);
+  });
 });
