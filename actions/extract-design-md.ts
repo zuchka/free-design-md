@@ -344,18 +344,36 @@ export default defineAction({
           h3: h3El ? { fontSize: getComputedStyle(h3El).fontSize } : null,
           link: linkEl ? { color: getComputedStyle(linkEl).color } : null,
           button: buttonEl
-            ? {
-                backgroundColor: getComputedStyle(buttonEl).backgroundColor,
-                borderRadius: getComputedStyle(buttonEl).borderRadius,
-                color: getComputedStyle(buttonEl).color,
-              }
+            ? (() => {
+                const cs = getComputedStyle(buttonEl as Element);
+                return {
+                  backgroundColor: cs.backgroundColor,
+                  borderRadius: cs.borderRadius,
+                  color: cs.color,
+                  padding: cs.padding,
+                  fontSize: cs.fontSize,
+                  fontWeight: cs.fontWeight,
+                  borderTopWidth: cs.borderTopWidth,
+                  borderTopStyle: cs.borderTopStyle,
+                  borderTopColor: cs.borderTopColor,
+                };
+              })()
             : null,
           cta: ctaEl
-            ? {
-                backgroundColor: getComputedStyle(ctaEl).backgroundColor,
-                color: getComputedStyle(ctaEl).color,
-                borderRadius: getComputedStyle(ctaEl).borderRadius,
-              }
+            ? (() => {
+                const cs = getComputedStyle(ctaEl as Element);
+                return {
+                  backgroundColor: cs.backgroundColor,
+                  color: cs.color,
+                  borderRadius: cs.borderRadius,
+                  padding: cs.padding,
+                  fontSize: cs.fontSize,
+                  fontWeight: cs.fontWeight,
+                  borderTopWidth: cs.borderTopWidth,
+                  borderTopStyle: cs.borderTopStyle,
+                  borderTopColor: cs.borderTopColor,
+                };
+              })()
             : null,
           cardSample: cardEl
             ? { borderRadius: getComputedStyle(cardEl).borderRadius }
