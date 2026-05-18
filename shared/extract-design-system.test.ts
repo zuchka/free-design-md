@@ -45,7 +45,11 @@ describe("synthesizeDesignSystem", () => {
     expect(d.typography.bodyWeight).toBe("");
     expect(d.typography.headingSizes).toEqual({ h1: "", h2: "", h3: "" });
     expect(d.spacing).toEqual({ slidePadding: "", elementGap: "" });
-    expect(d.borders).toEqual({ radius: "", accentWidth: "" });
+    expect(d.borders).toEqual({
+      radius: "",
+      accentWidth: "",
+      radii: { button: "", card: "", pill: "" },
+    });
     expect(d.logos).toEqual([]);
   });
 
@@ -423,5 +427,47 @@ describe("synthesizeDesignSystem", () => {
     };
     const d = synthesizeDesignSystem(s);
     expect(d.colors.primary).toBe("#1f6feb");
+  });
+
+  it("populates borders.radii.button from the button sample", () => {
+    const s = emptySignals();
+    s.button = {
+      backgroundColor: "rgb(31, 111, 235)",
+      borderRadius: "9999px",
+      color: "rgb(255, 255, 255)",
+    };
+    const d = synthesizeDesignSystem(s);
+    expect(d.borders.radii.button).toBe("9999px");
+  });
+
+  it("populates borders.radii.card from cardSample.borderRadius", () => {
+    const s = emptySignals();
+    s.cardSample = { borderRadius: "12px" };
+    const d = synthesizeDesignSystem(s);
+    expect(d.borders.radii.card).toBe("12px");
+  });
+
+  it("populates borders.radii.pill from signals.pillRadius", () => {
+    const s = emptySignals();
+    s.pillRadius = "9999px";
+    const d = synthesizeDesignSystem(s);
+    expect(d.borders.radii.pill).toBe("9999px");
+  });
+
+  it("leaves borders.radii fields empty when the new signals are missing, and does not regress the old borders.radius computation", () => {
+    const s = emptySignals();
+    s.button = {
+      backgroundColor: "rgb(31, 111, 235)",
+      borderRadius: "6px",
+      color: "rgb(255, 255, 255)",
+    };
+    const d = synthesizeDesignSystem(s);
+    // The button-derived single-radius path still works.
+    expect(d.borders.radius).toBe("6px");
+    // radii.button mirrors the same path (button sample -> cta -> css var).
+    expect(d.borders.radii.button).toBe("6px");
+    // No card or pill signals provided -> empty strings (honest).
+    expect(d.borders.radii.card).toBe("");
+    expect(d.borders.radii.pill).toBe("");
   });
 });

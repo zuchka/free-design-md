@@ -34,6 +34,8 @@ export interface ExtractedSignals {
     color: string;
     borderRadius: string;
   } | null;
+  cardSample?: { borderRadius: string } | null;
+  pillRadius?: string;
 }
 
 function normalizeColor(input: string): string {
@@ -156,6 +158,8 @@ export function synthesizeDesignSystem(
     htmlBackgroundColor,
     faviconUrl,
     title,
+    cardSample,
+    pillRadius,
   } = signals;
 
   const primaryVar = pickCssVar(cssVars, [
@@ -209,6 +213,16 @@ export function synthesizeDesignSystem(
     extractRadius(button?.borderRadius ?? "") ||
     extractRadius(cta?.borderRadius ?? "");
 
+  // Semantic radii — populated independently of the single-radius fallback above.
+  // Empty strings are fine; consumers fall back to the single `radius` then a
+  // hardcoded default. See plan: borders.radii is the agent-readable split.
+  const radiiButton =
+    extractRadius(button?.borderRadius ?? "") ||
+    extractRadius(cta?.borderRadius ?? "") ||
+    radiusVar;
+  const radiiCard = extractRadius(cardSample?.borderRadius ?? "");
+  const radiiPill = pillRadius ?? "";
+
   const logos = faviconUrl
     ? [{ url: faviconUrl, name: title || "", variant: "auto" as const }]
     : [];
@@ -231,7 +245,15 @@ export function synthesizeDesignSystem(
       headingSizes: { h1: h1Size, h2: h2Size, h3: h3Size },
     },
     spacing: { slidePadding: "", elementGap: "" },
-    borders: { radius, accentWidth: "" },
+    borders: {
+      radius,
+      accentWidth: "",
+      radii: {
+        button: radiiButton,
+        card: radiiCard,
+        pill: radiiPill,
+      },
+    },
     slideDefaults: { background: "", labelStyle: "none" },
     logos,
   };

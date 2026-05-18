@@ -115,6 +115,11 @@ export default defineAction({
           ];
         };
 
+        const parsePx = (v: string): number => {
+          const m = v.match(/^(-?\d+(?:\.\d+)?)px/);
+          return m && m[1] !== undefined ? parseFloat(m[1]) : 0;
+        };
+
         const h1El = document.querySelector("h1");
         const h2El = document.querySelector("h2");
         const h3El = document.querySelector("h3");
@@ -145,17 +150,37 @@ export default defineAction({
           return false;
         };
 
-        // Representative button: prefer main/header over footer/aside, then
-        // document order. The radius and color of this button feeds the
-        // synthesizer's borderRadius fallback, so picking the hero CTA over
-        // a random code-block copy button matters for design fidelity.
+        // CTA-shape predicate: a text-bearing CTA button is wider than tall
+        // (aspect >= 1.3) AND has either a visible background or a visible
+        // border. Icon buttons (theme toggle, avatar dropdown, hamburger)
+        // are roughly square (aspect ~ 1) and often transparent — those fail
+        // this test and we prefer to pick a real CTA over them. If no button
+        // on the page passes the test, we fall back to plain location-order
+        // ranking so we still capture *something*.
+        const isCtaShaped = (el: Element): boolean => {
+          const rect = (el as HTMLElement).getBoundingClientRect();
+          if (rect.width <= 0 || rect.height <= 0) return false;
+          if (rect.width / rect.height < 1.3) return false;
+          const cs = getComputedStyle(el);
+          if (isVisibleBg(cs.backgroundColor)) return true;
+          if (parsePx(cs.borderTopWidth) > 0) return true;
+          return false;
+        };
+
+        // Representative button: prefer CTA-shaped buttons (text-bearing,
+        // wider than tall, with a visible bg or border) over icon buttons.
+        // Within CTA-shaped buttons, prefer main/header over footer/aside,
+        // then document order. The radius and color of this button feeds
+        // the synthesizer's borderRadius fallback, so picking the hero CTA
+        // over a circular icon button matters for design fidelity.
         let buttonEl: HTMLElement | null = null;
-        let bestButtonKey: number[] = [-1, Number.MIN_SAFE_INTEGER];
+        let bestButtonKey: number[] = [-1, -1, Number.MIN_SAFE_INTEGER];
         const allButtons = Array.from(
           document.querySelectorAll("button"),
         ).slice(0, 80);
         allButtons.forEach((b, i) => {
-          const key = [locScore(b), -i];
+          const ctaShape = isCtaShaped(b) ? 1 : 0;
+          const key = [ctaShape, locScore(b), -i];
           if (tupleGt(key, bestButtonKey)) {
             bestButtonKey = key;
             buttonEl = b as HTMLElement;
@@ -199,6 +224,76 @@ export default defineAction({
             ctaEl = a as HTMLAnchorElement;
           }
         });
+
+        // Card-shape sample: find an element that LOOKS like a card so the
+        // synthesizer can capture a card-specific border-radius separate from
+        // the button radius. A "card" here is a small-to-medium element
+        // with padding, a non-zero radius, and a border/shadow/distinct-bg.
+        // Heroes and full-width sections rarely have non-zero corner radius,
+        // so the radius filter handles those. Size constraints exclude tiny
+        // chips/badges and full-page wrappers.
+        const isCardLike = (el: Element): boolean => {
+          const tag = el.tagName;
+          if (tag === "A" || tag === "BUTTON") return false;
+          const rect = (el as HTMLElement).getBoundingClientRect();
+          if (rect.width < 80 || rect.width > 800) return false;
+          if (rect.height < 40 || rect.height > 700) return false;
+          const cs = getComputedStyle(el);
+          const padTop = parsePx(cs.paddingTop);
+          const padBottom = parsePx(cs.paddingBottom);
+          if (padTop < 4 || padBottom < 4) return false;
+          const radius = parsePx(cs.borderTopLeftRadius);
+          if (radius <= 0) return false;
+          const borderWidth = parsePx(cs.borderTopWidth);
+          const hasBorder = borderWidth > 0;
+          const hasShadow = cs.boxShadow && cs.boxShadow !== "none";
+          const hasDistinctBg =
+            isVisibleBg(cs.backgroundColor) &&
+            cs.backgroundColor !== bodyStyle.backgroundColor;
+          return hasBorder || !!hasShadow || hasDistinctBg;
+        };
+
+        let cardEl: Element | null = null;
+        let bestCardKey: number[] = [-1, -1, Number.MIN_SAFE_INTEGER];
+        const cardCandidates = Array.from(
+          document.querySelectorAll("div, section, article, aside, li"),
+        ).slice(0, 400);
+        cardCandidates.forEach((el, i) => {
+          if (!isCardLike(el)) return;
+          const rect = (el as HTMLElement).getBoundingClientRect();
+          const aboveFold = rect.top >= 0 && rect.top < 800 ? 1 : 0;
+          const key = [locScore(el), aboveFold, -i];
+          if (tupleGt(key, bestCardKey)) {
+            bestCardKey = key;
+            cardEl = el;
+          }
+        });
+
+        // Pill-radius detection: if ANY element on the page has a fully-
+        // rounded radius (radius >= half its shorter dimension, or a literal
+        // pill-marker value like 9999px), record its computed radius. This
+        // is a presence signal — "does this brand use pills?" — not a token
+        // that must be applied. First match wins; scan short-circuits.
+        let pillRadius = "";
+        const allEls = Array.from(document.querySelectorAll("*")).slice(0, 400);
+        for (const el of allEls) {
+          const cs = getComputedStyle(el);
+          const r = parsePx(cs.borderTopLeftRadius);
+          if (r <= 0) continue;
+          if (r >= 9999) {
+            pillRadius = cs.borderTopLeftRadius;
+            break;
+          }
+          const rect = (el as HTMLElement).getBoundingClientRect();
+          const shorter = Math.min(rect.width, rect.height);
+          if (shorter <= 0) continue;
+          // Tolerate a small float gap; pill if radius reaches at least half
+          // the shorter dimension.
+          if (r >= shorter / 2 - 0.5) {
+            pillRadius = cs.borderTopLeftRadius;
+            break;
+          }
+        }
 
         const rootStyle = getComputedStyle(document.documentElement);
         const cssVars: Record<string, string> = {};
@@ -262,6 +357,10 @@ export default defineAction({
                 borderRadius: getComputedStyle(ctaEl).borderRadius,
               }
             : null,
+          cardSample: cardEl
+            ? { borderRadius: getComputedStyle(cardEl).borderRadius }
+            : null,
+          pillRadius,
         };
       })) as Omit<ExtractedSignals, "url"> | null;
 
