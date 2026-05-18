@@ -86,16 +86,6 @@ export default defineAction({
         const bodyStyle = getComputedStyle(body);
         const htmlStyle = getComputedStyle(document.documentElement);
 
-        const computedH = (el: Element | null) =>
-          el
-            ? {
-                fontFamily: getComputedStyle(el).fontFamily,
-                fontSize: getComputedStyle(el).fontSize,
-                fontWeight: getComputedStyle(el).fontWeight,
-                color: getComputedStyle(el).color,
-              }
-            : null;
-
         // A "non-transparent" bg means the element is visually filled
         // (rules out untouched defaults like rgba(0,0,0,0) and "transparent").
         const isVisibleBg = (color: string) =>
@@ -339,10 +329,51 @@ export default defineAction({
             fontSize: bodyStyle.fontSize,
             fontWeight: bodyStyle.fontWeight,
           },
-          h1: computedH(h1El),
-          h2: h2El ? { fontSize: getComputedStyle(h2El).fontSize } : null,
-          h3: h3El ? { fontSize: getComputedStyle(h3El).fontSize } : null,
-          link: linkEl ? { color: getComputedStyle(linkEl).color } : null,
+          h1: h1El
+            ? (() => {
+                const cs = getComputedStyle(h1El);
+                return {
+                  fontFamily: cs.fontFamily,
+                  fontSize: cs.fontSize,
+                  fontWeight: cs.fontWeight,
+                  color: cs.color,
+                  lineHeight: cs.lineHeight,
+                  letterSpacing: cs.letterSpacing,
+                };
+              })()
+            : null,
+          h2: h2El
+            ? (() => {
+                const cs = getComputedStyle(h2El);
+                return {
+                  fontSize: cs.fontSize,
+                  lineHeight: cs.lineHeight,
+                  letterSpacing: cs.letterSpacing,
+                  color: cs.color,
+                };
+              })()
+            : null,
+          h3: h3El
+            ? (() => {
+                const cs = getComputedStyle(h3El);
+                return {
+                  fontSize: cs.fontSize,
+                  lineHeight: cs.lineHeight,
+                  letterSpacing: cs.letterSpacing,
+                  color: cs.color,
+                };
+              })()
+            : null,
+          link: linkEl
+            ? (() => {
+                const cs = getComputedStyle(linkEl);
+                return {
+                  color: cs.color,
+                  textDecorationLine: cs.textDecorationLine,
+                  fontWeight: cs.fontWeight,
+                };
+              })()
+            : null,
           button: buttonEl
             ? (() => {
                 const cs = getComputedStyle(buttonEl as Element);

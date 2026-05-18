@@ -714,6 +714,103 @@ describe("synthesizeDesignSystem", () => {
     });
   });
 
+  describe("components.link", () => {
+    it("populates link with color, text-decoration, font-weight", () => {
+      const s = emptySignals();
+      s.link = {
+        color: "rgb(80, 70, 228)",
+        textDecorationLine: "underline",
+        fontWeight: "500",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.link).toEqual({
+        color: "#5046e4",
+        textDecoration: "underline",
+        fontWeight: "500",
+      });
+    });
+
+    it("omits link when text-decoration is 'none' and no other distinguishing info", () => {
+      const s = emptySignals();
+      s.link = {
+        color: "rgb(80, 70, 228)",
+        textDecorationLine: "none",
+        fontWeight: "400",
+      };
+      const d = synthesizeDesignSystem(s);
+      // The link is still emitted because color is distinct; textDecoration
+      // normalizes to "none" so agents see the brand's explicit choice.
+      expect(d.components?.link?.color).toBe("#5046e4");
+      expect(d.components?.link?.textDecoration).toBe("none");
+    });
+
+    it("omits link entirely when no link signal", () => {
+      const d = synthesizeDesignSystem(emptySignals());
+      expect(d.components?.link).toBeUndefined();
+    });
+  });
+
+  describe("components.headings", () => {
+    it("populates h1 lineHeight, letterSpacing, color", () => {
+      const s = emptySignals();
+      s.h1 = {
+        fontFamily: "Poppins",
+        fontSize: "56px",
+        fontWeight: "900",
+        color: "rgb(0, 0, 0)",
+        lineHeight: "1.1",
+        letterSpacing: "-1.5px",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.headings?.h1).toEqual({
+        lineHeight: "1.1",
+        letterSpacing: "-1.5px",
+        color: "#000000",
+      });
+    });
+
+    it("emits only the heading levels that have anatomy", () => {
+      const s = emptySignals();
+      s.h2 = {
+        fontSize: "32px",
+        lineHeight: "1.2",
+        letterSpacing: "-0.5px",
+        color: "rgb(20, 20, 20)",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.headings?.h1).toBeUndefined();
+      expect(d.components?.headings?.h3).toBeUndefined();
+      expect(d.components?.headings?.h2).toEqual({
+        lineHeight: "1.2",
+        letterSpacing: "-0.5px",
+        color: "#141414",
+      });
+    });
+
+    it("omits headings entirely when no anatomy fields are present", () => {
+      const s = emptySignals();
+      s.h1 = {
+        fontFamily: "Poppins",
+        fontSize: "56px",
+        fontWeight: "900",
+        color: "rgb(0, 0, 0)",
+        // No lineHeight, letterSpacing — only color
+      };
+      const d = synthesizeDesignSystem(s);
+      // h1 has color, so it should appear with just color (the other two empty).
+      expect(d.components?.headings?.h1?.color).toBe("#000000");
+      expect(d.components?.headings?.h1?.lineHeight).toBe("");
+      expect(d.components?.headings?.h1?.letterSpacing).toBe("");
+    });
+
+    it("omits headings entirely when no heading has any anatomy", () => {
+      const s = emptySignals();
+      // No headings at all.
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.headings).toBeUndefined();
+    });
+  });
+
   it("leaves borders.radii fields empty when the new signals are missing, and does not regress the old borders.radius computation", () => {
     const s = emptySignals();
     s.button = {

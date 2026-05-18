@@ -21,6 +21,17 @@ export interface CardAnatomy {
   boxShadow?: string;
 }
 
+export interface LinkAnatomy {
+  textDecorationLine?: string;
+  fontWeight?: string;
+}
+
+export interface HeadingAnatomy {
+  lineHeight?: string;
+  letterSpacing?: string;
+  color?: string;
+}
+
 export interface ExtractedSignals {
   url: string;
   title: string;
@@ -36,15 +47,17 @@ export interface ExtractedSignals {
     fontSize: string;
     fontWeight: string;
   };
-  h1: {
-    fontFamily: string;
-    fontSize: string;
-    fontWeight: string;
-    color: string;
-  } | null;
-  h2: { fontSize: string } | null;
-  h3: { fontSize: string } | null;
-  link: { color: string } | null;
+  h1:
+    | ({
+        fontFamily: string;
+        fontSize: string;
+        fontWeight: string;
+        color: string;
+      } & HeadingAnatomy)
+    | null;
+  h2: ({ fontSize: string } & HeadingAnatomy) | null;
+  h3: ({ fontSize: string } & HeadingAnatomy) | null;
+  link: ({ color: string } & LinkAnatomy) | null;
   button:
     | ({
         backgroundColor: string;
@@ -306,17 +319,65 @@ function synthesizeCard(
   return { background, color, radius, padding, border, shadow };
 }
 
+function synthesizeLink(
+  signals: ExtractedSignals,
+): NonNullable<DesignSystemData["components"]>["link"] | null {
+  const link = signals.link;
+  if (!link) return null;
+  const color = normalizeColor(link.color);
+  if (!color) return null;
+  const rawDecoration = (link.textDecorationLine ?? "").trim();
+  const textDecoration = rawDecoration || "";
+  const fontWeight = (link.fontWeight ?? "").trim();
+  return { color, textDecoration, fontWeight };
+}
+
+function synthesizeHeading(
+  source: HeadingAnatomy | null | undefined,
+): { lineHeight: string; letterSpacing: string; color: string } | null {
+  if (!source) return null;
+  const lineHeight = (source.lineHeight ?? "").trim();
+  const letterSpacing = (source.letterSpacing ?? "").trim();
+  const color = source.color ? normalizeColor(source.color) : "";
+  if (!lineHeight && !letterSpacing && !color) return null;
+  return { lineHeight, letterSpacing, color };
+}
+
+function synthesizeHeadings(
+  signals: ExtractedSignals,
+): NonNullable<DesignSystemData["components"]>["headings"] | null {
+  const h1 = synthesizeHeading(signals.h1);
+  const h2 = synthesizeHeading(signals.h2);
+  const h3 = synthesizeHeading(signals.h3);
+  if (!h1 && !h2 && !h3) return null;
+  const out: NonNullable<
+    NonNullable<DesignSystemData["components"]>["headings"]
+  > = {};
+  if (h1) out.h1 = h1;
+  if (h2) out.h2 = h2;
+  if (h3) out.h3 = h3;
+  return out;
+}
+
 function synthesizeComponents(
   signals: ExtractedSignals,
 ): DesignSystemData["components"] | undefined {
   const buttonPrimary = synthesizeButtonPrimary(signals);
   const card = synthesizeCard(signals);
+  const link = synthesizeLink(signals);
+  const headings = synthesizeHeadings(signals);
   const out: NonNullable<DesignSystemData["components"]> = {};
   if (buttonPrimary) {
     out.button = { primary: buttonPrimary };
   }
   if (card) {
     out.card = card;
+  }
+  if (link) {
+    out.link = link;
+  }
+  if (headings) {
+    out.headings = headings;
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }
