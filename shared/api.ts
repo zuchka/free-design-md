@@ -294,6 +294,41 @@ export interface DesignSystemData {
   };
   customCSS?: string;
   notes?: string;
+  // Per-component anatomy extracted deterministically from the same elements
+  // we already sample for tokens. Each sub-tree is omitted when no surviving
+  // fields make it through the plausibility filter. Empty stays empty — we
+  // do not fabricate values we cannot see on the page.
+  components?: {
+    button?: {
+      primary?: {
+        background: string;
+        color: string;
+        radius: string;
+        padding: string;
+        fontSize: string;
+        fontWeight: string;
+        border: string;
+      };
+    };
+    card?: {
+      background: string;
+      color: string;
+      radius: string;
+      padding: string;
+      border: string;
+      shadow: string;
+    };
+    link?: {
+      color: string;
+      textDecoration: string;
+      fontWeight: string;
+    };
+    headings?: {
+      h1?: { lineHeight: string; letterSpacing: string; color: string };
+      h2?: { lineHeight: string; letterSpacing: string; color: string };
+      h3?: { lineHeight: string; letterSpacing: string; color: string };
+    };
+  };
 }
 
 export interface DesignSystemAsset {
