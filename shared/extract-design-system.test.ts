@@ -454,6 +454,47 @@ describe("synthesizeDesignSystem", () => {
     expect(d.borders.radii.pill).toBe("9999px");
   });
 
+  it("captures the generic family token from the h1 font-family stack", () => {
+    const s = emptySignals();
+    s.h1 = {
+      fontFamily: '"Mackinac", "Times New Roman", Georgia, serif',
+      fontSize: "64px",
+      fontWeight: "500",
+      color: "rgb(0,0,0)",
+    };
+    s.body.fontFamily = '"Fricolage Grotesque", Inter, sans-serif';
+    const d = synthesizeDesignSystem(s);
+    expect(d.typography.headingFont).toBe("Mackinac");
+    expect(d.typography.headingFontGeneric).toBe("serif");
+    expect(d.typography.bodyFont).toBe("Fricolage Grotesque");
+    expect(d.typography.bodyFontGeneric).toBe("sans-serif");
+  });
+
+  it("leaves headingFontGeneric/bodyFontGeneric empty when stacks contain no generic token", () => {
+    const s = emptySignals();
+    s.h1 = {
+      fontFamily: '"Custom Font"',
+      fontSize: "64px",
+      fontWeight: "500",
+      color: "rgb(0,0,0)",
+    };
+    s.body.fontFamily = '"Body Font"';
+    const d = synthesizeDesignSystem(s);
+    expect(d.typography.headingFontGeneric).toBe("");
+    expect(d.typography.bodyFontGeneric).toBe("");
+  });
+
+  it("recognizes monospace stacks (for code-heavy brands)", () => {
+    const s = emptySignals();
+    s.body.fontFamily = 'ui-monospace, "SF Mono", Menlo, monospace';
+    const d = synthesizeDesignSystem(s);
+    // The first generic token encountered wins; both "ui-monospace" and
+    // "monospace" appear, but we accept either as informative.
+    expect(["monospace", "ui-monospace"]).toContain(
+      d.typography.bodyFontGeneric,
+    );
+  });
+
   it("leaves borders.radii fields empty when the new signals are missing, and does not regress the old borders.radius computation", () => {
     const s = emptySignals();
     s.button = {

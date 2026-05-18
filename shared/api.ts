@@ -271,6 +271,8 @@ export interface DesignSystemData {
   typography: {
     headingFont: string;
     bodyFont: string;
+    headingFontGeneric: string;
+    bodyFontGeneric: string;
     headingWeight: string;
     bodyWeight: string;
     headingSizes: { h1: string; h2: string; h3: string };

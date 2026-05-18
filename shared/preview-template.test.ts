@@ -16,6 +16,8 @@ function fullData(): DesignSystemData {
     typography: {
       headingFont: "Sohne Var",
       bodyFont: "Sohne Var",
+      headingFontGeneric: "sans-serif",
+      bodyFontGeneric: "sans-serif",
       headingWeight: "700",
       bodyWeight: "400",
       headingSizes: { h1: "56px", h2: "32px", h3: "20px" },
@@ -47,6 +49,8 @@ function emptyData(): DesignSystemData {
     typography: {
       headingFont: "",
       bodyFont: "",
+      headingFontGeneric: "",
+      bodyFontGeneric: "",
       headingWeight: "",
       bodyWeight: "",
       headingSizes: { h1: "", h2: "", h3: "" },
@@ -164,6 +168,55 @@ describe("renderPreview", () => {
     const html = renderPreview(data);
     expect(html).toMatch(/--ds-button-radius:\s*8px/);
     expect(html).toMatch(/--ds-card-radius:\s*8px/);
+  });
+
+  it("does NOT propagate a pill-like legacy radius to cards (cards fall through to 8px)", () => {
+    const data = fullData();
+    // Brand uses pills on buttons; we didn't extract a card sample. Cards
+    // must not inherit "9999px" via the legacy borders.radius fallback —
+    // that would render literal ovals. They fall through to "8px".
+    data.borders.radius = "9999px";
+    data.borders.radii = { button: "9999px", card: "", pill: "9999px" };
+    const html = renderPreview(data);
+    expect(html).toMatch(/--ds-button-radius:\s*9999px/);
+    expect(html).toMatch(/--ds-card-radius:\s*8px/);
+  });
+
+  it("treats percentage radii as pill-like for the card fallback", () => {
+    const data = fullData();
+    // 50% on a non-square card = ellipse — same risk as 9999px.
+    data.borders.radius = "50%";
+    data.borders.radii = { button: "50%", card: "", pill: "" };
+    const html = renderPreview(data);
+    expect(html).toMatch(/--ds-button-radius:\s*50%/);
+    expect(html).toMatch(/--ds-card-radius:\s*8px/);
+  });
+
+  it("uses the captured generic family in the heading-font fallback chain (serif brand)", () => {
+    const data = fullData();
+    data.typography.headingFont = "Mackinac";
+    data.typography.headingFontGeneric = "serif";
+    const html = renderPreview(data);
+    expect(html).toMatch(/--ds-heading-font:\s*"Mackinac",\s*system-ui,\s*serif/);
+  });
+
+  it("preserves a different generic for body vs heading", () => {
+    const data = fullData();
+    data.typography.headingFont = "Mackinac";
+    data.typography.headingFontGeneric = "serif";
+    data.typography.bodyFont = "Fricolage Grotesque";
+    data.typography.bodyFontGeneric = "sans-serif";
+    const html = renderPreview(data);
+    expect(html).toMatch(/--ds-heading-font:[^;]*serif/);
+    expect(html).toMatch(/--ds-body-font:[^;]*sans-serif/);
+  });
+
+  it("defaults to sans-serif when no generic is captured", () => {
+    const data = fullData();
+    data.typography.headingFont = "Mystery Font";
+    data.typography.headingFontGeneric = "";
+    const html = renderPreview(data);
+    expect(html).toMatch(/--ds-heading-font:\s*"Mystery Font",\s*system-ui,\s*sans-serif/);
   });
 
   it("renders different radii on the button vs card rules when radii are split", () => {

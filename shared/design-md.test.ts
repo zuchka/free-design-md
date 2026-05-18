@@ -15,6 +15,8 @@ const fullData: DesignSystemData = {
   typography: {
     headingFont: "Poppins",
     bodyFont: "Poppins",
+    headingFontGeneric: "",
+    bodyFontGeneric: "",
     headingWeight: "900",
     bodyWeight: "400",
     headingSizes: { h1: "64px", h2: "40px", h3: "28px" },
@@ -163,6 +165,8 @@ describe("designSystemToDesignMd", () => {
         typography: {
           headingFont: "",
           bodyFont: "Poppins",
+          headingFontGeneric: "",
+          bodyFontGeneric: "",
           headingWeight: "",
           bodyWeight: "400",
           headingSizes: { h1: "", h2: "", h3: "" },
@@ -206,6 +210,7 @@ describe("designSystemToDesignMd", () => {
         },
         typography: {
           headingFont: "", bodyFont: "",
+          headingFontGeneric: "", bodyFontGeneric: "",
           headingWeight: "", bodyWeight: "",
           headingSizes: { h1: "", h2: "", h3: "" },
         },

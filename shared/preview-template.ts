@@ -6,6 +6,7 @@ export interface RenderPreviewOptions {
 
 const SAFE_COLOR = /^[#a-zA-Z0-9(),./%\s.-]+$/;
 const SAFE_FONT = /^[a-zA-Z0-9 _-]+$/;
+const SAFE_GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded)$/;
 const SAFE_SIZE = /^\d+(\.\d+)?(px|rem|em|%)$/;
 const SAFE_WEIGHT = /^[1-9]00$|^\d{3}$/;
 
@@ -24,8 +25,14 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function quoteFont(value: string): string {
-  return value ? `"${value}", system-ui, sans-serif` : "system-ui, sans-serif";
+function quoteFont(value: string, generic: string): string {
+  // Build a fallback chain that preserves the brand's intended generic family
+  // (serif vs sans vs mono). When the proprietary primary font (e.g.,
+  // "Mackinac") can't load, the browser still falls through to the right
+  // generic instead of universally defaulting to sans-serif.
+  const safeGeneric = safe(generic, SAFE_GENERIC) || "sans-serif";
+  const fallback = `system-ui, ${safeGeneric}`;
+  return value ? `"${value}", ${fallback}` : fallback;
 }
 
 export function renderPreview(
@@ -41,6 +48,8 @@ export function renderPreview(
   const text = safe(data.colors.text, SAFE_COLOR) || "#1a1a1a";
   const headingFont = safe(data.typography.headingFont, SAFE_FONT);
   const bodyFont = safe(data.typography.bodyFont, SAFE_FONT);
+  const headingGeneric = data.typography.headingFontGeneric ?? "";
+  const bodyGeneric = data.typography.bodyFontGeneric ?? "";
   const headingWeight =
     safe(data.typography.headingWeight, SAFE_WEIGHT) || "700";
   const bodyWeight = safe(data.typography.bodyWeight, SAFE_WEIGHT) || "400";
@@ -48,11 +57,25 @@ export function renderPreview(
   const h2Size = safe(data.typography.headingSizes.h2, SAFE_SIZE) || "32px";
   const h3Size = safe(data.typography.headingSizes.h3, SAFE_SIZE) || "20px";
   const radius = safe(data.borders.radius, SAFE_SIZE) || "8px";
-  // Semantic radii. Each falls back through: explicit semantic value -> the
-  // single-value `radius` (which is also `radii.button` after C4) -> "8px".
-  // SAFE_SIZE accepts px/rem/em/%, so 50% (a pill button) passes through.
+  // A value is "pill-like" if applying it to a card-shaped element would
+  // produce a literal pill or ellipse: any percentage (50% on a non-square
+  // element = ellipse) or a px value large enough to fully round any card
+  // (>= 64px). Buttons can use pill radii intentionally; cards cannot.
+  const isPillLike = (value: string): boolean => {
+    if (!value) return false;
+    if (value.includes("%")) return true;
+    const px = value.match(/^(\d+(?:\.\d+)?)px$/);
+    if (px && px[1] !== undefined && parseFloat(px[1]) >= 64) return true;
+    return false;
+  };
+  // Semantic radii. Buttons accept pill values directly (50% on a button is
+  // an intentional pill). Cards refuse to inherit a pill-like value from the
+  // legacy `radius` field — if the brand uses pills on buttons but we don't
+  // have a card-specific extraction, fall through to "8px" so cards don't
+  // render as ovals.
   const buttonRadius = safe(data.borders.radii.button, SAFE_SIZE) || radius;
-  const cardRadius = safe(data.borders.radii.card, SAFE_SIZE) || radius;
+  const cardFallback = isPillLike(radius) ? "8px" : radius;
+  const cardRadius = safe(data.borders.radii.card, SAFE_SIZE) || cardFallback;
 
   const primaryCssVar = primary || "transparent";
   const primaryButtonClass = primary ? "primary" : "primary missing";
@@ -76,8 +99,8 @@ export function renderPreview(
   --ds-primary: ${primaryCssVar};
   --ds-bg: ${bg};
   --ds-text: ${text};
-  --ds-heading-font: ${quoteFont(headingFont)};
-  --ds-body-font: ${quoteFont(bodyFont)};
+  --ds-heading-font: ${quoteFont(headingFont, headingGeneric)};
+  --ds-body-font: ${quoteFont(bodyFont, bodyGeneric)};
   --ds-heading-weight: ${headingWeight};
   --ds-body-weight: ${bodyWeight};
   --ds-h1-size: ${h1Size};
