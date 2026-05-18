@@ -209,6 +209,12 @@ export default defineAction({
         throw new Error("Page has no <body> — cannot extract signals");
       }
 
+      const screenshotBuffer = await page.screenshot({
+        type: "png",
+        fullPage: false,
+      });
+      const screenshotDataUrl = `data:image/png;base64,${screenshotBuffer.toString("base64")}`;
+
       const full: ExtractedSignals = { url: target.toString(), ...signals };
       const designSystemData = synthesizeDesignSystem(full);
       const markdown = designSystemToDesignMd({
@@ -217,7 +223,13 @@ export default defineAction({
         data: designSystemData,
       });
 
-      return { url: target.toString(), designSystemData, markdown, signals: full };
+      return {
+        url: target.toString(),
+        designSystemData,
+        markdown,
+        signals: full,
+        screenshotDataUrl,
+      };
     } finally {
       await browser.close();
     }
