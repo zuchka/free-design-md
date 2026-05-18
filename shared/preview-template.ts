@@ -186,7 +186,11 @@ button.ghost {
 }
 .card {
   padding: 24px;
-  border-radius: var(--ds-radius);
+  /* Cards cap the captured radius at 24px so pill-radius tokens like
+     9999px (rounded-full) render as softly-rounded cards instead of
+     literal ovals. Buttons keep the full captured value via
+     var(--ds-radius). A proper multi-radius scale is C4 work. */
+  border-radius: min(var(--ds-radius), 24px);
   border: 1px solid var(--ds-border);
 }
 .card h3 {
