@@ -53,16 +53,27 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
     ["heading-2", tp.headingSizes?.h2 ?? ""],
     ["heading-3", tp.headingSizes?.h3 ?? ""],
   ];
+  const headingStack = (tp.headingFontStack ?? "").trim();
+  const bodyStack = (tp.bodyFontStack ?? "").trim();
   for (const [name, size] of headingEntries) {
     if (!tp.headingFont && !size && !hWeight) continue;
     lines.push(`  ${name}:`);
     if (tp.headingFont) lines.push(`    fontFamily: ${tp.headingFont}`);
+    // Emit the full fallback stack so agents reading design.md see the
+    // brand's intended chain (e.g. "ui-serif, Georgia, ..., serif") rather
+    // than guessing from the primary font name alone.
+    if (headingStack && headingStack !== tp.headingFont) {
+      lines.push(`    fontFamilyStack: ${quote(headingStack)}`);
+    }
     if (size) lines.push(`    fontSize: ${size}`);
     if (hWeight) lines.push(`    fontWeight: ${hWeight}`);
   }
   if (tp.bodyFont || bWeight) {
     lines.push("  body:");
     if (tp.bodyFont) lines.push(`    fontFamily: ${tp.bodyFont}`);
+    if (bodyStack && bodyStack !== tp.bodyFont) {
+      lines.push(`    fontFamilyStack: ${quote(bodyStack)}`);
+    }
     if (bWeight) lines.push(`    fontWeight: ${bWeight}`);
   }
 

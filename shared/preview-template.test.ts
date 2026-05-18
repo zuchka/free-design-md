@@ -16,8 +16,8 @@ function fullData(): DesignSystemData {
     typography: {
       headingFont: "Sohne Var",
       bodyFont: "Sohne Var",
-      headingFontGeneric: "sans-serif",
-      bodyFontGeneric: "sans-serif",
+      headingFontStack: '"Sohne Var", system-ui, sans-serif',
+      bodyFontStack: '"Sohne Var", system-ui, sans-serif',
       headingWeight: "700",
       bodyWeight: "400",
       headingSizes: { h1: "56px", h2: "32px", h3: "20px" },
@@ -49,8 +49,8 @@ function emptyData(): DesignSystemData {
     typography: {
       headingFont: "",
       bodyFont: "",
-      headingFontGeneric: "",
-      bodyFontGeneric: "",
+      headingFontStack: "",
+      bodyFontStack: "",
       headingWeight: "",
       bodyWeight: "",
       headingSizes: { h1: "", h2: "", h3: "" },
@@ -192,31 +192,40 @@ describe("renderPreview", () => {
     expect(html).toMatch(/--ds-card-radius:\s*8px/);
   });
 
-  it("uses the captured generic family in the heading-font fallback chain (serif brand)", () => {
+  it("uses the captured font-family stack verbatim for headings (no system-ui sandwich)", () => {
     const data = fullData();
     data.typography.headingFont = "Mackinac";
-    data.typography.headingFontGeneric = "serif";
+    data.typography.headingFontStack =
+      'Mackinac, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
     const html = renderPreview(data);
-    expect(html).toMatch(/--ds-heading-font:\s*"Mackinac",\s*system-ui,\s*serif/);
+    // The full brand-specified stack appears verbatim in the CSS variable —
+    // no system-ui sneaking between the primary and the generic.
+    expect(html).toContain(
+      '--ds-heading-font: Mackinac, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;',
+    );
+    expect(html).not.toMatch(/--ds-heading-font:[^;]*system-ui[^;]*serif/);
   });
 
-  it("preserves a different generic for body vs heading", () => {
+  it("preserves separate stacks for heading vs body", () => {
     const data = fullData();
-    data.typography.headingFont = "Mackinac";
-    data.typography.headingFontGeneric = "serif";
-    data.typography.bodyFont = "Fricolage Grotesque";
-    data.typography.bodyFontGeneric = "sans-serif";
+    data.typography.headingFontStack = 'Mackinac, ui-serif, serif';
+    data.typography.bodyFontStack =
+      '"Fricolage Grotesque", ui-sans-serif, system-ui, sans-serif';
     const html = renderPreview(data);
-    expect(html).toMatch(/--ds-heading-font:[^;]*serif/);
-    expect(html).toMatch(/--ds-body-font:[^;]*sans-serif/);
+    expect(html).toContain("--ds-heading-font: Mackinac, ui-serif, serif");
+    expect(html).toContain(
+      '--ds-body-font: "Fricolage Grotesque", ui-sans-serif, system-ui, sans-serif',
+    );
   });
 
-  it("defaults to sans-serif when no generic is captured", () => {
+  it("falls back to primary + system-ui + sans-serif when no stack is captured", () => {
     const data = fullData();
     data.typography.headingFont = "Mystery Font";
-    data.typography.headingFontGeneric = "";
+    data.typography.headingFontStack = "";
     const html = renderPreview(data);
-    expect(html).toMatch(/--ds-heading-font:\s*"Mystery Font",\s*system-ui,\s*sans-serif/);
+    expect(html).toMatch(
+      /--ds-heading-font:\s*"Mystery Font",\s*system-ui,\s*sans-serif/,
+    );
   });
 
   it("renders different radii on the button vs card rules when radii are split", () => {

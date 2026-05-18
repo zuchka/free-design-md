@@ -14,8 +14,8 @@ const DEFAULT_DESIGN_SYSTEM: DesignSystemData = {
   typography: {
     headingFont: "Poppins",
     bodyFont: "Poppins",
-    headingFontGeneric: "sans-serif",
-    bodyFontGeneric: "sans-serif",
+    headingFontStack: "Poppins, system-ui, sans-serif",
+    bodyFontStack: "Poppins, system-ui, sans-serif",
     headingWeight: "900",
     bodyWeight: "400",
     headingSizes: { h1: "64px", h2: "40px", h3: "28px" },

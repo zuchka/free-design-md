@@ -257,7 +257,7 @@ export default defineAction({
         let bestCardKey: number[] = [-1, -1, Number.MIN_SAFE_INTEGER];
         const cardCandidates = Array.from(
           document.querySelectorAll("div, section, article, aside, li"),
-        ).slice(0, 400);
+        ).slice(0, 1200);
         cardCandidates.forEach((el, i) => {
           if (!isCardLike(el)) return;
           const rect = (el as HTMLElement).getBoundingClientRect();

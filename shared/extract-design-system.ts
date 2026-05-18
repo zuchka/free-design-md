@@ -69,38 +69,19 @@ function extractFontFamily(input: string): string {
   return first.replace(/^['"]|['"]$/g, "").trim();
 }
 
-// Detect the CSS generic family in a font-family stack. Browsers always
-// resolve to one of these at the end of a stack ("serif", "sans-serif",
-// "monospace", "cursive", "fantasy", "system-ui", "ui-serif", "ui-sans-serif",
-// "ui-monospace", "ui-rounded"). Use this to preserve the brand's intended
-// fallback (serif vs sans) when the proprietary font itself can't load —
-// instead of our preview defaulting everything to sans-serif.
-const GENERIC_FAMILIES = new Set([
-  "serif",
-  "sans-serif",
-  "monospace",
-  "cursive",
-  "fantasy",
-  "system-ui",
-  "ui-serif",
-  "ui-sans-serif",
-  "ui-monospace",
-  "ui-rounded",
-]);
-
-function extractGenericFamily(input: string): string {
+// Normalize a raw font-family stack from getComputedStyle so it's safe to
+// embed in our preview's <style> block and our design.md YAML. Trims, drops
+// empties, leaves quoting intact. We preserve the brand's full fallback
+// chain because their stack (e.g. "Mackinac, ui-serif, Georgia, ..., serif")
+// is the most faithful rendering instruction we have when the primary font
+// is proprietary and won't load.
+function normalizeFontStack(input: string): string {
   if (!input) return "";
-  // Split on commas, strip quotes/whitespace, find the first generic token.
-  // We scan ALL tokens (not just the last) because some stacks put a generic
-  // mid-stack and a UI- prefix at the end; we want the most informative one
-  // (plain "serif" wins over "ui-serif" by hitting first in most stacks).
   const parts = input
     .split(",")
-    .map((p) => p.trim().replace(/^['"]|['"]$/g, "").toLowerCase());
-  for (const part of parts) {
-    if (GENERIC_FAMILIES.has(part)) return part;
-  }
-  return "";
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts.join(", ");
 }
 
 function pickCssVar(vars: Record<string, string>, names: string[]): string {
@@ -231,13 +212,12 @@ export function synthesizeDesignSystem(
 
   const headingFont = extractFontFamily(h1?.fontFamily ?? "");
   const bodyFont = extractFontFamily(body.fontFamily);
-  // Generic family (serif / sans-serif / monospace) detected from the full
-  // captured stack. Used by the preview template's font-family fallback so
-  // sites whose primary font is proprietary and won't load still render in
-  // the right generic family. Empty when no generic token appears in the
-  // computed stack (which is rare — browsers resolve to one).
-  const headingFontGeneric = extractGenericFamily(h1?.fontFamily ?? "");
-  const bodyFontGeneric = extractGenericFamily(body.fontFamily);
+  // Full captured font-family stack. Preserves the brand's intended fallback
+  // chain (e.g. "Mackinac, ui-serif, Georgia, ..., serif" for Fly.io) so the
+  // preview renders in the right generic family when the primary proprietary
+  // font can't load.
+  const headingFontStack = normalizeFontStack(h1?.fontFamily ?? "");
+  const bodyFontStack = normalizeFontStack(body.fontFamily);
   const headingWeight = h1?.fontWeight ?? "";
   const bodyWeight = body.fontWeight;
   const h1Size = h1?.fontSize ?? "";
@@ -281,8 +261,8 @@ export function synthesizeDesignSystem(
     typography: {
       headingFont,
       bodyFont,
-      headingFontGeneric,
-      bodyFontGeneric,
+      headingFontStack,
+      bodyFontStack,
       headingWeight,
       bodyWeight,
       headingSizes: { h1: h1Size, h2: h2Size, h3: h3Size },

@@ -15,8 +15,8 @@ const fullData: DesignSystemData = {
   typography: {
     headingFont: "Poppins",
     bodyFont: "Poppins",
-    headingFontGeneric: "",
-    bodyFontGeneric: "",
+    headingFontStack: "",
+    bodyFontStack: "",
     headingWeight: "900",
     bodyWeight: "400",
     headingSizes: { h1: "64px", h2: "40px", h3: "28px" },
@@ -165,8 +165,8 @@ describe("designSystemToDesignMd", () => {
         typography: {
           headingFont: "",
           bodyFont: "Poppins",
-          headingFontGeneric: "",
-          bodyFontGeneric: "",
+          headingFontStack: "",
+          bodyFontStack: "",
           headingWeight: "",
           bodyWeight: "400",
           headingSizes: { h1: "", h2: "", h3: "" },
@@ -210,7 +210,7 @@ describe("designSystemToDesignMd", () => {
         },
         typography: {
           headingFont: "", bodyFont: "",
-          headingFontGeneric: "", bodyFontGeneric: "",
+          headingFontStack: "", bodyFontStack: "",
           headingWeight: "", bodyWeight: "",
           headingSizes: { h1: "", h2: "", h3: "" },
         },
@@ -219,6 +219,49 @@ describe("designSystemToDesignMd", () => {
     });
     expect(md).not.toMatch(/^## Colors$/m);
     expect(md).not.toMatch(/^## Typography$/m);
+  });
+
+  it("emits fontFamilyStack lines under heading-N and body when stacks are present", () => {
+    const md = designSystemToDesignMd({
+      title: "Fly",
+      description: "",
+      data: {
+        ...fullData,
+        typography: {
+          ...fullData.typography,
+          headingFont: "Mackinac",
+          bodyFont: "Fricolage Grotesque",
+          headingFontStack:
+            'Mackinac, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif',
+          bodyFontStack:
+            '"Fricolage Grotesque", ui-sans-serif, system-ui, sans-serif',
+        },
+      },
+      customInstructions: "",
+    });
+    expect(md).toMatch(
+      /^ {4}fontFamilyStack: "Mackinac, ui-serif, Georgia, Cambria, \\"Times New Roman\\", Times, serif"$/m,
+    );
+    expect(md).toMatch(
+      /^ {4}fontFamilyStack: "\\"Fricolage Grotesque\\", ui-sans-serif, system-ui, sans-serif"$/m,
+    );
+  });
+
+  it("omits fontFamilyStack when the stack equals the primary font name (single-name brand)", () => {
+    const md = designSystemToDesignMd({
+      title: "Single",
+      description: "",
+      data: {
+        ...fullData,
+        typography: {
+          ...fullData.typography,
+          headingFont: "Mackinac",
+          headingFontStack: "Mackinac",
+        },
+      },
+      customInstructions: "",
+    });
+    expect(md).not.toMatch(/fontFamilyStack:/);
   });
 
   it("emits the semantic rounded block when radii.button/card/pill are populated", () => {

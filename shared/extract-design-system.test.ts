@@ -454,7 +454,7 @@ describe("synthesizeDesignSystem", () => {
     expect(d.borders.radii.pill).toBe("9999px");
   });
 
-  it("captures the generic family token from the h1 font-family stack", () => {
+  it("captures the full font-family stack from h1 and body", () => {
     const s = emptySignals();
     s.h1 = {
       fontFamily: '"Mackinac", "Times New Roman", Georgia, serif',
@@ -465,12 +465,16 @@ describe("synthesizeDesignSystem", () => {
     s.body.fontFamily = '"Fricolage Grotesque", Inter, sans-serif';
     const d = synthesizeDesignSystem(s);
     expect(d.typography.headingFont).toBe("Mackinac");
-    expect(d.typography.headingFontGeneric).toBe("serif");
+    expect(d.typography.headingFontStack).toBe(
+      '"Mackinac", "Times New Roman", Georgia, serif',
+    );
     expect(d.typography.bodyFont).toBe("Fricolage Grotesque");
-    expect(d.typography.bodyFontGeneric).toBe("sans-serif");
+    expect(d.typography.bodyFontStack).toBe(
+      '"Fricolage Grotesque", Inter, sans-serif',
+    );
   });
 
-  it("leaves headingFontGeneric/bodyFontGeneric empty when stacks contain no generic token", () => {
+  it("preserves a single-name stack (no fallback) verbatim", () => {
     const s = emptySignals();
     s.h1 = {
       fontFamily: '"Custom Font"',
@@ -480,18 +484,16 @@ describe("synthesizeDesignSystem", () => {
     };
     s.body.fontFamily = '"Body Font"';
     const d = synthesizeDesignSystem(s);
-    expect(d.typography.headingFontGeneric).toBe("");
-    expect(d.typography.bodyFontGeneric).toBe("");
+    expect(d.typography.headingFontStack).toBe('"Custom Font"');
+    expect(d.typography.bodyFontStack).toBe('"Body Font"');
   });
 
-  it("recognizes monospace stacks (for code-heavy brands)", () => {
+  it("normalizes whitespace inside the captured stack", () => {
     const s = emptySignals();
-    s.body.fontFamily = 'ui-monospace, "SF Mono", Menlo, monospace';
+    s.body.fontFamily = '  ui-monospace ,   "SF Mono"  ,  Menlo,monospace  ';
     const d = synthesizeDesignSystem(s);
-    // The first generic token encountered wins; both "ui-monospace" and
-    // "monospace" appear, but we accept either as informative.
-    expect(["monospace", "ui-monospace"]).toContain(
-      d.typography.bodyFontGeneric,
+    expect(d.typography.bodyFontStack).toBe(
+      'ui-monospace, "SF Mono", Menlo, monospace',
     );
   });
 

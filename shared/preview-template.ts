@@ -6,7 +6,10 @@ export interface RenderPreviewOptions {
 
 const SAFE_COLOR = /^[#a-zA-Z0-9(),./%\s.-]+$/;
 const SAFE_FONT = /^[a-zA-Z0-9 _-]+$/;
-const SAFE_GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded)$/;
+// Font stacks contain comma-separated family names, quoted or bare, plus the
+// CSS generic keywords. We don't allow braces, semicolons, parens, or @ to
+// keep arbitrary CSS out of our <style> block.
+const SAFE_STACK = /^[a-zA-Z0-9 ,'"._\-]+$/;
 const SAFE_SIZE = /^\d+(\.\d+)?(px|rem|em|%)$/;
 const SAFE_WEIGHT = /^[1-9]00$|^\d{3}$/;
 
@@ -25,14 +28,18 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function quoteFont(value: string, generic: string): string {
-  // Build a fallback chain that preserves the brand's intended generic family
-  // (serif vs sans vs mono). When the proprietary primary font (e.g.,
-  // "Mackinac") can't load, the browser still falls through to the right
-  // generic instead of universally defaulting to sans-serif.
-  const safeGeneric = safe(generic, SAFE_GENERIC) || "sans-serif";
-  const fallback = `system-ui, ${safeGeneric}`;
-  return value ? `"${value}", ${fallback}` : fallback;
+function buildFontFamily(stack: string, primary: string): string {
+  // Use the brand's full captured stack verbatim when it survives sanitization
+  // — that's the highest-fidelity rendering instruction we have. Their stack
+  // already starts with the primary font name and ends with a proper generic
+  // family, so we don't sandwich our own opinion in the middle.
+  const safeStack = safe(stack, SAFE_STACK);
+  if (safeStack) return safeStack;
+  // Fallback: stack didn't capture or didn't survive sanitization. Build a
+  // minimal one from the primary name + sans-serif (the safest default).
+  const safePrimary = safe(primary, SAFE_FONT);
+  if (safePrimary) return `"${safePrimary}", system-ui, sans-serif`;
+  return "system-ui, sans-serif";
 }
 
 export function renderPreview(
@@ -48,8 +55,8 @@ export function renderPreview(
   const text = safe(data.colors.text, SAFE_COLOR) || "#1a1a1a";
   const headingFont = safe(data.typography.headingFont, SAFE_FONT);
   const bodyFont = safe(data.typography.bodyFont, SAFE_FONT);
-  const headingGeneric = data.typography.headingFontGeneric ?? "";
-  const bodyGeneric = data.typography.bodyFontGeneric ?? "";
+  const headingStack = data.typography.headingFontStack ?? "";
+  const bodyStack = data.typography.bodyFontStack ?? "";
   const headingWeight =
     safe(data.typography.headingWeight, SAFE_WEIGHT) || "700";
   const bodyWeight = safe(data.typography.bodyWeight, SAFE_WEIGHT) || "400";
@@ -99,8 +106,8 @@ export function renderPreview(
   --ds-primary: ${primaryCssVar};
   --ds-bg: ${bg};
   --ds-text: ${text};
-  --ds-heading-font: ${quoteFont(headingFont, headingGeneric)};
-  --ds-body-font: ${quoteFont(bodyFont, bodyGeneric)};
+  --ds-heading-font: ${buildFontFamily(headingStack, headingFont)};
+  --ds-body-font: ${buildFontFamily(bodyStack, bodyFont)};
   --ds-heading-weight: ${headingWeight};
   --ds-body-weight: ${bodyWeight};
   --ds-h1-size: ${h1Size};
