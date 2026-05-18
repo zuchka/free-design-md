@@ -19,5 +19,13 @@ export default createAuthPlugin({
     // React Router's lazy route-discovery endpoint must stay public so
     // unauthenticated viewers can open shared presentation links directly.
     "/__manifest",
+    // Public C3 surface — type a URL, see screenshot + preview + design.md.
+    "/extract",
+    // Single public HTTP route: returns text/markdown by default (curl-friendly),
+    // or JSON with the full payload (screenshot + tokens + signals) when called
+    // with ?format=json. Used by the /extract page. The underlying action stays
+    // auth-gated through the framework's owner-context check; this H3 route
+    // bypasses it intentionally and is SSRF-guarded by assertSafeUrl.
+    "/api/extract",
   ],
 });
