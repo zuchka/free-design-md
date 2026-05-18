@@ -41,7 +41,7 @@ configureTracking({
 });
 
 /** Routes that render without the app shell (sidebar + AgentSidebar) */
-const BARE_ROUTES = new Set(["/slide"]);
+const BARE_ROUTES = new Set(["/slide", "/extract"]);
 /** Route prefixes that render without the app shell */
 const BARE_PREFIXES = ["/share/", "/p/"];
 

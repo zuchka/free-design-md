@@ -133,23 +133,47 @@ export default function ExtractRoute() {
         )}
 
         {result && !isLoading && (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <Pane title="Real site">
-              {result.screenshotDataUrl ? (
-                <img
-                  src={result.screenshotDataUrl}
-                  alt={`Screenshot of ${result.url}`}
-                  className="block w-full h-auto rounded-md border"
-                />
-              ) : (
-                <div className="rounded-md border bg-muted/40 p-6 text-sm text-muted-foreground">
-                  Screenshot unavailable.
-                </div>
-              )}
-            </Pane>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+              <Pane title="Real site" className="lg:flex-1 lg:min-w-0">
+                {result.screenshotDataUrl ? (
+                  <div className="max-h-[560px] overflow-auto rounded-md border bg-muted/20">
+                    <img
+                      src={result.screenshotDataUrl}
+                      alt={`Screenshot of ${result.url}`}
+                      className="block w-full h-auto"
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-md border bg-muted/40 p-6 text-sm text-muted-foreground">
+                    Screenshot unavailable.
+                  </div>
+                )}
+              </Pane>
+
+              <Pane
+                title="design.md"
+                className="lg:flex-1 lg:min-w-0"
+                action={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopy}
+                    disabled={!result.markdown}
+                  >
+                    {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                    <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
+                  </Button>
+                }
+              >
+                <pre className="max-h-[560px] overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap">
+                  {result.markdown}
+                </pre>
+              </Pane>
+            </div>
 
             <Pane title="Preview from tokens">
-              <div className="aspect-[8/5] w-full overflow-hidden rounded-md border">
+              <div className="h-[900px] w-full overflow-hidden rounded-md border">
                 <iframe
                   srcDoc={previewHtml}
                   title="Synthetic preview"
@@ -157,25 +181,6 @@ export default function ExtractRoute() {
                   className="block h-full w-full"
                 />
               </div>
-            </Pane>
-
-            <Pane
-              title="design.md"
-              action={
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCopy}
-                  disabled={!result.markdown}
-                >
-                  {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                  <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
-                </Button>
-              }
-            >
-              <pre className="max-h-[480px] overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap">
-                {result.markdown}
-              </pre>
             </Pane>
           </div>
         )}
@@ -188,11 +193,12 @@ interface PaneProps {
   title: string;
   action?: React.ReactNode;
   children: React.ReactNode;
+  className?: string;
 }
 
-function Pane({ title, action, children }: PaneProps) {
+function Pane({ title, action, children, className }: PaneProps) {
   return (
-    <section className="flex flex-col gap-2">
+    <section className={`flex flex-col gap-2${className ? ` ${className}` : ""}`}>
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
