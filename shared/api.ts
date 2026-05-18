@@ -276,7 +276,11 @@ export interface DesignSystemData {
     headingSizes: { h1: string; h2: string; h3: string };
   };
   spacing: { slidePadding: string; elementGap: string };
-  borders: { radius: string; accentWidth: string };
+  borders: {
+    radius: string;
+    accentWidth: string;
+    radii: { button: string; card: string; pill: string };
+  };
   slideDefaults: {
     background: string;
     labelStyle: "uppercase" | "lowercase" | "capitalize" | "none";
