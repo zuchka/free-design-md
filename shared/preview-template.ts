@@ -1,0 +1,255 @@
+import type { DesignSystemData } from "./api";
+
+export interface RenderPreviewOptions {
+  title?: string;
+}
+
+const SAFE_COLOR = /^[#a-zA-Z0-9(),./%\s.-]+$/;
+const SAFE_FONT = /^[a-zA-Z0-9 _-]+$/;
+const SAFE_SIZE = /^\d+(\.\d+)?(px|rem|em|%)$/;
+const SAFE_WEIGHT = /^[1-9]00$|^\d{3}$/;
+
+function safe(value: string, pattern: RegExp): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  return pattern.test(trimmed) ? trimmed : "";
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function quoteFont(value: string): string {
+  return value ? `"${value}", system-ui, sans-serif` : "system-ui, sans-serif";
+}
+
+export function renderPreview(
+  data: DesignSystemData,
+  opts: RenderPreviewOptions = {},
+): string {
+  const title = (opts.title ?? "Brand").trim() || "Brand";
+  const safeTitle = escapeHtml(title);
+  const initial = escapeHtml((title.charAt(0) || "B").toUpperCase());
+
+  const primary = safe(data.colors.primary, SAFE_COLOR);
+  const bg = safe(data.colors.background, SAFE_COLOR) || "#ffffff";
+  const text = safe(data.colors.text, SAFE_COLOR) || "#1a1a1a";
+  const headingFont = safe(data.typography.headingFont, SAFE_FONT);
+  const bodyFont = safe(data.typography.bodyFont, SAFE_FONT);
+  const headingWeight =
+    safe(data.typography.headingWeight, SAFE_WEIGHT) || "700";
+  const bodyWeight = safe(data.typography.bodyWeight, SAFE_WEIGHT) || "400";
+  const h1Size = safe(data.typography.headingSizes.h1, SAFE_SIZE) || "56px";
+  const h2Size = safe(data.typography.headingSizes.h2, SAFE_SIZE) || "32px";
+  const h3Size = safe(data.typography.headingSizes.h3, SAFE_SIZE) || "20px";
+  const radius = safe(data.borders.radius, SAFE_SIZE) || "8px";
+
+  const primaryCssVar = primary || "transparent";
+  const primaryButtonClass = primary ? "primary" : "primary missing";
+
+  const firstLogo = data.logos[0];
+  const logoUrl = firstLogo?.url ?? "";
+  const safeLogoUrl =
+    logoUrl && /^https?:\/\/[^\s"<>]+$/.test(logoUrl) ? logoUrl : "";
+
+  const brandMark = safeLogoUrl
+    ? `<img class="brand-mark" src="${escapeHtml(safeLogoUrl)}" alt="${safeTitle} logo">`
+    : `<div class="brand-initials">${initial}</div>`;
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Preview — ${safeTitle}</title>
+<style>
+:root {
+  --ds-primary: ${primaryCssVar};
+  --ds-bg: ${bg};
+  --ds-text: ${text};
+  --ds-heading-font: ${quoteFont(headingFont)};
+  --ds-body-font: ${quoteFont(bodyFont)};
+  --ds-heading-weight: ${headingWeight};
+  --ds-body-weight: ${bodyWeight};
+  --ds-h1-size: ${h1Size};
+  --ds-h2-size: ${h2Size};
+  --ds-h3-size: ${h3Size};
+  --ds-radius: ${radius};
+  --ds-border: color-mix(in srgb, var(--ds-text) 12%, var(--ds-bg));
+  --ds-muted: color-mix(in srgb, var(--ds-text) 55%, var(--ds-bg));
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  font-family: var(--ds-body-font);
+  font-weight: var(--ds-body-weight);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 40px;
+  border-bottom: 1px solid var(--ds-border);
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; }
+.brand-initials {
+  width: 32px; height: 32px; border-radius: 6px;
+  background: ${primary || "var(--ds-text)"}; color: var(--ds-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 16px; font-family: var(--ds-heading-font);
+}
+.brand-name {
+  font-family: var(--ds-heading-font);
+  font-weight: var(--ds-heading-weight);
+  font-size: 18px;
+  letter-spacing: -0.2px;
+}
+.nav-links {
+  display: flex; gap: 24px;
+  color: var(--ds-muted);
+  font-size: 14px;
+}
+.hero {
+  padding: 96px 40px 48px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: ${primary || "var(--ds-muted)"};
+  margin-bottom: 20px;
+}
+h1 {
+  font-family: var(--ds-heading-font);
+  font-weight: var(--ds-heading-weight);
+  font-size: var(--ds-h1-size);
+  line-height: 1.08;
+  letter-spacing: -1.5px;
+  margin: 0 0 24px 0;
+  text-wrap: balance;
+}
+.lede {
+  font-size: 18px;
+  color: var(--ds-muted);
+  margin: 0 0 40px 0;
+  max-width: 640px;
+  text-wrap: pretty;
+}
+.ctas { display: flex; gap: 12px; }
+button {
+  font-family: var(--ds-body-font);
+  font-weight: 600;
+  font-size: 15px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: var(--ds-radius);
+  cursor: pointer;
+}
+button.primary {
+  background: var(--ds-primary);
+  color: var(--ds-bg);
+}
+button.primary.missing {
+  background: repeating-linear-gradient(45deg, #d4d4d4 0 8px, #e8e8e8 8px 16px);
+  color: #6b6b6b;
+  position: relative;
+}
+button.primary.missing::after {
+  content: " (primary missing)";
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+button.ghost {
+  background: transparent;
+  color: var(--ds-text);
+  border: 1px solid var(--ds-border);
+}
+.cards {
+  padding: 24px 40px 64px;
+  max-width: 960px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.card {
+  padding: 24px;
+  border-radius: var(--ds-radius);
+  border: 1px solid var(--ds-border);
+}
+.card h3 {
+  font-family: var(--ds-heading-font);
+  font-weight: var(--ds-heading-weight);
+  font-size: var(--ds-h3-size);
+  margin: 0 0 12px 0;
+  letter-spacing: -0.3px;
+}
+.card p {
+  font-size: 14px;
+  color: var(--ds-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+footer {
+  padding: 20px 40px;
+  font-size: 13px;
+  color: var(--ds-muted);
+  border-top: 1px solid var(--ds-border);
+}
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="brand">
+    ${brandMark}
+    <div class="brand-name">${safeTitle}</div>
+  </div>
+  <nav class="nav-links">
+    <span>Product</span>
+    <span>Pricing</span>
+    <span>Docs</span>
+    <span>Log in</span>
+  </nav>
+</header>
+<main>
+  <section class="hero">
+    <div class="label">Built with extracted tokens</div>
+    <h1>This is what ${safeTitle} could look like.</h1>
+    <p class="lede">A synthetic landing page styled with the design system extracted from the live site. Squint — does it feel like the brand?</p>
+    <div class="ctas">
+      <button class="${primaryButtonClass}">Get started</button>
+      <button class="ghost">Read docs</button>
+    </div>
+  </section>
+  <section class="cards">
+    <div class="card">
+      <h3>Fast</h3>
+      <p>Extraction runs in under 10 seconds with no LLM in the loop.</p>
+    </div>
+    <div class="card">
+      <h3>Deterministic</h3>
+      <p>The same URL always produces the same design.md. No hallucinations.</p>
+    </div>
+    <div class="card">
+      <h3>Honest</h3>
+      <p>Empty fields stay empty. We don't fabricate brand colors we can't see.</p>
+    </div>
+  </section>
+</main>
+<footer>Preview generated by free-design-md from extracted design tokens.</footer>
+</body>
+</html>
+`;
+}

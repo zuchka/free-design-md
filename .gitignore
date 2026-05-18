@@ -68,3 +68,6 @@ build
 data/exports/
 
 .vercel/
+
+# Fidelity-probe output (screenshots + report.html from tools/fidelity-report.ts)
+tools/fidelity-output/
