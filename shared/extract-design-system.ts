@@ -11,6 +11,16 @@ export interface ButtonAnatomy {
   borderTopColor?: string;
 }
 
+export interface CardAnatomy {
+  padding?: string;
+  backgroundColor?: string;
+  color?: string;
+  borderTopWidth?: string;
+  borderTopStyle?: string;
+  borderTopColor?: string;
+  boxShadow?: string;
+}
+
 export interface ExtractedSignals {
   url: string;
   title: string;
@@ -49,7 +59,7 @@ export interface ExtractedSignals {
         borderRadius: string;
       } & ButtonAnatomy)
     | null;
-  cardSample?: { borderRadius: string } | null;
+  cardSample?: ({ borderRadius: string } & CardAnatomy) | null;
   pillRadius?: string;
 }
 
@@ -271,13 +281,42 @@ function synthesizeButtonPrimary(
   };
 }
 
+function synthesizeCard(
+  signals: ExtractedSignals,
+): NonNullable<DesignSystemData["components"]>["card"] | null {
+  const sample = signals.cardSample;
+  if (!sample) return null;
+  // Padding 0px 0px is the same mis-classification signal as on buttons:
+  // we picked an element that looked card-shaped but isn't actually padded
+  // like a card. Drop the whole sub-tree rather than emit a flat card spec.
+  if (isImplausibleButtonPadding(sample.padding)) return null;
+
+  const radius = extractRadius(sample.borderRadius);
+  const padding = (sample.padding ?? "").trim();
+  const background = normalizeColor(sample.backgroundColor ?? "");
+  const color = normalizeColor(sample.color ?? "");
+  const border = composeBorder(
+    sample.borderTopWidth,
+    sample.borderTopStyle,
+    sample.borderTopColor,
+  );
+  const rawShadow = (sample.boxShadow ?? "").trim();
+  const shadow = rawShadow && rawShadow !== "none" ? rawShadow : "";
+
+  return { background, color, radius, padding, border, shadow };
+}
+
 function synthesizeComponents(
   signals: ExtractedSignals,
 ): DesignSystemData["components"] | undefined {
   const buttonPrimary = synthesizeButtonPrimary(signals);
+  const card = synthesizeCard(signals);
   const out: NonNullable<DesignSystemData["components"]> = {};
   if (buttonPrimary) {
     out.button = { primary: buttonPrimary };
+  }
+  if (card) {
+    out.card = card;
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }

@@ -376,7 +376,19 @@ export default defineAction({
               })()
             : null,
           cardSample: cardEl
-            ? { borderRadius: getComputedStyle(cardEl).borderRadius }
+            ? (() => {
+                const cs = getComputedStyle(cardEl as Element);
+                return {
+                  borderRadius: cs.borderRadius,
+                  padding: cs.padding,
+                  backgroundColor: cs.backgroundColor,
+                  color: cs.color,
+                  borderTopWidth: cs.borderTopWidth,
+                  borderTopStyle: cs.borderTopStyle,
+                  borderTopColor: cs.borderTopColor,
+                  boxShadow: cs.boxShadow,
+                };
+              })()
             : null,
           pillRadius,
         };

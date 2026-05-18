@@ -634,6 +634,86 @@ describe("synthesizeDesignSystem", () => {
     });
   });
 
+  describe("components.card", () => {
+    it("populates card from a fully-specified cardSample", () => {
+      const s = emptySignals();
+      s.cardSample = {
+        borderRadius: "16px",
+        padding: "24px",
+        backgroundColor: "rgb(255, 255, 255)",
+        color: "rgb(20, 20, 20)",
+        borderTopWidth: "1px",
+        borderTopStyle: "solid",
+        borderTopColor: "rgb(229, 229, 229)",
+        boxShadow: "rgba(0, 0, 0, 0.05) 0px 1px 2px 0px",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.card).toEqual({
+        background: "#ffffff",
+        color: "#141414",
+        radius: "16px",
+        padding: "24px",
+        border: "1px solid #e5e5e5",
+        shadow: "rgba(0, 0, 0, 0.05) 0px 1px 2px 0px",
+      });
+    });
+
+    it("emits empty border and shadow when missing or 'none'", () => {
+      const s = emptySignals();
+      s.cardSample = {
+        borderRadius: "12px",
+        padding: "20px",
+        backgroundColor: "rgb(255, 255, 255)",
+        color: "",
+        borderTopWidth: "0px",
+        borderTopStyle: "none",
+        borderTopColor: "rgb(0, 0, 0)",
+        boxShadow: "none",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.card?.border).toBe("");
+      expect(d.components?.card?.shadow).toBe("");
+      expect(d.components?.card?.radius).toBe("12px");
+    });
+
+    it("omits the card sub-tree when padding is 0px 0px (mis-classified)", () => {
+      const s = emptySignals();
+      s.cardSample = {
+        borderRadius: "8px",
+        padding: "0px 0px",
+        backgroundColor: "rgb(255, 255, 255)",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.card).toBeUndefined();
+    });
+
+    it("omits the card sub-tree when cardSample is missing", () => {
+      const s = emptySignals();
+      // No cardSample at all.
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.card).toBeUndefined();
+    });
+
+    it("keeps card with only radius + bg + padding when border and shadow are absent", () => {
+      const s = emptySignals();
+      s.cardSample = {
+        borderRadius: "8px",
+        padding: "16px",
+        backgroundColor: "rgb(248, 248, 248)",
+        // No border or shadow info.
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.card).toEqual({
+        background: "#f8f8f8",
+        color: "",
+        radius: "8px",
+        padding: "16px",
+        border: "",
+        shadow: "",
+      });
+    });
+  });
+
   it("leaves borders.radii fields empty when the new signals are missing, and does not regress the old borders.radius computation", () => {
     const s = emptySignals();
     s.button = {
