@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DesignMdPanel } from "./DesignMdPanel";
 
 interface DesignSystemSetupProps {
   open: boolean;
@@ -629,6 +630,12 @@ export function DesignSystemSetup({
                   </div>
                 )}
               </>
+            )}
+
+            {editingId && (
+              <div className="border-t pt-6">
+                <DesignMdPanel id={editingId} />
+              </div>
             )}
 
             {/* Brand Notes */}
