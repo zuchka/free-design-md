@@ -497,6 +497,143 @@ describe("synthesizeDesignSystem", () => {
     );
   });
 
+  // --- C5: components.button.primary sub-tree ---
+
+  describe("components.button.primary", () => {
+    it("populates button.primary from the CTA <a> when CTA supplies primary", () => {
+      const s = emptySignals();
+      s.cta = {
+        backgroundColor: "rgb(99, 91, 255)",
+        color: "rgb(255, 255, 255)",
+        borderRadius: "8px",
+        padding: "12px 24px",
+        fontSize: "15px",
+        fontWeight: "600",
+        borderTopWidth: "0px",
+        borderTopStyle: "none",
+        borderTopColor: "rgb(0, 0, 0)",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.button?.primary).toEqual({
+        background: "#635bff",
+        color: "#ffffff",
+        radius: "8px",
+        padding: "12px 24px",
+        fontSize: "15px",
+        fontWeight: "600",
+        border: "",
+      });
+    });
+
+    it("populates button.primary from <button> when CTA is absent", () => {
+      const s = emptySignals();
+      s.button = {
+        backgroundColor: "rgb(31, 111, 235)",
+        borderRadius: "6px",
+        color: "rgb(255, 255, 255)",
+        padding: "10px 20px",
+        fontSize: "14px",
+        fontWeight: "500",
+        borderTopWidth: "1px",
+        borderTopStyle: "solid",
+        borderTopColor: "rgb(0, 0, 0)",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.button?.primary).toEqual({
+        background: "#1f6feb",
+        color: "#ffffff",
+        radius: "6px",
+        padding: "10px 20px",
+        fontSize: "14px",
+        fontWeight: "500",
+        border: "1px solid #000000",
+      });
+    });
+
+    it("emits an empty border string when borderTopWidth is 0px or style is none", () => {
+      const s = emptySignals();
+      s.button = {
+        backgroundColor: "rgb(31, 111, 235)",
+        borderRadius: "6px",
+        color: "rgb(255, 255, 255)",
+        padding: "10px 20px",
+        fontSize: "14px",
+        fontWeight: "500",
+        borderTopWidth: "0px",
+        borderTopStyle: "none",
+        borderTopColor: "rgb(0, 0, 0)",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.button?.primary?.border).toBe("");
+    });
+
+    it("drops padding 0px 0px (likely icon button slipped through)", () => {
+      const s = emptySignals();
+      s.button = {
+        backgroundColor: "rgb(31, 111, 235)",
+        borderRadius: "6px",
+        color: "rgb(255, 255, 255)",
+        padding: "0px 0px",
+        fontSize: "14px",
+        fontWeight: "500",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.button?.primary?.padding).toBe("");
+    });
+
+    it("drops font-size outside 10-48px range", () => {
+      const s = emptySignals();
+      s.button = {
+        backgroundColor: "rgb(31, 111, 235)",
+        borderRadius: "6px",
+        color: "rgb(255, 255, 255)",
+        padding: "10px 20px",
+        fontSize: "72px",
+        fontWeight: "500",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.button?.primary?.fontSize).toBe("");
+    });
+
+    it("omits the button sub-tree when no primary source has surviving fields", () => {
+      const s = emptySignals();
+      // Grayscale button -> rejected as primary source -> no button.primary.
+      s.button = {
+        backgroundColor: "rgb(239, 239, 239)",
+        borderRadius: "4px",
+        color: "rgb(0, 0, 0)",
+        padding: "10px 20px",
+        fontSize: "14px",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.components?.button).toBeUndefined();
+    });
+
+    it("uses CTA over button when both have chromatic backgrounds", () => {
+      const s = emptySignals();
+      s.cta = {
+        backgroundColor: "rgb(99, 91, 255)",
+        color: "rgb(255, 255, 255)",
+        borderRadius: "8px",
+        padding: "12px 24px",
+        fontSize: "15px",
+        fontWeight: "600",
+      };
+      s.button = {
+        backgroundColor: "rgb(0, 200, 100)",
+        borderRadius: "4px",
+        color: "rgb(0, 0, 0)",
+        padding: "8px 16px",
+        fontSize: "13px",
+        fontWeight: "500",
+      };
+      const d = synthesizeDesignSystem(s);
+      // button.primary anatomy comes from the CTA, not the <button>.
+      expect(d.components?.button?.primary?.padding).toBe("12px 24px");
+      expect(d.components?.button?.primary?.fontSize).toBe("15px");
+    });
+  });
+
   it("leaves borders.radii fields empty when the new signals are missing, and does not regress the old borders.radius computation", () => {
     const s = emptySignals();
     s.button = {

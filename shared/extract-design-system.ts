@@ -1,5 +1,16 @@
 import type { DesignSystemData } from "./api";
 
+// Optional per-element computed-style fields used to populate `components`.
+// All fields stay optional so older Playwright captures (pre-C5) still parse.
+export interface ButtonAnatomy {
+  padding?: string;
+  fontSize?: string;
+  fontWeight?: string;
+  borderTopWidth?: string;
+  borderTopStyle?: string;
+  borderTopColor?: string;
+}
+
 export interface ExtractedSignals {
   url: string;
   title: string;
@@ -24,16 +35,20 @@ export interface ExtractedSignals {
   h2: { fontSize: string } | null;
   h3: { fontSize: string } | null;
   link: { color: string } | null;
-  button: {
-    backgroundColor: string;
-    borderRadius: string;
-    color: string;
-  } | null;
-  cta: {
-    backgroundColor: string;
-    color: string;
-    borderRadius: string;
-  } | null;
+  button:
+    | ({
+        backgroundColor: string;
+        borderRadius: string;
+        color: string;
+      } & ButtonAnatomy)
+    | null;
+  cta:
+    | ({
+        backgroundColor: string;
+        color: string;
+        borderRadius: string;
+      } & ButtonAnatomy)
+    | null;
   cardSample?: { borderRadius: string } | null;
   pillRadius?: string;
 }
@@ -158,6 +173,115 @@ function hasUsableOpacity(color: string): boolean {
   return true;
 }
 
+// --- C5 component anatomy ---
+
+function parsePxValue(input: string | undefined): number | null {
+  if (!input) return null;
+  const m = input.trim().match(/^(-?\d+(?:\.\d+)?)px$/);
+  return m && m[1] !== undefined ? parseFloat(m[1]) : null;
+}
+
+function isImplausibleButtonPadding(padding: string | undefined): boolean {
+  if (!padding) return true;
+  const parts = padding.trim().split(/\s+/);
+  // Padding shorthand entirely zero — almost always an icon button or a
+  // container we mis-classified, not a real CTA's padding.
+  if (parts.every((p) => p === "0" || p === "0px")) return true;
+  return false;
+}
+
+function isImplausibleButtonFontSize(size: string | undefined): boolean {
+  const px = parsePxValue(size);
+  if (px === null) return true;
+  return px < 10 || px > 48;
+}
+
+function composeBorder(
+  width: string | undefined,
+  style: string | undefined,
+  color: string | undefined,
+): string {
+  const w = parsePxValue(width);
+  if (w === null || w <= 0) return "";
+  if (!style || style === "none") return "";
+  const normalizedColor = color ? normalizeColor(color) : "";
+  return `${width} ${style} ${normalizedColor}`.replace(/\s+/g, " ").trim();
+}
+
+interface ButtonAnatomySource {
+  backgroundColor: string;
+  color: string;
+  borderRadius: string;
+  padding?: string;
+  fontSize?: string;
+  fontWeight?: string;
+  borderTopWidth?: string;
+  borderTopStyle?: string;
+  borderTopColor?: string;
+}
+
+function pickButtonPrimarySource(
+  signals: ExtractedSignals,
+): ButtonAnatomySource | null {
+  const cta = signals.cta;
+  const ctaBg = cta?.backgroundColor ?? "";
+  if (cta && hasUsableOpacity(ctaBg) && chromaOf(ctaBg) >= MIN_BRAND_CHROMA) {
+    return cta;
+  }
+  const button = signals.button;
+  const buttonBg = button?.backgroundColor ?? "";
+  if (
+    button &&
+    hasUsableOpacity(buttonBg) &&
+    chromaOf(buttonBg) >= MIN_BRAND_CHROMA
+  ) {
+    return button;
+  }
+  return null;
+}
+
+function synthesizeButtonPrimary(
+  signals: ExtractedSignals,
+): NonNullable<NonNullable<DesignSystemData["components"]>["button"]>["primary"] | null {
+  const source = pickButtonPrimarySource(signals);
+  if (!source) return null;
+  const background = normalizeColor(source.backgroundColor);
+  const color = normalizeColor(source.color);
+  const radius = extractRadius(source.borderRadius);
+  const padding = isImplausibleButtonPadding(source.padding)
+    ? ""
+    : (source.padding ?? "").trim();
+  const fontSize = isImplausibleButtonFontSize(source.fontSize)
+    ? ""
+    : (source.fontSize ?? "").trim();
+  const fontWeight = (source.fontWeight ?? "").trim();
+  const border = composeBorder(
+    source.borderTopWidth,
+    source.borderTopStyle,
+    source.borderTopColor,
+  );
+  return {
+    background,
+    color,
+    radius,
+    padding,
+    fontSize,
+    fontWeight,
+    border,
+  };
+}
+
+function synthesizeComponents(
+  signals: ExtractedSignals,
+): DesignSystemData["components"] | undefined {
+  const buttonPrimary = synthesizeButtonPrimary(signals);
+  const out: NonNullable<DesignSystemData["components"]> = {};
+  if (buttonPrimary) {
+    out.button = { primary: buttonPrimary };
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 export function synthesizeDesignSystem(
   signals: ExtractedSignals,
 ): DesignSystemData {
@@ -248,6 +372,8 @@ export function synthesizeDesignSystem(
     ? [{ url: faviconUrl, name: title || "", variant: "auto" as const }]
     : [];
 
+  const components = synthesizeComponents(signals);
+
   return {
     colors: {
       primary,
@@ -279,5 +405,6 @@ export function synthesizeDesignSystem(
     },
     slideDefaults: { background: "", labelStyle: "none" },
     logos,
+    ...(components ? { components } : {}),
   };
 }
