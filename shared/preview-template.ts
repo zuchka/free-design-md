@@ -48,6 +48,11 @@ export function renderPreview(
   const h2Size = safe(data.typography.headingSizes.h2, SAFE_SIZE) || "32px";
   const h3Size = safe(data.typography.headingSizes.h3, SAFE_SIZE) || "20px";
   const radius = safe(data.borders.radius, SAFE_SIZE) || "8px";
+  // Semantic radii. Each falls back through: explicit semantic value -> the
+  // single-value `radius` (which is also `radii.button` after C4) -> "8px".
+  // SAFE_SIZE accepts px/rem/em/%, so 50% (a pill button) passes through.
+  const buttonRadius = safe(data.borders.radii.button, SAFE_SIZE) || radius;
+  const cardRadius = safe(data.borders.radii.card, SAFE_SIZE) || radius;
 
   const primaryCssVar = primary || "transparent";
   const primaryButtonClass = primary ? "primary" : "primary missing";
@@ -79,6 +84,8 @@ export function renderPreview(
   --ds-h2-size: ${h2Size};
   --ds-h3-size: ${h3Size};
   --ds-radius: ${radius};
+  --ds-button-radius: ${buttonRadius};
+  --ds-card-radius: ${cardRadius};
   --ds-border: color-mix(in srgb, var(--ds-text) 12%, var(--ds-bg));
   --ds-muted: color-mix(in srgb, var(--ds-text) 55%, var(--ds-bg));
 }
@@ -153,7 +160,7 @@ button {
   font-size: 15px;
   padding: 12px 22px;
   border: 0;
-  border-radius: var(--ds-radius);
+  border-radius: var(--ds-button-radius);
   cursor: pointer;
 }
 button.primary {
@@ -186,11 +193,7 @@ button.ghost {
 }
 .card {
   padding: 24px;
-  /* Cards cap the captured radius at 24px so pill-radius tokens like
-     9999px (rounded-full) render as softly-rounded cards instead of
-     literal ovals. Buttons keep the full captured value via
-     var(--ds-radius). A proper multi-radius scale is C4 work. */
-  border-radius: min(var(--ds-radius), 24px);
+  border-radius: var(--ds-card-radius);
   border: 1px solid var(--ds-border);
 }
 .card h3 {
