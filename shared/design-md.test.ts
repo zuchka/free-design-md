@@ -97,7 +97,7 @@ describe("designSystemToDesignMd", () => {
     `);
   });
 
-  it("omits the rounded group and shapes line when radius is missing", () => {
+  it("omits the rounded group and Border radius bullet when radius is empty but accentWidth is set", () => {
     const md = designSystemToDesignMd({
       title: "No Radius",
       description: "",
@@ -141,5 +141,67 @@ describe("designSystemToDesignMd", () => {
     });
     expect(md).toMatch(/Is this the right brand\?\n/);
     expect(md).not.toMatch(/right brand\?\./);
+  });
+
+  it("skips heading-N blocks when font, size, and weight are all empty", () => {
+    const md = designSystemToDesignMd({
+      title: "Empty headings",
+      description: "",
+      data: {
+        ...fullData,
+        typography: {
+          headingFont: "",
+          bodyFont: "Poppins",
+          headingWeight: "",
+          bodyWeight: "400",
+          headingSizes: { h1: "", h2: "", h3: "" },
+        },
+      },
+      customInstructions: "",
+    });
+    expect(md).not.toMatch(/heading-1:/);
+    expect(md).not.toMatch(/heading-2:/);
+    expect(md).not.toMatch(/heading-3:/);
+    expect(md).toMatch(/body:/);
+  });
+
+  it("skips the body YAML block when bodyFont and bodyWeight are both empty", () => {
+    const md = designSystemToDesignMd({
+      title: "No body",
+      description: "",
+      data: {
+        ...fullData,
+        typography: {
+          ...fullData.typography,
+          bodyFont: "",
+          bodyWeight: "",
+        },
+      },
+      customInstructions: "",
+    });
+    // body: should not be emitted as a bare YAML key with no children
+    expect(md).not.toMatch(/^ {2}body:\s*$/m);
+  });
+
+  it("skips the Colors and Typography prose sections when all source fields are empty", () => {
+    const md = designSystemToDesignMd({
+      title: "Empty",
+      description: "",
+      data: {
+        ...fullData,
+        colors: {
+          primary: "", secondary: "", accent: "", background: "",
+          surface: "", text: "", textMuted: "",
+        },
+        typography: {
+          headingFont: "", bodyFont: "",
+          headingWeight: "", bodyWeight: "",
+          headingSizes: { h1: "", h2: "", h3: "" },
+        },
+      },
+      customInstructions: "",
+    });
+    expect(md).not.toMatch(/^## Colors$/m);
+    expect(md).not.toMatch(/^## Typography$/m);
   });
 });

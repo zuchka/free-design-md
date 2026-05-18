@@ -54,14 +54,17 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
     ["heading-3", tp.headingSizes?.h3 ?? ""],
   ];
   for (const [name, size] of headingEntries) {
+    if (!tp.headingFont && !size && !hWeight) continue;
     lines.push(`  ${name}:`);
     if (tp.headingFont) lines.push(`    fontFamily: ${tp.headingFont}`);
     if (size) lines.push(`    fontSize: ${size}`);
     if (hWeight) lines.push(`    fontWeight: ${hWeight}`);
   }
-  lines.push("  body:");
-  if (tp.bodyFont) lines.push(`    fontFamily: ${tp.bodyFont}`);
-  if (bWeight) lines.push(`    fontWeight: ${bWeight}`);
+  if (tp.bodyFont || bWeight) {
+    lines.push("  body:");
+    if (tp.bodyFont) lines.push(`    fontFamily: ${tp.bodyFont}`);
+    if (bWeight) lines.push(`    fontWeight: ${bWeight}`);
+  }
 
   if (radius) {
     lines.push("rounded:");
@@ -77,22 +80,27 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
   if (!desc && !ci) lines.push(`Design system "${title}".`);
   lines.push("");
 
-  lines.push("## Colors");
-  lines.push("");
-  for (const { key, label, token } of COLOR_LABELS) {
-    const v = (data.colors?.[key] ?? "").trim();
-    if (v) lines.push(`- **${label}** — \`{colors.${token}}\` — \`${v}\``);
+  const hasColors = COLOR_LABELS.some(({ key }) => (data.colors?.[key] ?? "").trim());
+  if (hasColors) {
+    lines.push("## Colors");
+    lines.push("");
+    for (const { key, label, token } of COLOR_LABELS) {
+      const v = (data.colors?.[key] ?? "").trim();
+      if (v) lines.push(`- **${label}** — \`{colors.${token}}\` — \`${v}\``);
+    }
+    lines.push("");
   }
-  lines.push("");
 
-  lines.push("## Typography");
-  lines.push("");
-  if (tp.headingFont) {
-    const sizes = headingEntries.filter(([, s]) => s).map(([n, s]) => `${n.replace("heading-", "h")} ${s}`).join(" / ");
-    lines.push(`- **Headings** — \`${tp.headingFont}\`, weight \`${tp.headingWeight}\`${sizes ? `. Sizes: ${sizes}.` : "."}`);
+  if (tp.headingFont || tp.bodyFont) {
+    lines.push("## Typography");
+    lines.push("");
+    if (tp.headingFont) {
+      const sizes = headingEntries.filter(([, s]) => s).map(([n, s]) => `${n.replace("heading-", "h")} ${s}`).join(" / ");
+      lines.push(`- **Headings** — \`${tp.headingFont}\`, weight \`${tp.headingWeight ?? ""}\`${sizes ? `. Sizes: ${sizes}.` : "."}`);
+    }
+    if (tp.bodyFont) lines.push(`- **Body** — \`${tp.bodyFont}\`, weight \`${tp.bodyWeight ?? ""}\`.`);
+    lines.push("");
   }
-  if (tp.bodyFont) lines.push(`- **Body** — \`${tp.bodyFont}\`, weight \`${tp.bodyWeight}\`.`);
-  lines.push("");
 
   const slidePadding = (data.spacing?.slidePadding ?? "").trim();
   const elementGap = (data.spacing?.elementGap ?? "").trim();
