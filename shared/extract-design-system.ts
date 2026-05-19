@@ -449,8 +449,27 @@ export function synthesizeDesignSystem(
       : "";
   const themeCandidate =
     chromaOf(themeColor) >= MIN_BRAND_CHROMA ? themeColor : "";
+  // Monochrome brands (Vercel, Apple, GitHub, Linear) don't pass any of the
+  // chromatic checks above because their primary identity *is* black or
+  // near-black. When the whole cascade returns empty, fall through to the
+  // body's text color as the primary — it's deterministic, opaque, and
+  // reflects the brand. Skipped when body.color is transparent or identical
+  // to the page background (would render invisible).
+  const bodyTextCandidate = (() => {
+    const c = body.color ?? "";
+    if (!hasUsableOpacity(c)) return "";
+    if (normalizeColor(c) === normalizeColor(body.backgroundColor ?? "")) {
+      return "";
+    }
+    return c;
+  })();
   const primarySource =
-    primaryVar || ctaCandidate || buttonCandidate || themeCandidate || "";
+    primaryVar ||
+    ctaCandidate ||
+    buttonCandidate ||
+    themeCandidate ||
+    bodyTextCandidate ||
+    "";
   const primary = normalizeColor(primarySource);
 
   let background = normalizeColor(body.backgroundColor);

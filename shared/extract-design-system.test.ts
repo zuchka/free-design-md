@@ -497,6 +497,91 @@ describe("synthesizeDesignSystem", () => {
     );
   });
 
+  // --- Monochrome-brand fallback: body.color → primary ---
+
+  describe("body.color fallback for monochrome brands", () => {
+    it("uses body.color as primary when no chromatic source is available (Vercel shape)", () => {
+      const s = emptySignals();
+      s.body = {
+        backgroundColor: "rgb(250, 250, 250)",
+        color: "rgb(23, 23, 23)",
+        fontFamily: "Geist",
+        fontSize: "16px",
+        fontWeight: "400",
+      };
+      s.themeColor = "#fafafa"; // grayscale — rejected
+      s.button = {
+        backgroundColor: "rgb(255, 255, 255)", // white, chroma 0 — rejected
+        borderRadius: "6px",
+        color: "rgb(23, 23, 23)",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.colors.primary).toBe("#171717");
+    });
+
+    it("does not override a chromatic CTA with body.color", () => {
+      const s = emptySignals();
+      s.body = {
+        backgroundColor: "rgb(255, 255, 255)",
+        color: "rgb(20, 20, 20)",
+        fontFamily: "Inter",
+        fontSize: "16px",
+        fontWeight: "400",
+      };
+      s.cta = {
+        backgroundColor: "rgb(99, 91, 255)", // chromatic — wins
+        color: "rgb(255, 255, 255)",
+        borderRadius: "8px",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.colors.primary).toBe("#635bff");
+    });
+
+    it("does not override a chromatic button with body.color", () => {
+      const s = emptySignals();
+      s.body = {
+        backgroundColor: "rgb(255, 255, 255)",
+        color: "rgb(20, 20, 20)",
+        fontFamily: "Inter",
+        fontSize: "16px",
+        fontWeight: "400",
+      };
+      s.button = {
+        backgroundColor: "rgb(31, 111, 235)", // chromatic — wins
+        borderRadius: "6px",
+        color: "rgb(255, 255, 255)",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.colors.primary).toBe("#1f6feb");
+    });
+
+    it("skips body.color fallback when body.color is transparent", () => {
+      const s = emptySignals();
+      s.body = {
+        backgroundColor: "rgb(255, 255, 255)",
+        color: "rgba(0, 0, 0, 0)",
+        fontFamily: "Inter",
+        fontSize: "16px",
+        fontWeight: "400",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.colors.primary).toBe("");
+    });
+
+    it("skips body.color fallback when body.color equals the page background (invisible-text guard)", () => {
+      const s = emptySignals();
+      s.body = {
+        backgroundColor: "rgb(20, 20, 20)",
+        color: "rgb(20, 20, 20)",
+        fontFamily: "Inter",
+        fontSize: "16px",
+        fontWeight: "400",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.colors.primary).toBe("");
+    });
+  });
+
   // --- C5: components.button.primary sub-tree ---
 
   describe("components.button.primary", () => {
