@@ -75,7 +75,7 @@ export default defineAction({
     }
 
     const schemaReference = loadVoltAgentReference();
-    const { systemPrompt, userText } = buildEnrichmentPrompt({
+    const { systemBlocks, userText } = buildEnrichmentPrompt({
       url: input.url,
       designSystemData: input.designSystemData as DesignSystemData,
       deterministicMarkdown: input.deterministicMarkdown,
@@ -95,7 +95,7 @@ export default defineAction({
         max_tokens: ENRICH_MAX_TOKENS,
         thinking: { type: "adaptive" },
         output_config: { effort: "high" },
-        system: systemPrompt,
+        system: systemBlocks,
         messages: [
           {
             role: "user",
