@@ -362,6 +362,37 @@ function synthesizeHeadings(
   return out;
 }
 
+// --- C6 spacing scale ---
+
+const SPACING_MIN_COUNT = 5;
+const SPACING_TOP_N = 6;
+
+function spacingScaleValueOf(token: string): number {
+  const m = token.match(/^(\d+(?:\.\d+)?)px$/);
+  return m && m[1] !== undefined ? parseFloat(m[1]) : Number.POSITIVE_INFINITY;
+}
+
+function synthesizeSpacingScale(
+  signals: ExtractedSignals,
+): string[] | undefined {
+  const hist = signals.paddingHistogram;
+  if (!hist) return undefined;
+  const entries = Object.entries(hist).filter(
+    ([, count]) => count >= SPACING_MIN_COUNT,
+  );
+  if (entries.length === 0) return undefined;
+  // Sort by count desc; tie-break by ascending numeric value so the dropped
+  // overflow entries when picking top N are the *larger* of the tied values.
+  entries.sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return spacingScaleValueOf(a[0]) - spacingScaleValueOf(b[0]);
+  });
+  const top = entries.slice(0, SPACING_TOP_N);
+  // Final order is ascending by numeric value.
+  top.sort((a, b) => spacingScaleValueOf(a[0]) - spacingScaleValueOf(b[0]));
+  return top.map(([value]) => value);
+}
+
 function synthesizeComponents(
   signals: ExtractedSignals,
 ): DesignSystemData["components"] | undefined {
@@ -476,6 +507,7 @@ export function synthesizeDesignSystem(
     : [];
 
   const components = synthesizeComponents(signals);
+  const spacingScale = synthesizeSpacingScale(signals);
 
   return {
     colors: {
@@ -496,7 +528,11 @@ export function synthesizeDesignSystem(
       bodyWeight,
       headingSizes: { h1: h1Size, h2: h2Size, h3: h3Size },
     },
-    spacing: { slidePadding: "", elementGap: "" },
+    spacing: {
+      slidePadding: "",
+      elementGap: "",
+      ...(spacingScale ? { scale: spacingScale } : {}),
+    },
     borders: {
       radius,
       accentWidth: "",

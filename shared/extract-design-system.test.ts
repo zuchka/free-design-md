@@ -811,6 +811,76 @@ describe("synthesizeDesignSystem", () => {
     });
   });
 
+  // --- C6: spacing.scale ---
+
+  describe("spacing.scale", () => {
+    it("returns top 6 values from histogram, sorted ascending", () => {
+      const s = emptySignals();
+      s.paddingHistogram = {
+        "4px": 12,
+        "8px": 30,
+        "16px": 45,
+        "24px": 20,
+        "32px": 18,
+        "48px": 10,
+        "64px": 6,
+        "96px": 8,
+      };
+      const d = synthesizeDesignSystem(s);
+      // 8 values pass the >=5 threshold; top 6 by count are
+      // 16px(45), 8px(30), 24px(20), 32px(18), 4px(12), 48px(10).
+      // After re-sort ascending: 4, 8, 16, 24, 32, 48.
+      expect(d.spacing.scale).toEqual(["4px", "8px", "16px", "24px", "32px", "48px"]);
+    });
+
+    it("drops values that occur fewer than 5 times", () => {
+      const s = emptySignals();
+      s.paddingHistogram = {
+        "8px": 30,
+        "10px": 4, // below threshold, must drop
+        "16px": 45,
+        "24px": 20,
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.spacing.scale).toEqual(["8px", "16px", "24px"]);
+    });
+
+    it("returns undefined when histogram is empty", () => {
+      const d = synthesizeDesignSystem(emptySignals());
+      expect(d.spacing.scale).toBeUndefined();
+    });
+
+    it("returns undefined when no value clears the threshold", () => {
+      const s = emptySignals();
+      s.paddingHistogram = { "8px": 2, "16px": 4 };
+      const d = synthesizeDesignSystem(s);
+      expect(d.spacing.scale).toBeUndefined();
+    });
+
+    it("tied counts break by ascending value (deterministic)", () => {
+      const s = emptySignals();
+      s.paddingHistogram = {
+        "10px": 5,
+        "20px": 5,
+        "30px": 5,
+        "40px": 5,
+        "50px": 5,
+        "60px": 5,
+        "70px": 5, // overflow — must be dropped since all tie at count 5
+      };
+      const d = synthesizeDesignSystem(s);
+      // All 7 tie at count 5. Top 6 should be the 6 smallest values.
+      expect(d.spacing.scale).toEqual(["10px", "20px", "30px", "40px", "50px", "60px"]);
+    });
+
+    it("emits fewer than 6 values when fewer survive (does not pad)", () => {
+      const s = emptySignals();
+      s.paddingHistogram = { "12px": 8, "24px": 10 };
+      const d = synthesizeDesignSystem(s);
+      expect(d.spacing.scale).toEqual(["12px", "24px"]);
+    });
+  });
+
   it("leaves borders.radii fields empty when the new signals are missing, and does not regress the old borders.radius computation", () => {
     const s = emptySignals();
     s.button = {
