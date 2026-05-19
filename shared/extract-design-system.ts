@@ -171,6 +171,17 @@ function chromaOf(color: string): number {
   return Math.max(rgb[0], rgb[1], rgb[2]) - Math.min(rgb[0], rgb[1], rgb[2]);
 }
 
+// WCAG relative luminance (0 = black, 1 = white).
+function relativeLuminance(color: string): number {
+  const rgb = parseRgbValues(color);
+  if (!rgb) return 0;
+  const [r, g, b] = rgb.map((c) => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+}
+
 const MIN_BRAND_CHROMA = 30;
 
 function hasUsableOpacity(color: string): boolean {
@@ -485,6 +496,14 @@ export function synthesizeDesignSystem(
     text = normalizeColor(
       pickCssVar(cssVars, ["--foreground", "--text", "--color"]),
     );
+  }
+  // Sites like Notion have a dark page background but keep body.color as a
+  // near-black default (used for light-surface components inside the page).
+  // Both values are technically correct in isolation, but combined they make
+  // the preview unreadable. If background is dark and text is also dark,
+  // synthesize a light foreground so the preview is at least legible.
+  if (background && text && relativeLuminance(background) < 0.18 && relativeLuminance(text) < 0.18) {
+    text = "#f5f5f5";
   }
 
   const headingFont = extractFontFamily(h1?.fontFamily ?? "");
