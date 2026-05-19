@@ -24,7 +24,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { buildEnrichmentPrompt } from "./enrich-prompt.js";
+import { eq } from "drizzle-orm";
+import { buildEnrichmentPrompt, PROMPT_VERSION } from "./enrich-prompt.js";
+import { getDb, schema } from "../server/db/index.js";
+import { useDemoBrandCache } from "../shared/flags.js";
 import type { DesignSystemData } from "../shared/api.js";
 import type { ExtractedSignals } from "../shared/extract-design-system.js";
 
@@ -95,6 +98,70 @@ function loadVoltAgentReference(): string {
   return readFileSync(path, "utf8");
 }
 
+function cacheKey(url: string): string {
+  return `${url}::${PROMPT_VERSION}`;
+}
+
+/**
+ * Look up a cached enrichment by (url, PROMPT_VERSION). Returns null on
+ * miss. Wrapped in try/catch so a transient DB error never blocks a
+ * live LLM call.
+ */
+async function readCache(url: string): Promise<EnrichResult | null> {
+  try {
+    const db = await getDb();
+    const rows = await db
+      .select()
+      .from(schema.enrichmentCache)
+      .where(eq(schema.enrichmentCache.cacheKey, cacheKey(url)))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      url: row.url,
+      markdown: row.markdown,
+      model: row.model,
+      latencyMs: 0,
+      usage: JSON.parse(row.usageJson) as EnrichUsage,
+      stopReason: row.stopReason ?? "end_turn",
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist a successful enrichment to the cache. Errors are swallowed —
+ * a write failure shouldn't block the result reaching the user.
+ */
+async function writeCache(result: EnrichResult): Promise<void> {
+  try {
+    const db = await getDb();
+    await db
+      .insert(schema.enrichmentCache)
+      .values({
+        cacheKey: cacheKey(result.url),
+        url: result.url,
+        promptVersion: PROMPT_VERSION,
+        markdown: result.markdown,
+        model: result.model,
+        usageJson: JSON.stringify(result.usage),
+        stopReason: result.stopReason,
+      })
+      .onConflictDoUpdate({
+        target: schema.enrichmentCache.cacheKey,
+        set: {
+          markdown: result.markdown,
+          model: result.model,
+          usageJson: JSON.stringify(result.usage),
+          stopReason: result.stopReason,
+        },
+      });
+  } catch {
+    // ignore — see writeCache JSDoc
+  }
+}
+
 /**
  * Stream enrichment events from Anthropic. Yields `delta` events for
  * each text chunk and a final `done` event with the full markdown plus
@@ -104,6 +171,17 @@ function loadVoltAgentReference(): string {
 export async function* enrichStream(
   input: EnrichInput,
 ): AsyncGenerator<EnrichStreamEvent, void, undefined> {
+  // Cache short-circuit. Returns the cached result as a single `done`
+  // event with no streaming deltas — the UI handles that naturally
+  // (the AI-enriched pane fills in instantly).
+  if (useDemoBrandCache()) {
+    const cached = await readCache(input.url);
+    if (cached) {
+      yield { type: "done", ...cached };
+      return;
+    }
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error(
       "ANTHROPIC_API_KEY is not set. Add it to .env.local to enable AI enrichment.",
@@ -194,8 +272,7 @@ export async function* enrichStream(
     );
   }
 
-  yield {
-    type: "done",
+  const result: EnrichResult = {
     url: input.url,
     markdown,
     model: finalMessage.model,
@@ -209,6 +286,12 @@ export async function* enrichStream(
     },
     stopReason: finalMessage.stop_reason,
   };
+
+  // Persist for future hits. Failures are swallowed — the user still
+  // got their enrichment.
+  await writeCache(result);
+
+  yield { type: "done", ...result };
 }
 
 export default defineAction({
