@@ -113,8 +113,7 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
 .sc-spacing-track { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .sc-spacing-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .sc-spacing-bar {
-  background: var(--ds-primary, var(--ds-text));
-  opacity: 0.2;
+  background: color-mix(in srgb, var(--ds-primary, var(--ds-text)) 60%, var(--ds-bg));
   border-radius: 2px;
   min-width: 4px; min-height: 4px;
   max-width: 120px; max-height: 120px;
@@ -148,9 +147,8 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
     ? `<style>
 .sc-radius-chip {
   width: 64px; height: 64px;
-  background: var(--ds-primary, var(--ds-text));
-  opacity: 0.15;
-  border: 1px solid var(--ds-border);
+  background: color-mix(in srgb, var(--ds-primary, var(--ds-text)) 25%, var(--ds-bg));
+  border: 1.5px solid color-mix(in srgb, var(--ds-primary, var(--ds-text)) 65%, var(--ds-bg));
 }
 </style>
 <section class="sc-section">
