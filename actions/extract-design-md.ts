@@ -285,6 +285,33 @@ export default defineAction({
           }
         }
 
+        // Spacing-scale histogram: scan every element's computed padding*
+        // and *gap, count occurrences of each plausible px value. The
+        // synthesizer in Node-land filters/sorts/picks the top N — here
+        // we just count, so the cross-bridge payload stays tiny.
+        const paddingHistogram: Record<string, number> = {};
+        const allEs = Array.from(document.querySelectorAll("*")).slice(0, 2000);
+        const SPACING_PROPS = [
+          "paddingTop",
+          "paddingRight",
+          "paddingBottom",
+          "paddingLeft",
+          "rowGap",
+          "columnGap",
+        ] as const;
+        for (const el of allEs) {
+          const cs = getComputedStyle(el);
+          for (const prop of SPACING_PROPS) {
+            const raw = (cs as unknown as Record<string, string>)[prop] ?? "";
+            // Only accept plain Npx; reject auto, percentages, calc, etc.
+            const m = raw.match(/^(\d+(?:\.\d+)?)px$/);
+            if (!m || m[1] === undefined) continue;
+            const n = parseFloat(m[1]);
+            if (!(n >= 4 && n <= 256)) continue;
+            paddingHistogram[raw] = (paddingHistogram[raw] ?? 0) + 1;
+          }
+        }
+
         const rootStyle = getComputedStyle(document.documentElement);
         const cssVars: Record<string, string> = {};
         for (let i = 0; i < rootStyle.length; i++) {
@@ -422,6 +449,7 @@ export default defineAction({
               })()
             : null,
           pillRadius,
+          paddingHistogram,
         };
       })) as Omit<ExtractedSignals, "url"> | null;
 
