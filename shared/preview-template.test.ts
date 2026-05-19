@@ -366,6 +366,14 @@ describe("showcase — colors", () => {
     const html = renderPreview(data, { title: "Acme" });
     expect(html).not.toContain("Secondary");
   });
+
+  it("sanitizes malicious color values in swatch style attribute", () => {
+    const data = fullData();
+    data.colors.primary = "red; background-image: url(https://exfil.example)";
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).not.toContain("background-image");
+    expect(html).not.toContain("exfil");
+  });
 });
 
 describe("showcase — spacing + radii", () => {

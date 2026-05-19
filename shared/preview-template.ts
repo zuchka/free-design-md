@@ -62,13 +62,15 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
   const colorSwatches = COLOR_LABELS
     .filter(({ key }) => (data.colors[key] ?? "").trim())
     .map(({ key, label }) => {
-      const value = escapeHtml(data.colors[key].trim());
+      const value = safe(data.colors[key].trim(), SAFE_COLOR);
+      if (!value) return null;
       return `<div class="sc-swatch">
         <div class="sc-swatch-chip" style="background:${value}"></div>
         <div class="sc-swatch-label">${escapeHtml(label)}</div>
-        <div class="sc-swatch-value">${value}</div>
+        <div class="sc-swatch-value">${escapeHtml(value)}</div>
       </div>`;
     })
+    .filter(Boolean)
     .join("\n");
 
   const colorsSection = colorSwatches
