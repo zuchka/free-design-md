@@ -74,6 +74,7 @@ export default function IndexRoute() {
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [view, setView] = useState<"deterministic" | "enriched">("deterministic");
+  const [streamingMarkdown, setStreamingMarkdown] = useState("");
   const [signInOpen, setSignInOpen] = useState(false);
   const { user, remaining } = useAuth();
   const builderSpaceUrl = import.meta.env.VITE_BUILDER_SPACE_URL as
@@ -134,6 +135,8 @@ export default function IndexRoute() {
     }
     setIsEnriching(true);
     setEnrichError(null);
+    setStreamingMarkdown("");
+    setView("enriched");
     try {
       const endpoint = `${appBasePath()}/api/enrich-design-md`;
       const res = await fetch(endpoint, {
@@ -147,24 +150,85 @@ export default function IndexRoute() {
           deterministicMarkdown: result.markdown,
         }),
       });
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(body || `Enrich failed with ${res.status}`);
+      if (!res.ok || !res.body) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Enrich failed with ${res.status}`);
       }
-      const data = (await res.json()) as EnrichResult;
-      setEnriched(data);
-      setView("enriched");
-      // Only charge the user's quota when the enrichment actually succeeded.
-      consumeQuota();
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let sawDone = false;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        // SSE events are separated by a blank line ("\n\n").
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const parsed = parseSSE(part);
+          if (!parsed) continue;
+          if (parsed.event === "delta") {
+            const { text } = parsed.data as { text: string };
+            setStreamingMarkdown((m) => m + text);
+          } else if (parsed.event === "done") {
+            sawDone = true;
+            setEnriched(parsed.data as EnrichResult);
+            // Charge the quota only when enrichment completed end-to-end.
+            consumeQuota();
+          } else if (parsed.event === "error") {
+            const { message } = parsed.data as { message: string };
+            throw new Error(message);
+          }
+        }
+      }
+      if (!sawDone) {
+        throw new Error("Stream ended without a done event");
+      }
     } catch (err) {
       setEnrichError(err instanceof Error ? err.message : String(err));
+      // Fall back to the deterministic view if the stream blew up before
+      // any content arrived. If we already have partial streaming text,
+      // leave it visible so the user can see what they got.
+      if (!streamingMarkdown) setView("deterministic");
     } finally {
       setIsEnriching(false);
     }
   }
 
+  /**
+   * Parse a single SSE event block of the form:
+   *   event: <name>
+   *   data: <json>
+   * Whitespace-tolerant. Returns null when the block is malformed.
+   */
+  function parseSSE(
+    block: string,
+  ): { event: string; data: unknown } | null {
+    let eventName = "";
+    let dataLine = "";
+    for (const line of block.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      if (trimmed.startsWith("event:")) eventName = trimmed.slice(6).trim();
+      else if (trimmed.startsWith("data:")) dataLine = trimmed.slice(5).trim();
+    }
+    if (!eventName || !dataLine) return null;
+    try {
+      return { event: eventName, data: JSON.parse(dataLine) };
+    } catch {
+      return null;
+    }
+  }
+
+  const hasEnrichedContent = enriched !== null || streamingMarkdown.length > 0;
   const currentMarkdown =
-    view === "enriched" && enriched ? enriched.markdown : result?.markdown ?? "";
+    view === "enriched"
+      ? enriched
+        ? enriched.markdown
+        : streamingMarkdown
+      : result?.markdown ?? "";
 
   async function handleCopy() {
     if (!currentMarkdown) return;
@@ -254,7 +318,7 @@ export default function IndexRoute() {
                 className="lg:flex-1 lg:min-w-0"
                 action={
                   <div className="flex items-center gap-2">
-                    {enriched && (
+                    {hasEnrichedContent && (
                       <div className="flex rounded-md border overflow-hidden text-xs">
                         <button
                           type="button"
@@ -268,7 +332,7 @@ export default function IndexRoute() {
                           onClick={() => setView("enriched")}
                           className={`px-2 py-1 ${view === "enriched" ? "bg-foreground text-background" : "bg-transparent text-muted-foreground"}`}
                         >
-                          AI-enriched
+                          AI-enriched{isEnriching && !enriched ? "…" : ""}
                         </button>
                       </div>
                     )}
@@ -289,7 +353,7 @@ export default function IndexRoute() {
                         </a>
                       </Button>
                     )}
-                    {!enriched && (
+                    {!hasEnrichedContent && (
                       user && remaining === 0 ? (
                         <Button
                           size="sm"
