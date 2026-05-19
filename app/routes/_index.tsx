@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { appBasePath } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
@@ -75,6 +75,12 @@ export default function IndexRoute() {
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [view, setView] = useState<"deterministic" | "enriched">("deterministic");
   const [streamingMarkdown, setStreamingMarkdown] = useState("");
+  // Accumulates the full text of an in-progress enrichment so each state
+  // update sets the COMPLETE text seen so far. This prevents the "catching
+  // up" animation after the SSE stream closes — if React batches N delta
+  // renders into one, that render shows the full text through delta N, not
+  // just delta N's fragment.
+  const streamAccumRef = useRef("");
   const [signInOpen, setSignInOpen] = useState(false);
   const { user, remaining } = useAuth();
   const builderSpaceUrl = import.meta.env.VITE_BUILDER_SPACE_URL as
@@ -136,6 +142,7 @@ export default function IndexRoute() {
     setIsEnriching(true);
     setEnrichError(null);
     setStreamingMarkdown("");
+    streamAccumRef.current = "";
     setView("enriched");
     try {
       const endpoint = `${appBasePath()}/api/enrich-design-md`;
@@ -171,7 +178,8 @@ export default function IndexRoute() {
           if (!parsed) continue;
           if (parsed.event === "delta") {
             const { text } = parsed.data as { text: string };
-            setStreamingMarkdown((m) => m + text);
+            streamAccumRef.current += text;
+            setStreamingMarkdown(streamAccumRef.current);
           } else if (parsed.event === "done") {
             sawDone = true;
             setEnriched(parsed.data as EnrichResult);
