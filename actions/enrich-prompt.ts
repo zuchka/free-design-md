@@ -1,5 +1,14 @@
+import type Anthropic from "@anthropic-ai/sdk";
 import type { DesignSystemData } from "../shared/api.js";
 import type { ExtractedSignals } from "../shared/extract-design-system.js";
+
+/**
+ * Bumping this constant invalidates every cached enrichment in the
+ * `enrichment_cache` table (see actions/enrich-design-md.ts). Bump
+ * whenever the prompt structure changes in a way that should produce
+ * different output for the same URL.
+ */
+export const PROMPT_VERSION = "v1";
 
 export interface EnrichmentPromptInput {
   /** The URL the user is enriching a DESIGN.md for. */
@@ -20,7 +29,13 @@ export interface EnrichmentPromptInput {
 }
 
 export interface EnrichmentPrompt {
-  systemPrompt: string;
+  /**
+   * System prompt as Anthropic content blocks. The single block has
+   * `cache_control: { type: "ephemeral" }` so the entire ~40 KB
+   * VoltAgent reference + stable instructions hit the prompt cache on
+   * the second and subsequent calls.
+   */
+  systemBlocks: Anthropic.TextBlockParam[];
   /** Prose part of the user message. The action layer adds the screenshot as an image content block alongside this. */
   userText: string;
 }
@@ -125,7 +140,16 @@ Produce a richer DESIGN.md that:
 
 Reply with the DESIGN.md file content only.`;
 
-  return { systemPrompt, userText };
+  return {
+    systemBlocks: [
+      {
+        type: "text",
+        text: systemPrompt,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    userText,
+  };
 }
 
 function summariseSignals(signals: ExtractedSignals): string {

@@ -1,11 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import { appBasePath } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
 import type { DesignSystemData } from "../../shared/api";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { IconCheck, IconCopy, IconSparkles } from "@tabler/icons-react";
+import {
+  IconCheck,
+  IconCopy,
+  IconExternalLink,
+  IconLock,
+  IconSparkles,
+} from "@tabler/icons-react";
+import { consumeQuota, useAuth } from "@/lib/auth";
+import SignInModal from "@/components/auth/SignInModal";
+import AccountChip from "@/components/auth/AccountChip";
 
 export function meta() {
   return [
@@ -64,6 +74,18 @@ export default function IndexRoute() {
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [view, setView] = useState<"deterministic" | "enriched">("deterministic");
+  const [streamingMarkdown, setStreamingMarkdown] = useState("");
+  // Accumulates the full text of an in-progress enrichment so each state
+  // update sets the COMPLETE text seen so far. This prevents the "catching
+  // up" animation after the SSE stream closes — if React batches N delta
+  // renders into one, that render shows the full text through delta N, not
+  // just delta N's fragment.
+  const streamAccumRef = useRef("");
+  const [signInOpen, setSignInOpen] = useState(false);
+  const { user, remaining } = useAuth();
+  const builderSpaceUrl = import.meta.env.VITE_BUILDER_SPACE_URL as
+    | string
+    | undefined;
 
   useEffect(() => {
     if (!isLoading) return;
@@ -109,8 +131,19 @@ export default function IndexRoute() {
 
   async function handleEnrich() {
     if (!result) return;
+    if (!user) {
+      setSignInOpen(true);
+      return;
+    }
+    if (remaining <= 0) {
+      setEnrichError("Out of free AI enrichments. Upgrade to keep going.");
+      return;
+    }
     setIsEnriching(true);
     setEnrichError(null);
+    setStreamingMarkdown("");
+    streamAccumRef.current = "";
+    setView("enriched");
     try {
       const endpoint = `${appBasePath()}/api/enrich-design-md`;
       const res = await fetch(endpoint, {
@@ -124,22 +157,86 @@ export default function IndexRoute() {
           deterministicMarkdown: result.markdown,
         }),
       });
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(body || `Enrich failed with ${res.status}`);
+      if (!res.ok || !res.body) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Enrich failed with ${res.status}`);
       }
-      const data = (await res.json()) as EnrichResult;
-      setEnriched(data);
-      setView("enriched");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let sawDone = false;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        // SSE events are separated by a blank line ("\n\n").
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const parsed = parseSSE(part);
+          if (!parsed) continue;
+          if (parsed.event === "delta") {
+            const { text } = parsed.data as { text: string };
+            streamAccumRef.current += text;
+            setStreamingMarkdown(streamAccumRef.current);
+          } else if (parsed.event === "done") {
+            sawDone = true;
+            setEnriched(parsed.data as EnrichResult);
+            // Charge the quota only when enrichment completed end-to-end.
+            consumeQuota();
+          } else if (parsed.event === "error") {
+            const { message } = parsed.data as { message: string };
+            throw new Error(message);
+          }
+        }
+      }
+      if (!sawDone) {
+        throw new Error("Stream ended without a done event");
+      }
     } catch (err) {
       setEnrichError(err instanceof Error ? err.message : String(err));
+      // Fall back to the deterministic view if the stream blew up before
+      // any content arrived. If we already have partial streaming text,
+      // leave it visible so the user can see what they got.
+      if (!streamingMarkdown) setView("deterministic");
     } finally {
       setIsEnriching(false);
     }
   }
 
+  /**
+   * Parse a single SSE event block of the form:
+   *   event: <name>
+   *   data: <json>
+   * Whitespace-tolerant. Returns null when the block is malformed.
+   */
+  function parseSSE(
+    block: string,
+  ): { event: string; data: unknown } | null {
+    let eventName = "";
+    let dataLine = "";
+    for (const line of block.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      if (trimmed.startsWith("event:")) eventName = trimmed.slice(6).trim();
+      else if (trimmed.startsWith("data:")) dataLine = trimmed.slice(5).trim();
+    }
+    if (!eventName || !dataLine) return null;
+    try {
+      return { event: eventName, data: JSON.parse(dataLine) };
+    } catch {
+      return null;
+    }
+  }
+
+  const hasEnrichedContent = enriched !== null || streamingMarkdown.length > 0;
   const currentMarkdown =
-    view === "enriched" && enriched ? enriched.markdown : result?.markdown ?? "";
+    view === "enriched"
+      ? enriched
+        ? enriched.markdown
+        : streamingMarkdown
+      : result?.markdown ?? "";
 
   async function handleCopy() {
     if (!currentMarkdown) return;
@@ -151,16 +248,27 @@ export default function IndexRoute() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-6 py-12">
-        <header className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Extract a design system from any URL
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Type a URL. We headlessly load the page, capture its colors, fonts,
-            and shapes, and render a portable design.md spec. No sign-in
-            required.
-          </p>
-        </header>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <header>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Extract a design system from any URL
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Type a URL. We headlessly load the page, capture its colors,
+              fonts, and shapes, and render a portable design.md spec. No
+              sign-in required for the deterministic pass.
+            </p>
+          </header>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/quality"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Quality
+            </Link>
+            <AccountChip />
+          </div>
+        </div>
 
         <form
           onSubmit={handleSubmit}
@@ -218,7 +326,7 @@ export default function IndexRoute() {
                 className="lg:flex-1 lg:min-w-0"
                 action={
                   <div className="flex items-center gap-2">
-                    {enriched && (
+                    {hasEnrichedContent && (
                       <div className="flex rounded-md border overflow-hidden text-xs">
                         <button
                           type="button"
@@ -232,27 +340,64 @@ export default function IndexRoute() {
                           onClick={() => setView("enriched")}
                           className={`px-2 py-1 ${view === "enriched" ? "bg-foreground text-background" : "bg-transparent text-muted-foreground"}`}
                         >
-                          AI-enriched
+                          AI-enriched{isEnriching && !enriched ? "…" : ""}
                         </button>
                       </div>
                     )}
-                    {!enriched && (
+                    {enriched && builderSpaceUrl && (
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={handleEnrich}
-                        disabled={isEnriching || !result.screenshotDataUrl}
-                        title="Enrich with Claude Opus 4.7 (~30-60s)"
+                        variant="default"
+                        asChild
+                        title="Drop this design.md into a Builder.io Space and iterate with an agent"
                       >
-                        {isEnriching ? (
-                          <Spinner className="size-3.5" />
-                        ) : (
-                          <IconSparkles size={14} />
-                        )}
-                        <span className="ml-1">
-                          {isEnriching ? "Enriching…" : "Enrich with AI"}
-                        </span>
+                        <a
+                          href={builderSpaceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <IconExternalLink size={14} />
+                          <span className="ml-1">Open in Builder Space</span>
+                        </a>
                       </Button>
+                    )}
+                    {!hasEnrichedContent && (
+                      user && remaining === 0 ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled
+                          title="You've used all 3 free AI enrichments"
+                        >
+                          <IconLock size={14} />
+                          <span className="ml-1">Out of free enrichments</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleEnrich}
+                          disabled={isEnriching || !result.screenshotDataUrl}
+                          title={
+                            user
+                              ? `Enrich with Claude Opus 4.7 (~30-60s) — ${remaining} free left`
+                              : "Sign in to unlock AI enrichment"
+                          }
+                        >
+                          {isEnriching ? (
+                            <Spinner className="size-3.5" />
+                          ) : (
+                            <IconSparkles size={14} />
+                          )}
+                          <span className="ml-1">
+                            {isEnriching
+                              ? "Enriching…"
+                              : user
+                                ? "Enrich with AI"
+                                : "Enrich with AI · Sign in"}
+                          </span>
+                        </Button>
+                      )
                     )}
                     <Button
                       size="sm"
@@ -299,6 +444,7 @@ export default function IndexRoute() {
           </div>
         )}
       </div>
+      <SignInModal open={signInOpen} onOpenChange={setSignInOpen} />
     </div>
   );
 }

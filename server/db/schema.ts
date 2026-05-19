@@ -71,3 +71,29 @@ export const slideComments = table("slide_comments", {
   createdAt: text("created_at").notNull().default(now()),
   updatedAt: text("updated_at").notNull().default(now()),
 });
+
+/**
+ * Cache of AI-enriched DESIGN.md results.
+ *
+ * The cacheKey is `${url}::${promptVersion}` — a second enrichment of
+ * the same URL with the same prompt version skips the LLM call
+ * entirely. Pre-bake demo brands (stripe/linear/notion) before a demo
+ * so the live walk-through never hits a 30-60s latency.
+ *
+ * promptVersion is the constant exported from actions/enrich-prompt.ts —
+ * bumping it invalidates every row naturally because the cache key
+ * changes.
+ *
+ * usageJson stores the original EnrichResult.usage object as JSON so
+ * the UI's token-cost strip stays truthful on cache-served replies.
+ */
+export const enrichmentCache = table("enrichment_cache", {
+  cacheKey: text("cache_key").primaryKey(),
+  url: text("url").notNull(),
+  promptVersion: text("prompt_version").notNull(),
+  markdown: text("markdown").notNull(),
+  model: text("model").notNull(),
+  usageJson: text("usage_json").notNull(),
+  stopReason: text("stop_reason"),
+  createdAt: text("created_at").notNull().default(now()),
+});
