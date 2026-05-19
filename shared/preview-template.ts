@@ -78,6 +78,32 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
       </section>`
     : "";
 
+  // ── Typography ───────────────────────────────────────────
+  const headingSamples = [
+    { size: safe(data.typography.headingSizes.h1, SAFE_SIZE) || "56px", label: "Heading 1" },
+    { size: safe(data.typography.headingSizes.h2, SAFE_SIZE) || "32px", label: "Heading 2" },
+    { size: safe(data.typography.headingSizes.h3, SAFE_SIZE) || "20px", label: "Heading 3" },
+  ].map(({ size, label }) => `
+  <div class="sc-type-sample">
+    <div class="sc-type-specimen" style="font-family:var(--ds-heading-font);font-weight:var(--ds-heading-weight);font-size:${size};line-height:1.1;">The quick brown fox</div>
+    <div class="sc-type-meta">${escapeHtml(label)} · ${escapeHtml(size)} · weight ${escapeHtml(safe(data.typography.headingWeight, SAFE_WEIGHT) || "700")}</div>
+  </div>`).join("\n");
+
+  const bodyLabel = `Body / Regular · ${escapeHtml(safe(data.typography.bodyFont, SAFE_FONT) || "system-ui")} · weight ${escapeHtml(safe(data.typography.bodyWeight, SAFE_WEIGHT) || "400")}`;
+  const bodySample = `
+  <div class="sc-type-sample">
+    <div class="sc-type-specimen" style="font-family:var(--ds-body-font);font-weight:var(--ds-body-weight);font-size:16px;line-height:1.6;">The quick brown fox jumps over the lazy dog. Bright vixens jump; dozy fowl quack. Pack my box with five dozen liquor jugs.</div>
+    <div class="sc-type-meta">${bodyLabel}</div>
+  </div>`;
+
+  const typographySection = `<section class="sc-section">
+  <h2 class="sc-section-title">Typography</h2>
+  <div class="sc-type-stack">
+    ${headingSamples}
+    ${bodySample}
+  </div>
+</section>`;
+
   return `
 <div class="ds-showcase">
   <div class="sc-header">
@@ -85,6 +111,7 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
     <span class="sc-header-sub">Extracted deterministically — no LLM</span>
   </div>
   ${colorsSection}
+  ${typographySection}
 </div>`;
 }
 
@@ -369,6 +396,11 @@ footer {
 }
 .sc-swatch-label { font-size: 12px; font-weight: 600; }
 .sc-swatch-value { font-size: 11px; color: var(--ds-muted); font-family: monospace; }
+.sc-type-stack { display: flex; flex-direction: column; gap: 32px; }
+.sc-type-sample { border-bottom: 1px solid var(--ds-border); padding-bottom: 24px; }
+.sc-type-sample:last-child { border-bottom: none; }
+.sc-type-specimen { color: var(--ds-text); word-break: break-word; }
+.sc-type-meta { font-size: 11px; color: var(--ds-muted); margin-top: 8px; font-family: monospace; }
 </style>
 </head>
 <body>

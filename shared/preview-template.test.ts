@@ -333,6 +333,22 @@ describe("renderPreview", () => {
   });
 });
 
+describe("showcase — typography", () => {
+  it("renders h1/h2/h3 samples with the brand heading font", () => {
+    const data = fullData();
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("sc-type-sample");
+    expect(html).toContain("The quick brown fox");
+    expect(html).toContain("56px");
+  });
+
+  it("renders body text sample", () => {
+    const data = fullData();
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("Body / Regular");
+  });
+});
+
 describe("showcase — colors", () => {
   it("renders a swatch for each non-empty color", () => {
     const data = fullData();
