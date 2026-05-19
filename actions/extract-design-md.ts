@@ -457,9 +457,18 @@ export default defineAction({
         throw new Error("Page has no <body> — cannot extract signals");
       }
 
+      // Anthropic's vision API rejects images whose long edge exceeds
+      // 8000px (Stripe and other long marketing pages routinely hit this).
+      // Cap the screenshot height at 7500px via clip — keeps the top
+      // 7500px of the page intact and trims only the long tail.
+      const SCREENSHOT_MAX_HEIGHT = 7500;
+      const pageHeight = await page.evaluate(
+        () => document.documentElement.scrollHeight,
+      );
+      const clipHeight = Math.min(pageHeight, SCREENSHOT_MAX_HEIGHT);
       const screenshotBuffer = await page.screenshot({
         type: "png",
-        fullPage: true,
+        clip: { x: 0, y: 0, width: 1280, height: clipHeight },
       });
       const screenshotDataUrl = `data:image/png;base64,${screenshotBuffer.toString("base64")}`;
 
