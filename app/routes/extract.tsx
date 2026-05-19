@@ -5,7 +5,7 @@ import type { DesignSystemData } from "../../shared/api";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { IconCheck, IconCopy } from "@tabler/icons-react";
+import { IconCheck, IconCopy, IconSparkles } from "@tabler/icons-react";
 
 export function meta() {
   return [
@@ -26,6 +26,19 @@ interface ExtractResult {
   screenshotDataUrl?: string;
 }
 
+interface EnrichResult {
+  markdown: string;
+  model: string;
+  latencyMs: number;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadInputTokens: number;
+    cacheCreationInputTokens: number;
+  };
+  stopReason: string | null;
+}
+
 const LOADING_LABELS = [
   "Loading the page…",
   "Extracting tokens…",
@@ -39,6 +52,11 @@ export default function ExtractRoute() {
   const [result, setResult] = useState<ExtractResult | null>(null);
   const [labelIndex, setLabelIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  // C5 spike — AI enrichment via Claude Opus 4.7
+  const [enriched, setEnriched] = useState<EnrichResult | null>(null);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichError, setEnrichError] = useState<string | null>(null);
+  const [view, setView] = useState<"deterministic" | "enriched">("deterministic");
 
   useEffect(() => {
     if (!isLoading) return;
@@ -63,6 +81,9 @@ export default function ExtractRoute() {
     setIsLoading(true);
     setError(null);
     setResult(null);
+    setEnriched(null);
+    setEnrichError(null);
+    setView("deterministic");
     try {
       const endpoint = `${appBasePath()}/api/extract?url=${encodeURIComponent(trimmed)}&format=json`;
       const res = await fetch(endpoint);
@@ -79,9 +100,43 @@ export default function ExtractRoute() {
     }
   }
 
+  async function handleEnrich() {
+    if (!result) return;
+    setIsEnriching(true);
+    setEnrichError(null);
+    try {
+      const endpoint = `${appBasePath()}/api/enrich-design-md`;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: result.url,
+          designSystemData: result.designSystemData,
+          signals: result.signals,
+          screenshotDataUrl: result.screenshotDataUrl,
+          deterministicMarkdown: result.markdown,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(body || `Enrich failed with ${res.status}`);
+      }
+      const data = (await res.json()) as EnrichResult;
+      setEnriched(data);
+      setView("enriched");
+    } catch (err) {
+      setEnrichError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsEnriching(false);
+    }
+  }
+
+  const currentMarkdown =
+    view === "enriched" && enriched ? enriched.markdown : result?.markdown ?? "";
+
   async function handleCopy() {
-    if (!result?.markdown) return;
-    await navigator.clipboard.writeText(result.markdown);
+    if (!currentMarkdown) return;
+    await navigator.clipboard.writeText(currentMarkdown);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
@@ -155,19 +210,71 @@ export default function ExtractRoute() {
                 title="design.md"
                 className="lg:flex-1 lg:min-w-0"
                 action={
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCopy}
-                    disabled={!result.markdown}
-                  >
-                    {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                    <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {enriched && (
+                      <div className="flex rounded-md border overflow-hidden text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setView("deterministic")}
+                          className={`px-2 py-1 ${view === "deterministic" ? "bg-foreground text-background" : "bg-transparent text-muted-foreground"}`}
+                        >
+                          Deterministic
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setView("enriched")}
+                          className={`px-2 py-1 ${view === "enriched" ? "bg-foreground text-background" : "bg-transparent text-muted-foreground"}`}
+                        >
+                          AI-enriched
+                        </button>
+                      </div>
+                    )}
+                    {!enriched && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleEnrich}
+                        disabled={isEnriching || !result.screenshotDataUrl}
+                        title="Enrich with Claude Opus 4.7 (~30-60s)"
+                      >
+                        {isEnriching ? (
+                          <Spinner className="size-3.5" />
+                        ) : (
+                          <IconSparkles size={14} />
+                        )}
+                        <span className="ml-1">
+                          {isEnriching ? "Enriching…" : "Enrich with AI"}
+                        </span>
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCopy}
+                      disabled={!currentMarkdown}
+                    >
+                      {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                      <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
+                    </Button>
+                  </div>
                 }
               >
+                {enrichError && (
+                  <div className="mb-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600">
+                    {enrichError}
+                  </div>
+                )}
+                {enriched && view === "enriched" && (
+                  <div className="mb-2 flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                    <span>
+                      {enriched.model} · {Math.round(enriched.latencyMs / 100) / 10}s ·
+                      input {enriched.usage.inputTokens.toLocaleString()} tok ·
+                      output {enriched.usage.outputTokens.toLocaleString()} tok
+                    </span>
+                  </div>
+                )}
                 <pre className="max-h-[560px] overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap">
-                  {result.markdown}
+                  {currentMarkdown}
                 </pre>
               </Pane>
             </div>
