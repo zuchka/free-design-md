@@ -367,3 +367,28 @@ describe("showcase — colors", () => {
     expect(html).not.toContain("Secondary");
   });
 });
+
+describe("showcase — spacing + radii", () => {
+  it("renders spacing scale bars when scale is present", () => {
+    const data = fullData();
+    data.spacing.scale = ["4px", "8px", "16px", "24px", "32px"];
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("sc-spacing-bar");
+    expect(html).toContain("8px");
+  });
+
+  it("omits spacing section when scale is empty", () => {
+    const data = fullData();
+    data.spacing.scale = [];
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).not.toContain("sc-spacing-bar");
+  });
+
+  it("renders radius swatches for button, card, pill", () => {
+    const data = fullData();
+    data.borders.radii = { button: "8px", card: "12px", pill: "999px" };
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("sc-radius-chip");
+    expect(html).toContain("Button");
+  });
+});

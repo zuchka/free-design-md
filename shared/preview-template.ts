@@ -104,6 +104,66 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
   </div>
 </section>`;
 
+  // ── Spacing scale ────────────────────────────────────────
+  const scale = data.spacing?.scale ?? [];
+  const spacingSection = scale.length
+    ? `<style>
+.sc-spacing-track { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.sc-spacing-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.sc-spacing-bar {
+  background: var(--ds-primary, var(--ds-text));
+  opacity: 0.2;
+  border-radius: 2px;
+  min-width: 4px; min-height: 4px;
+  max-width: 120px; max-height: 120px;
+}
+.sc-spacing-val { font-size: 11px; color: var(--ds-muted); font-family: monospace; }
+</style>
+<section class="sc-section">
+      <h2 class="sc-section-title">Spacing Scale</h2>
+      <div class="sc-spacing-track">
+        ${scale.map((v) => {
+          const sv = safe(v, SAFE_SIZE);
+          if (!sv) return "";
+          return `<div class="sc-spacing-item">
+            <div class="sc-spacing-bar" style="width:${escapeHtml(sv)};height:${escapeHtml(sv)};"></div>
+            <div class="sc-spacing-val">${escapeHtml(sv)}</div>
+          </div>`;
+        }).join("\n")}
+      </div>
+    </section>`
+    : "";
+
+  // ── Border radii ─────────────────────────────────────────
+  const radiiItems: { label: string; value: string }[] = [
+    { label: "Default", value: safe(data.borders.radius, SAFE_SIZE) },
+    { label: "Button",  value: safe(data.borders.radii?.button ?? "", SAFE_SIZE) },
+    { label: "Card",    value: safe(data.borders.radii?.card   ?? "", SAFE_SIZE) },
+    { label: "Pill",    value: safe(data.borders.radii?.pill   ?? "", SAFE_SIZE) },
+  ].filter(({ value }) => value);
+
+  const radiiSection = radiiItems.length
+    ? `<style>
+.sc-radius-chip {
+  width: 64px; height: 64px;
+  background: var(--ds-primary, var(--ds-text));
+  opacity: 0.15;
+  border: 1px solid var(--ds-border);
+}
+</style>
+<section class="sc-section">
+      <h2 class="sc-section-title">Border Radii</h2>
+      <div class="sc-swatches">
+        ${radiiItems.map(({ label, value }) => `
+          <div class="sc-swatch">
+            <div class="sc-radius-chip" style="border-radius:${escapeHtml(value)};"></div>
+            <div class="sc-swatch-label">${escapeHtml(label)}</div>
+            <div class="sc-swatch-value">${escapeHtml(value)}</div>
+          </div>`).join("\n")}
+      </div>
+    </section>`
+    : "";
+
   return `
 <div class="ds-showcase">
   <div class="sc-header">
@@ -112,6 +172,8 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
   </div>
   ${colorsSection}
   ${typographySection}
+  ${spacingSection}
+  ${radiiSection}
 </div>`;
 }
 
