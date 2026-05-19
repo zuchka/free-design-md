@@ -164,6 +164,60 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
     </section>`
     : "";
 
+  // ── Component anatomy ────────────────────────────────────
+  const comps = data.components;
+  let componentSection = "";
+  if (comps) {
+    const bp = comps.button?.primary;
+    const card = comps.card;
+    const link = comps.link;
+    const hasButton = !!(bp && (bp.background || bp.color || bp.radius));
+    const hasCard = !!(card && (card.background || card.border || card.padding));
+    const hasLink = !!(link && link.color);
+
+    if (hasButton || hasCard || hasLink) {
+      const btnBg = safe(bp?.background ?? "", SAFE_COLOR) || "var(--ds-primary)";
+      const btnColor = safe(bp?.color ?? "", SAFE_COLOR) || "var(--ds-bg)";
+      const btnRadius = safe(bp?.radius ?? "", SAFE_SIZE) || "var(--ds-button-radius)";
+      const btnPad = safe(bp?.padding ?? "", SAFE_PADDING) || "12px 22px";
+      const btnFs = safe(bp?.fontSize ?? "", SAFE_SIZE) || "15px";
+      const btnFw = safe(bp?.fontWeight ?? "", SAFE_WEIGHT) || "600";
+
+      const cardBgC = safe(card?.background ?? "", SAFE_COLOR) || "var(--ds-bg)";
+      const cardBorderC = safe(card?.border ?? "", SAFE_BORDER) || "1px solid var(--ds-border)";
+      const cardRadiusC = safe(card?.radius ?? "", SAFE_SIZE) || "var(--ds-card-radius)";
+      const cardPadC = safe(card?.padding ?? "", SAFE_PADDING) || "24px";
+
+      const linkColorC = safe(link?.color ?? "", SAFE_COLOR) || "var(--ds-primary)";
+      const linkDeco = (link?.textDecoration ?? "").trim() === "underline" ? "underline" : "none";
+
+      componentSection = `<section class="sc-section sc-component-section">
+      <h2 class="sc-section-title">Components</h2>
+      <div class="sc-comp-grid">
+        ${hasButton ? `<div class="sc-comp-item">
+          <button style="background:${btnBg};color:${btnColor};border-radius:${btnRadius};padding:${btnPad};font-size:${btnFs};font-weight:${btnFw};border:0;font-family:var(--ds-body-font);cursor:pointer;">Get started</button>
+          <div class="sc-comp-label">Primary Button</div>
+        </div>` : ""}
+        ${hasButton ? `<div class="sc-comp-item">
+          <button style="background:transparent;color:var(--ds-text);border-radius:${btnRadius};padding:${btnPad};font-size:${btnFs};font-weight:${btnFw};border:1px solid var(--ds-border);font-family:var(--ds-body-font);cursor:pointer;">Learn more</button>
+          <div class="sc-comp-label">Ghost Button</div>
+        </div>` : ""}
+        ${hasCard ? `<div class="sc-comp-item">
+          <div style="background:${cardBgC};border:${cardBorderC};border-radius:${cardRadiusC};padding:${cardPadC};max-width:220px;">
+            <div style="font-family:var(--ds-heading-font);font-weight:var(--ds-heading-weight);font-size:var(--ds-h3-size);margin:0 0 8px 0;">Card Title</div>
+            <div style="font-size:14px;color:var(--ds-muted);">Sample card body text extracted from the site.</div>
+          </div>
+          <div class="sc-comp-label">Card</div>
+        </div>` : ""}
+        ${hasLink ? `<div class="sc-comp-item">
+          <a style="color:${linkColorC};text-decoration:${linkDeco};font-family:var(--ds-body-font);">Example link text</a>
+          <div class="sc-comp-label">Link</div>
+        </div>` : ""}
+      </div>
+    </section>`;
+    }
+  }
+
   return `
 <div class="ds-showcase">
   <div class="sc-header">
@@ -174,6 +228,7 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
   ${typographySection}
   ${spacingSection}
   ${radiiSection}
+  ${componentSection}
 </div>`;
 }
 
@@ -463,6 +518,9 @@ footer {
 .sc-type-sample:last-child { border-bottom: none; }
 .sc-type-specimen { color: var(--ds-text); word-break: break-word; }
 .sc-type-meta { font-size: 11px; color: var(--ds-muted); margin-top: 8px; font-family: monospace; }
+.sc-comp-grid { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+.sc-comp-item { display: flex; flex-direction: column; gap: 10px; }
+.sc-comp-label { font-size: 11px; color: var(--ds-muted); font-family: monospace; }
 </style>
 </head>
 <body>

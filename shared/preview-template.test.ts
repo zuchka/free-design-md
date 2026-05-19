@@ -392,3 +392,22 @@ describe("showcase — spacing + radii", () => {
     expect(html).toContain("Button");
   });
 });
+
+describe("showcase — components", () => {
+  it("renders live button with extracted styles", () => {
+    const data = fullData();
+    data.components = {
+      button: { primary: { background: "#635bff", color: "#ffffff", radius: "6px", padding: "12px 22px", fontSize: "15px", fontWeight: "600", border: "" } },
+    };
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("sc-component-section");
+    expect(html).toContain("Get started");
+  });
+
+  it("omits component section when no components extracted", () => {
+    const data = fullData();
+    data.components = undefined;
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).not.toContain("sc-component-section");
+  });
+});
