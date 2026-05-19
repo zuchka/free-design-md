@@ -281,6 +281,13 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
     if (pillRadius) lines.push(`  pill: ${pillRadius}`);
   }
 
+  const spacingScale = data.spacing?.scale;
+  if (spacingScale && spacingScale.length > 0) {
+    const items = spacingScale.map((v) => quote(v)).join(", ");
+    lines.push("spacing:");
+    lines.push(`  scale: [${items}]`);
+  }
+
   emitComponentsYaml(lines, data.components);
   lines.push("---");
   lines.push("");
@@ -330,6 +337,13 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
     lines.push("");
     if (radius) lines.push(`- Border radius: \`${radius}\``);
     if (accentWidth) lines.push(`- Accent stripe width: \`${accentWidth}\``);
+    lines.push("");
+  }
+
+  if (spacingScale && spacingScale.length > 0) {
+    lines.push("## Spacing");
+    lines.push("");
+    lines.push(`- Scale: \`${spacingScale.join(" / ")}\``);
     lines.push("");
   }
 

@@ -305,6 +305,55 @@ describe("designSystemToDesignMd", () => {
     expect(md).not.toMatch(/^  pill:/m);
   });
 
+  // --- C6: spacing scale ---
+
+  it("emits a spacing: YAML block and ## Spacing prose section when scale is populated", () => {
+    const md = designSystemToDesignMd({
+      title: "Acme",
+      description: "",
+      data: {
+        ...fullData,
+        spacing: {
+          ...fullData.spacing,
+          scale: ["4px", "8px", "16px", "24px", "32px", "48px"],
+        },
+      },
+      customInstructions: "",
+    });
+    // YAML: inline-array form.
+    expect(md).toMatch(
+      /^spacing:\n  scale: \["4px", "8px", "16px", "24px", "32px", "48px"\]$/m,
+    );
+    // Prose: single bullet, slash-separated.
+    expect(md).toMatch(/^## Spacing$/m);
+    expect(md).toMatch(/^- Scale: `4px \/ 8px \/ 16px \/ 24px \/ 32px \/ 48px`$/m);
+  });
+
+  it("omits the spacing: block and ## Spacing section when scale is undefined", () => {
+    const md = designSystemToDesignMd({
+      title: "No scale",
+      description: "",
+      data: fullData,
+      customInstructions: "",
+    });
+    expect(md).not.toMatch(/^spacing:$/m);
+    expect(md).not.toMatch(/^## Spacing$/m);
+  });
+
+  it("omits the spacing: block when scale is an empty array", () => {
+    const md = designSystemToDesignMd({
+      title: "Empty scale",
+      description: "",
+      data: {
+        ...fullData,
+        spacing: { ...fullData.spacing, scale: [] },
+      },
+      customInstructions: "",
+    });
+    expect(md).not.toMatch(/^spacing:$/m);
+    expect(md).not.toMatch(/^## Spacing$/m);
+  });
+
   // --- C5: components block ---
 
   it("emits a components: YAML block and ## Components prose section when populated", () => {
