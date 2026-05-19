@@ -207,6 +207,7 @@ export async function* enrichStream(
     stream = client.messages.stream({
       model: ENRICH_MODEL,
       max_tokens: ENRICH_MAX_TOKENS,
+      output_config: { effort: "max" },
       system: systemBlocks,
       messages: [
         {
