@@ -27,6 +27,189 @@ function quote(value: string): string {
   return JSON.stringify(value);
 }
 
+// Render a primitive value as a YAML scalar. Pure numbers stay bare; anything
+// else gets JSON-quoted so weird characters (commas, hashes, parens) can't
+// break parsing downstream.
+function yamlScalar(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^\d+(\.\d+)?$/.test(trimmed)) return trimmed;
+  if (/^-?\d+(\.\d+)?(px|rem|em|%)$/.test(trimmed)) return trimmed;
+  // Simple bare-identifier keywords (underline, none, solid, etc.) — safe to
+  // emit unquoted. Anything with whitespace, hashes, commas, parens, etc.
+  // gets quoted to keep the YAML parseable.
+  if (/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(trimmed)) return trimmed;
+  return JSON.stringify(trimmed);
+}
+
+type Components = NonNullable<DesignSystemData["components"]>;
+
+function pushKV(lines: string[], indent: string, key: string, value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return;
+  lines.push(`${indent}${key}: ${yamlScalar(trimmed)}`);
+}
+
+function emitComponentsYaml(
+  lines: string[],
+  components: DesignSystemData["components"] | undefined,
+): void {
+  if (!components) return;
+  const buf: string[] = [];
+  const pre = buf.length;
+
+  const buttonPrimary = components.button?.primary;
+  const buttonKeys = buttonPrimary
+    ? (["background", "color", "radius", "padding", "fontSize", "fontWeight", "border"] as const).filter(
+        (k) => buttonPrimary[k] && buttonPrimary[k].trim(),
+      )
+    : [];
+  const card = components.card;
+  const cardKeys = card
+    ? (["background", "color", "radius", "padding", "border", "shadow"] as const).filter(
+        (k) => card[k] && card[k].trim(),
+      )
+    : [];
+  const link = components.link;
+  const linkKeys = link
+    ? (["color", "textDecoration", "fontWeight"] as const).filter(
+        (k) => link[k] && link[k].trim(),
+      )
+    : [];
+  const headings = components.headings;
+  const headingLevels = (["h1", "h2", "h3"] as const).filter((lvl) => {
+    const h = headings?.[lvl];
+    return h && (h.lineHeight || h.letterSpacing || h.color);
+  });
+
+  if (!buttonKeys.length && !cardKeys.length && !linkKeys.length && !headingLevels.length) return;
+
+  buf.push("components:");
+  if (buttonKeys.length) {
+    buf.push("  button:");
+    buf.push("    primary:");
+    for (const k of buttonKeys) pushKV(buf, "      ", k, buttonPrimary![k]);
+  }
+  if (cardKeys.length) {
+    buf.push("  card:");
+    for (const k of cardKeys) pushKV(buf, "    ", k, card![k]);
+  }
+  if (linkKeys.length) {
+    buf.push("  link:");
+    for (const k of linkKeys) pushKV(buf, "    ", k, link![k]);
+  }
+  if (headingLevels.length) {
+    buf.push("  headings:");
+    for (const lvl of headingLevels) {
+      const h = headings![lvl]!;
+      buf.push(`    ${lvl}:`);
+      pushKV(buf, "      ", "lineHeight", h.lineHeight);
+      pushKV(buf, "      ", "letterSpacing", h.letterSpacing);
+      pushKV(buf, "      ", "color", h.color);
+    }
+  }
+
+  if (buf.length > pre) lines.push(...buf);
+}
+
+function emitComponentsProse(
+  lines: string[],
+  components: DesignSystemData["components"] | undefined,
+): void {
+  if (!components) return;
+  const buttonPrimary = components.button?.primary;
+  const card = components.card;
+  const link = components.link;
+  const headings = components.headings;
+
+  const buttonHasAny =
+    buttonPrimary &&
+    (["background", "color", "radius", "padding", "fontSize", "fontWeight", "border"] as const).some(
+      (k) => buttonPrimary[k] && buttonPrimary[k].trim(),
+    );
+  const cardHasAny =
+    card &&
+    (["background", "color", "radius", "padding", "border", "shadow"] as const).some(
+      (k) => card[k] && card[k].trim(),
+    );
+  const linkHasAny =
+    link &&
+    (["color", "textDecoration", "fontWeight"] as const).some(
+      (k) => link[k] && link[k].trim(),
+    );
+  const headingHasAny =
+    headings &&
+    (["h1", "h2", "h3"] as const).some((lvl) => {
+      const h = headings[lvl];
+      return h && (h.lineHeight || h.letterSpacing || h.color);
+    });
+
+  if (!buttonHasAny && !cardHasAny && !linkHasAny && !headingHasAny) return;
+
+  lines.push("## Components");
+  lines.push("");
+
+  if (buttonHasAny) {
+    lines.push("### Button (primary)");
+    lines.push("");
+    if (buttonPrimary!.background)
+      lines.push(`- Background — \`{components.button.primary.background}\` — \`${buttonPrimary!.background}\``);
+    if (buttonPrimary!.color)
+      lines.push(`- Color — \`${buttonPrimary!.color}\``);
+    if (buttonPrimary!.radius)
+      lines.push(`- Radius — \`${buttonPrimary!.radius}\``);
+    if (buttonPrimary!.padding)
+      lines.push(`- Padding — \`${buttonPrimary!.padding}\``);
+    if (buttonPrimary!.fontSize || buttonPrimary!.fontWeight) {
+      const parts = [buttonPrimary!.fontSize, buttonPrimary!.fontWeight].filter(Boolean);
+      lines.push(`- Font — \`${parts.join(" / ")}\``);
+    }
+    if (buttonPrimary!.border)
+      lines.push(`- Border — \`${buttonPrimary!.border}\``);
+    lines.push("");
+  }
+
+  if (cardHasAny) {
+    lines.push("### Card");
+    lines.push("");
+    if (card!.background)
+      lines.push(`- Background — \`{components.card.background}\` — \`${card!.background}\``);
+    if (card!.color) lines.push(`- Color — \`${card!.color}\``);
+    if (card!.radius) lines.push(`- Radius — \`${card!.radius}\``);
+    if (card!.padding) lines.push(`- Padding — \`${card!.padding}\``);
+    if (card!.border) lines.push(`- Border — \`${card!.border}\``);
+    if (card!.shadow) lines.push(`- Shadow — \`${card!.shadow}\``);
+    lines.push("");
+  }
+
+  if (linkHasAny) {
+    lines.push("### Link");
+    lines.push("");
+    if (link!.color)
+      lines.push(`- Color — \`{components.link.color}\` — \`${link!.color}\``);
+    if (link!.textDecoration)
+      lines.push(`- Decoration — \`${link!.textDecoration}\``);
+    if (link!.fontWeight)
+      lines.push(`- Weight — \`${link!.fontWeight}\``);
+    lines.push("");
+  }
+
+  if (headingHasAny) {
+    lines.push("### Headings");
+    lines.push("");
+    for (const lvl of ["h1", "h2", "h3"] as const) {
+      const h = headings![lvl];
+      if (!h || (!h.lineHeight && !h.letterSpacing && !h.color)) continue;
+      const parts: string[] = [];
+      if (h.lineHeight) parts.push(`line-height \`${h.lineHeight}\``);
+      if (h.letterSpacing) parts.push(`letter-spacing \`${h.letterSpacing}\``);
+      if (h.color) parts.push(`color \`${h.color}\``);
+      lines.push(`- **${lvl}** — ${parts.join(", ")}.`);
+    }
+    lines.push("");
+  }
+}
+
 export function designSystemToDesignMd(input: DesignMdInput): string {
   const { title, description, data, customInstructions } = input;
   const desc = (description ?? "").trim();
@@ -97,6 +280,8 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
     if (cardRadius) lines.push(`  card: ${cardRadius}`);
     if (pillRadius) lines.push(`  pill: ${pillRadius}`);
   }
+
+  emitComponentsYaml(lines, data.components);
   lines.push("---");
   lines.push("");
 
@@ -147,6 +332,8 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
     if (accentWidth) lines.push(`- Accent stripe width: \`${accentWidth}\``);
     lines.push("");
   }
+
+  emitComponentsProse(lines, data.components);
 
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
 }

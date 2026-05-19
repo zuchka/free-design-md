@@ -305,6 +305,139 @@ describe("designSystemToDesignMd", () => {
     expect(md).not.toMatch(/^  pill:/m);
   });
 
+  // --- C5: components block ---
+
+  it("emits a components: YAML block and ## Components prose section when populated", () => {
+    const md = designSystemToDesignMd({
+      title: "Acme",
+      description: "Spec",
+      data: {
+        ...fullData,
+        components: {
+          button: {
+            primary: {
+              background: "#5046E4",
+              color: "#FFFFFF",
+              radius: "9999px",
+              padding: "12px 24px",
+              fontSize: "15px",
+              fontWeight: "600",
+              border: "",
+            },
+          },
+          card: {
+            background: "#FFFFFF",
+            color: "#141414",
+            radius: "16px",
+            padding: "24px",
+            border: "1px solid #E5E5E5",
+            shadow: "",
+          },
+          link: {
+            color: "#5046E4",
+            textDecoration: "underline",
+            fontWeight: "500",
+          },
+          headings: {
+            h1: { lineHeight: "1.1", letterSpacing: "-1.5px", color: "#000000" },
+          },
+        },
+      },
+      customInstructions: "",
+    });
+    // YAML block
+    expect(md).toMatch(/^components:$/m);
+    expect(md).toMatch(/^  button:$/m);
+    expect(md).toMatch(/^    primary:$/m);
+    expect(md).toMatch(/^      background: "#5046E4"$/m);
+    expect(md).toMatch(/^      radius: 9999px$/m);
+    expect(md).toMatch(/^      padding: "12px 24px"$/m);
+    expect(md).toMatch(/^      fontSize: 15px$/m);
+    expect(md).toMatch(/^      fontWeight: 600$/m);
+    expect(md).toMatch(/^  card:$/m);
+    expect(md).toMatch(/^    border: "1px solid #E5E5E5"$/m);
+    expect(md).toMatch(/^  link:$/m);
+    expect(md).toMatch(/^    textDecoration: underline$/m);
+    expect(md).toMatch(/^  headings:$/m);
+    expect(md).toMatch(/^    h1:$/m);
+    expect(md).toMatch(/^      lineHeight: 1\.1$/m);
+    // Prose section
+    expect(md).toMatch(/^## Components$/m);
+    expect(md).toMatch(/^### Button \(primary\)$/m);
+    expect(md).toMatch(/^### Card$/m);
+    expect(md).toMatch(/^### Link$/m);
+    expect(md).toMatch(/^### Headings$/m);
+  });
+
+  it("omits the components: block and prose section when components is undefined", () => {
+    const md = designSystemToDesignMd({
+      title: "No components",
+      description: "",
+      data: fullData,
+      customInstructions: "",
+    });
+    expect(md).not.toMatch(/^components:$/m);
+    expect(md).not.toMatch(/^## Components$/m);
+  });
+
+  it("emits only populated component sub-trees", () => {
+    const md = designSystemToDesignMd({
+      title: "Button only",
+      description: "",
+      data: {
+        ...fullData,
+        components: {
+          button: {
+            primary: {
+              background: "#5046E4",
+              color: "#FFFFFF",
+              radius: "8px",
+              padding: "10px 20px",
+              fontSize: "14px",
+              fontWeight: "600",
+              border: "",
+            },
+          },
+        },
+      },
+      customInstructions: "",
+    });
+    expect(md).toMatch(/^  button:$/m);
+    expect(md).not.toMatch(/^  card:$/m);
+    expect(md).not.toMatch(/^  link:$/m);
+    expect(md).not.toMatch(/^  headings:$/m);
+    expect(md).toMatch(/^### Button \(primary\)$/m);
+    expect(md).not.toMatch(/^### Card$/m);
+  });
+
+  it("skips empty fields inside a populated sub-tree (e.g. empty border)", () => {
+    const md = designSystemToDesignMd({
+      title: "Bare button",
+      description: "",
+      data: {
+        ...fullData,
+        components: {
+          button: {
+            primary: {
+              background: "#5046E4",
+              color: "#FFFFFF",
+              radius: "8px",
+              padding: "",
+              fontSize: "",
+              fontWeight: "",
+              border: "",
+            },
+          },
+        },
+      },
+      customInstructions: "",
+    });
+    expect(md).toMatch(/^      background: "#5046E4"$/m);
+    expect(md).not.toMatch(/^ {6}padding:/m);
+    expect(md).not.toMatch(/^ {6}fontSize:/m);
+    expect(md).not.toMatch(/^ {6}border:/m);
+  });
+
   it("emits the rounded block when only semantic radii are set (no legacy md:)", () => {
     const md = designSystemToDesignMd({
       title: "New Only",
