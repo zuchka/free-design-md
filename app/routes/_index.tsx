@@ -5,7 +5,10 @@ import type { DesignSystemData } from "../../shared/api";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { IconCheck, IconCopy, IconSparkles } from "@tabler/icons-react";
+import { IconCheck, IconCopy, IconLock, IconSparkles } from "@tabler/icons-react";
+import { consumeQuota, useAuth } from "@/lib/auth";
+import SignInModal from "@/components/auth/SignInModal";
+import AccountChip from "@/components/auth/AccountChip";
 
 export function meta() {
   return [
@@ -64,6 +67,8 @@ export default function IndexRoute() {
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [view, setView] = useState<"deterministic" | "enriched">("deterministic");
+  const [signInOpen, setSignInOpen] = useState(false);
+  const { user, remaining } = useAuth();
 
   useEffect(() => {
     if (!isLoading) return;
@@ -109,6 +114,14 @@ export default function IndexRoute() {
 
   async function handleEnrich() {
     if (!result) return;
+    if (!user) {
+      setSignInOpen(true);
+      return;
+    }
+    if (remaining <= 0) {
+      setEnrichError("Out of free AI enrichments. Upgrade to keep going.");
+      return;
+    }
     setIsEnriching(true);
     setEnrichError(null);
     try {
@@ -131,6 +144,8 @@ export default function IndexRoute() {
       const data = (await res.json()) as EnrichResult;
       setEnriched(data);
       setView("enriched");
+      // Only charge the user's quota when the enrichment actually succeeded.
+      consumeQuota();
     } catch (err) {
       setEnrichError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -151,16 +166,19 @@ export default function IndexRoute() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-6 py-12">
-        <header className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Extract a design system from any URL
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Type a URL. We headlessly load the page, capture its colors, fonts,
-            and shapes, and render a portable design.md spec. No sign-in
-            required.
-          </p>
-        </header>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <header>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Extract a design system from any URL
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Type a URL. We headlessly load the page, capture its colors,
+              fonts, and shapes, and render a portable design.md spec. No
+              sign-in required for the deterministic pass.
+            </p>
+          </header>
+          <AccountChip />
+        </div>
 
         <form
           onSubmit={handleSubmit}
@@ -237,22 +255,42 @@ export default function IndexRoute() {
                       </div>
                     )}
                     {!enriched && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleEnrich}
-                        disabled={isEnriching || !result.screenshotDataUrl}
-                        title="Enrich with Claude Opus 4.7 (~30-60s)"
-                      >
-                        {isEnriching ? (
-                          <Spinner className="size-3.5" />
-                        ) : (
-                          <IconSparkles size={14} />
-                        )}
-                        <span className="ml-1">
-                          {isEnriching ? "Enriching…" : "Enrich with AI"}
-                        </span>
-                      </Button>
+                      user && remaining === 0 ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled
+                          title="You've used all 3 free AI enrichments"
+                        >
+                          <IconLock size={14} />
+                          <span className="ml-1">Out of free enrichments</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleEnrich}
+                          disabled={isEnriching || !result.screenshotDataUrl}
+                          title={
+                            user
+                              ? `Enrich with Claude Opus 4.7 (~30-60s) — ${remaining} free left`
+                              : "Sign in to unlock AI enrichment"
+                          }
+                        >
+                          {isEnriching ? (
+                            <Spinner className="size-3.5" />
+                          ) : (
+                            <IconSparkles size={14} />
+                          )}
+                          <span className="ml-1">
+                            {isEnriching
+                              ? "Enriching…"
+                              : user
+                                ? "Enrich with AI"
+                                : "Enrich with AI · Sign in"}
+                          </span>
+                        </Button>
+                      )
                     )}
                     <Button
                       size="sm"
@@ -299,6 +337,7 @@ export default function IndexRoute() {
           </div>
         )}
       </div>
+      <SignInModal open={signInOpen} onOpenChange={setSignInOpen} />
     </div>
   );
 }
