@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { appBasePath } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
 import type { DesignSystemData } from "../../shared/api";
@@ -186,7 +187,15 @@ export default function IndexRoute() {
               sign-in required for the deterministic pass.
             </p>
           </header>
-          <AccountChip />
+          <div className="flex items-center gap-3">
+            <Link
+              to="/quality"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Quality
+            </Link>
+            <AccountChip />
+          </div>
         </div>
 
         <form
