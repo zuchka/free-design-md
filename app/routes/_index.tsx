@@ -100,6 +100,7 @@ export default function IndexRoute() {
     if (!result) return "";
     return renderPreview(result.designSystemData, {
       title: result.signals?.title,
+      designMd: result.markdown,
     });
   }, [result]);
 
