@@ -308,7 +308,7 @@ export default function IndexRoute() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <Pane title="Real site" className="lg:flex-1 lg:min-w-0">
                 {result.screenshotDataUrl ? (
-                  <div className="max-h-[560px] overflow-auto rounded-md border bg-muted/20">
+                  <div className="h-[560px] overflow-auto rounded-md border bg-muted/20">
                     <img
                       src={result.screenshotDataUrl}
                       alt={`Screenshot of ${result.url}`}
@@ -460,7 +460,7 @@ interface PaneProps {
 function Pane({ title, action, children, className }: PaneProps) {
   return (
     <section className={`flex flex-col gap-2${className ? ` ${className}` : ""}`}>
-      <div className="flex items-center justify-between">
+      <div className="flex h-9 items-center justify-between">
         <div className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
         </div>
