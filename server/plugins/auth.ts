@@ -27,5 +27,9 @@ export default createAuthPlugin({
     // auth-gated through the framework's owner-context check; this H3 route
     // bypasses it intentionally and is SSRF-guarded by assertSafeUrl.
     "/api/extract",
+    // Spike: AI enrichment endpoint on top of the deterministic extract.
+    // Accepts the deterministic extract payload, calls Claude Opus 4.7,
+    // returns enriched DESIGN.md. No auth on the spike per the plan.
+    "/api/enrich-design-md",
   ],
 });
