@@ -2,13 +2,13 @@ import { createAuthPlugin } from "@agent-native/core/server";
 
 export default createAuthPlugin({
   marketing: {
-    appName: "Agent-Native Slides",
+    appName: "Free design.md",
     tagline:
-      "Your AI agent builds, edits, and refines presentations alongside you.",
+      "Paste any URL — get a portable design.md spec your agents can read.",
     features: [
-      "Generate entire decks from a single prompt",
-      "Surgical slide edits while you present or review",
-      "Real-time collaboration between you and the agent",
+      "Deterministic extraction of colors, typography, components, and spacing",
+      "One-click AI enrichment with Claude Opus 4.7 for brand-voice depth",
+      "Drop the design.md into a Builder.io Space and iterate with an agent",
     ],
   },
   publicPaths: [

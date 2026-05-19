@@ -5,7 +5,13 @@ import type { DesignSystemData } from "../../shared/api";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { IconCheck, IconCopy, IconLock, IconSparkles } from "@tabler/icons-react";
+import {
+  IconCheck,
+  IconCopy,
+  IconExternalLink,
+  IconLock,
+  IconSparkles,
+} from "@tabler/icons-react";
 import { consumeQuota, useAuth } from "@/lib/auth";
 import SignInModal from "@/components/auth/SignInModal";
 import AccountChip from "@/components/auth/AccountChip";
@@ -69,6 +75,9 @@ export default function IndexRoute() {
   const [view, setView] = useState<"deterministic" | "enriched">("deterministic");
   const [signInOpen, setSignInOpen] = useState(false);
   const { user, remaining } = useAuth();
+  const builderSpaceUrl = import.meta.env.VITE_BUILDER_SPACE_URL as
+    | string
+    | undefined;
 
   useEffect(() => {
     if (!isLoading) return;
@@ -253,6 +262,23 @@ export default function IndexRoute() {
                           AI-enriched
                         </button>
                       </div>
+                    )}
+                    {enriched && builderSpaceUrl && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        asChild
+                        title="Drop this design.md into a Builder.io Space and iterate with an agent"
+                      >
+                        <a
+                          href={builderSpaceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <IconExternalLink size={14} />
+                          <span className="ml-1">Open in Builder Space</span>
+                        </a>
+                      </Button>
                     )}
                     {!enriched && (
                       user && remaining === 0 ? (
