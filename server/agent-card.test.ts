@@ -10,17 +10,14 @@ const projectRoot = path.resolve(
   "..",
 );
 
-const REQUIRED_SLIDES_ACTIONS = [
-  "create-deck",
-  "add-slide",
-  "get-deck",
-  "list-decks",
-  "update-slide",
-  "navigate",
+const REQUIRED_DESIGN_MD_ACTIONS = [
+  "extract-design-md",
+  "enrich-design-md",
+  "export-design-md",
 ];
 
-describe("slides agent card", () => {
-  it("advertises slides domain actions from the generated static registry", async () => {
+describe("free-design-md agent card", () => {
+  it("advertises the design.md actions from the generated static registry", async () => {
     generateActionRegistryForProject(projectRoot);
 
     const registryUrl =
@@ -30,8 +27,9 @@ describe("slides agent card", () => {
     const actions = loadActionsFromStaticRegistry(modules);
     const card = generateAgentCard(
       {
-        name: "Slides",
-        description: "Agent-native slides agent",
+        name: "Free design.md",
+        description:
+          "Agent-native design system extractor — paste a URL, get a design.md",
         skills: Object.entries(actions).map(([name, entry]) => ({
           id: name,
           name,
@@ -39,13 +37,12 @@ describe("slides agent card", () => {
         })),
         streaming: true,
       },
-      "https://slides.agent-native.com",
+      "https://free-design-md.agent-native.com",
     );
 
-    expect(card.name).toBe("Slides");
-    expect(card.description).toBe("Agent-native slides agent");
+    expect(card.name).toBe("Free design.md");
     expect(card.skills.map((skill) => skill.id)).toEqual(
-      expect.arrayContaining(REQUIRED_SLIDES_ACTIONS),
+      expect.arrayContaining(REQUIRED_DESIGN_MD_ACTIONS),
     );
   });
 });
