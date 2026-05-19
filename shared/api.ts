@@ -277,7 +277,7 @@ export interface DesignSystemData {
     bodyWeight: string;
     headingSizes: { h1: string; h2: string; h3: string };
   };
-  spacing: { slidePadding: string; elementGap: string };
+  spacing: { slidePadding: string; elementGap: string; scale?: string[] };
   borders: {
     radius: string;
     accentWidth: string;

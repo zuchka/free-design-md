@@ -74,6 +74,9 @@ export interface ExtractedSignals {
     | null;
   cardSample?: ({ borderRadius: string } & CardAnatomy) | null;
   pillRadius?: string;
+  // C6: counted occurrences of padding/gap values across all elements,
+  // counted in-browser to keep the Playwright-to-Node payload small.
+  paddingHistogram?: Record<string, number>;
 }
 
 function normalizeColor(input: string): string {
