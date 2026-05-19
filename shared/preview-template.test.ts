@@ -332,3 +332,22 @@ describe("renderPreview", () => {
     expect(html).toMatch(/--ds-card-padding:\s*24px/);
   });
 });
+
+describe("showcase — colors", () => {
+  it("renders a swatch for each non-empty color", () => {
+    const data = fullData();
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("ds-showcase");
+    expect(html).toContain("#635bff"); // primary
+    expect(html).toContain("Primary");
+    expect(html).toContain("#ffffff"); // background
+    expect(html).toContain("Background");
+  });
+
+  it("skips empty colors", () => {
+    const data = fullData();
+    data.colors.secondary = "";
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).not.toContain("Secondary");
+  });
+});
