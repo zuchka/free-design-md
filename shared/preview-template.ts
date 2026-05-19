@@ -12,6 +12,10 @@ const SAFE_FONT = /^[a-zA-Z0-9 _-]+$/;
 const SAFE_STACK = /^[a-zA-Z0-9 ,'"._\-]+$/;
 const SAFE_SIZE = /^\d+(\.\d+)?(px|rem|em|%)$/;
 const SAFE_WEIGHT = /^[1-9]00$|^\d{3}$/;
+// Padding shorthand: one to four space-separated length values.
+const SAFE_PADDING = /^\d+(\.\d+)?(px|rem|em|%)(\s+\d+(\.\d+)?(px|rem|em|%)){0,3}$/;
+// Border shorthand: "<width> <style> <color>" e.g. "1px solid #e5e5e5".
+const SAFE_BORDER = /^\d+(\.\d+)?(px|rem|em)\s+(solid|dashed|dotted|double)\s+#[0-9a-fA-F]{3,8}$/;
 
 function safe(value: string, pattern: RegExp): string {
   if (!value) return "";
@@ -84,6 +88,32 @@ export function renderPreview(
   const cardFallback = isPillLike(radius) ? "8px" : radius;
   const cardRadius = safe(data.borders.radii.card, SAFE_SIZE) || cardFallback;
 
+  // C5 component anatomy — empty when the brand didn't supply this signal or
+  // the value didn't pass sanitization. Each preview consumer keeps its
+  // pre-C5 hardcoded fallback for that path.
+  const buttonPadding =
+    safe(data.components?.button?.primary?.padding ?? "", SAFE_PADDING) ||
+    "12px 22px";
+  const buttonFontSize =
+    safe(data.components?.button?.primary?.fontSize ?? "", SAFE_SIZE) || "15px";
+  const buttonFontWeight =
+    safe(data.components?.button?.primary?.fontWeight ?? "", SAFE_WEIGHT) || "600";
+  const buttonBorder = safe(
+    data.components?.button?.primary?.border ?? "",
+    SAFE_BORDER,
+  );
+
+  const cardPadding =
+    safe(data.components?.card?.padding ?? "", SAFE_PADDING) || "24px";
+  const cardBgRaw = safe(data.components?.card?.background ?? "", SAFE_COLOR);
+  const cardBg = cardBgRaw || "transparent";
+  const cardBorder =
+    safe(data.components?.card?.border ?? "", SAFE_BORDER) ||
+    "1px solid var(--ds-border)";
+
+  const linkUnderline =
+    (data.components?.link?.textDecoration ?? "").trim() === "underline";
+
   const primaryCssVar = primary || "transparent";
   const primaryButtonClass = primary ? "primary" : "primary missing";
 
@@ -116,6 +146,11 @@ export function renderPreview(
   --ds-radius: ${radius};
   --ds-button-radius: ${buttonRadius};
   --ds-card-radius: ${cardRadius};
+  --ds-button-padding: ${buttonPadding};
+  --ds-button-font-size: ${buttonFontSize};
+  --ds-button-font-weight: ${buttonFontWeight};
+  --ds-card-padding: ${cardPadding};
+  --ds-card-bg: ${cardBg};
   --ds-border: color-mix(in srgb, var(--ds-text) 12%, var(--ds-bg));
   --ds-muted: color-mix(in srgb, var(--ds-text) 55%, var(--ds-bg));
 }
@@ -186,10 +221,10 @@ h1 {
 .ctas { display: flex; gap: 12px; }
 button {
   font-family: var(--ds-body-font);
-  font-weight: 600;
-  font-size: 15px;
-  padding: 12px 22px;
-  border: 0;
+  font-weight: var(--ds-button-font-weight);
+  font-size: var(--ds-button-font-size);
+  padding: var(--ds-button-padding);
+  border: ${buttonBorder || "0"};
   border-radius: var(--ds-button-radius);
   cursor: pointer;
 }
@@ -222,10 +257,12 @@ button.ghost {
   gap: 16px;
 }
 .card {
-  padding: 24px;
+  padding: var(--ds-card-padding);
   border-radius: var(--ds-card-radius);
-  border: 1px solid var(--ds-border);
+  border: ${cardBorder};
+  ${cardBgRaw ? "background: var(--ds-card-bg);" : ""}
 }
+${linkUnderline ? "a { text-decoration: underline; }" : ""}
 .card h3 {
   font-family: var(--ds-heading-font);
   font-weight: var(--ds-heading-weight);

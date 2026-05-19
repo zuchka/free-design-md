@@ -237,4 +237,98 @@ describe("renderPreview", () => {
     expect(html).toContain("border-radius: var(--ds-button-radius)");
     expect(html).toContain("border-radius: var(--ds-card-radius)");
   });
+
+  // --- C5: components consumed by preview ---
+
+  it("applies components.button.primary.padding to the button CSS rule", () => {
+    const data = fullData();
+    data.components = {
+      button: {
+        primary: {
+          background: "#635bff",
+          color: "#ffffff",
+          radius: "6px",
+          padding: "14px 28px",
+          fontSize: "16px",
+          fontWeight: "700",
+          border: "",
+        },
+      },
+    };
+    const html = renderPreview(data);
+    expect(html).toMatch(/--ds-button-padding:\s*14px 28px/);
+    expect(html).toMatch(/--ds-button-font-size:\s*16px/);
+    expect(html).toMatch(/--ds-button-font-weight:\s*700/);
+  });
+
+  it("falls back to default button padding/font when components.button.primary is missing", () => {
+    const html = renderPreview(fullData());
+    // Defaults from preview-template stay in place when components is absent.
+    expect(html).toMatch(/--ds-button-padding:\s*12px 22px/);
+    expect(html).toMatch(/--ds-button-font-size:\s*15px/);
+    expect(html).toMatch(/--ds-button-font-weight:\s*600/);
+  });
+
+  it("drops unsafe values via SAFE_* sanitization", () => {
+    const data = fullData();
+    data.components = {
+      button: {
+        primary: {
+          background: "",
+          color: "",
+          radius: "",
+          padding: "}; evil { width: 100",
+          fontSize: "16em; injection",
+          fontWeight: "abc",
+          border: "javascript:alert(1)",
+        },
+      },
+    };
+    const html = renderPreview(data);
+    // Sanitization must drop the bad values and use defaults instead.
+    expect(html).toMatch(/--ds-button-padding:\s*12px 22px/);
+    expect(html).toMatch(/--ds-button-font-size:\s*15px/);
+    expect(html).toMatch(/--ds-button-font-weight:\s*600/);
+    expect(html).not.toContain("javascript:alert");
+    expect(html).not.toContain("evil");
+  });
+
+  it("applies components.card.padding and components.card.background", () => {
+    const data = fullData();
+    data.components = {
+      card: {
+        background: "#f5f5f5",
+        color: "",
+        radius: "12px",
+        padding: "32px",
+        border: "",
+        shadow: "",
+      },
+    };
+    const html = renderPreview(data);
+    expect(html).toMatch(/--ds-card-padding:\s*32px/);
+    expect(html).toMatch(/--ds-card-bg:\s*#f5f5f5/);
+  });
+
+  it("honors link.textDecoration: underline (only)", () => {
+    const data = fullData();
+    data.components = {
+      link: {
+        color: "#635bff",
+        textDecoration: "underline",
+        fontWeight: "500",
+      },
+    };
+    const html = renderPreview(data);
+    expect(html).toMatch(/text-decoration:\s*underline/);
+  });
+
+  it("renders identically to today when components is undefined (no new CSS rules added)", () => {
+    const data = fullData();
+    // No components field.
+    const html = renderPreview(data);
+    // Defaults appear, custom-property names exist but use fallback values.
+    expect(html).toMatch(/--ds-button-padding:\s*12px 22px/);
+    expect(html).toMatch(/--ds-card-padding:\s*24px/);
+  });
 });
