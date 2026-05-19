@@ -71,3 +71,8 @@ data/exports/
 
 # Fidelity-probe output (screenshots + report.html from tools/fidelity-report.ts)
 tools/fidelity-output/
+
+# Local harness state from Claude Code (scheduled-task locks etc.) — the
+# .claude/skills symlink is tracked; everything else under .claude/ is
+# local-only and should not land in commits.
+.claude/scheduled_tasks.lock
