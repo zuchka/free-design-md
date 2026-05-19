@@ -12,24 +12,24 @@ export default createAuthPlugin({
     ],
   },
   publicPaths: [
-    "/share",
-    "/p",
-    "/api/share",
+    // The extractor (and its sibling /quality dashboard) are the product
+    // surface. They render without any real auth — the "Sign in" gate is
+    // a UX layer inside / that controls the AI-enrichment button, not a
+    // route-level redirect. The framework's auth plugin must let these
+    // routes through, otherwise it serves its own marketing/sign-in page.
+    "/",
+    "/quality",
     "/_agent-native/google-docs/callback",
     // React Router's lazy route-discovery endpoint must stay public so
-    // unauthenticated viewers can open shared presentation links directly.
+    // the SPA can fetch its route manifest.
     "/__manifest",
-    // Public C3 surface — type a URL, see screenshot + preview + design.md.
-    "/extract",
-    // Single public HTTP route: returns text/markdown by default (curl-friendly),
-    // or JSON with the full payload (screenshot + tokens + signals) when called
-    // with ?format=json. Used by the /extract page. The underlying action stays
-    // auth-gated through the framework's owner-context check; this H3 route
-    // bypasses it intentionally and is SSRF-guarded by assertSafeUrl.
+    // Curl-friendly extractor endpoint: returns text/markdown by default,
+    // or JSON with the full payload (screenshot + tokens + signals) when
+    // called with ?format=json. SSRF-guarded by assertSafeUrl.
     "/api/extract",
-    // Spike: AI enrichment endpoint on top of the deterministic extract.
-    // Accepts the deterministic extract payload, calls Claude Opus 4.7,
-    // returns enriched DESIGN.md. No auth on the spike per the plan.
+    // AI enrichment endpoint. The per-user 3-free-enrichments gate is
+    // enforced client-side via the mocked auth seam (Phase 2). A real
+    // server-side gate ships in Phase 3 alongside Builder.io OAuth.
     "/api/enrich-design-md",
   ],
 });
