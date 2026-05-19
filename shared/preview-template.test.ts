@@ -411,3 +411,18 @@ describe("showcase — components", () => {
     expect(html).not.toContain("sc-component-section");
   });
 });
+
+describe("showcase — design.md source", () => {
+  it("renders raw design.md when opts.designMd is provided", () => {
+    const data = fullData();
+    const html = renderPreview(data, { title: "Acme", designMd: "---\nname: Acme\n---\n\n## Overview\n" });
+    expect(html).toContain("sc-source-block");
+    expect(html).toContain("name: Acme");
+  });
+
+  it("omits source block when opts.designMd is empty", () => {
+    const data = fullData();
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).not.toContain("sc-source-block");
+  });
+});

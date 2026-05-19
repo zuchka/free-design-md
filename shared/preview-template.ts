@@ -218,6 +218,30 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
     }
   }
 
+  // ── design.md source ──────────────────────────────────────
+  const sourceSection = designMd
+    ? `<style>
+.sc-source-block {
+  background: color-mix(in srgb, var(--ds-text) 4%, var(--ds-bg));
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  padding: 24px;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.7;
+  font-family: "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  color: var(--ds-text);
+  white-space: pre;
+  max-height: 480px;
+  overflow-y: auto;
+}
+</style>
+<section class="sc-section">
+  <h2 class="sc-section-title">design.md source</h2>
+  <pre class="sc-source-block"><code>${escapeHtml(designMd)}</code></pre>
+</section>`
+    : "";
+
   return `
 <div class="ds-showcase">
   <div class="sc-header">
@@ -229,6 +253,7 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
   ${spacingSection}
   ${radiiSection}
   ${componentSection}
+  ${sourceSection}
 </div>`;
 }
 
