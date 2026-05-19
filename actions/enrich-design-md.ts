@@ -32,7 +32,7 @@ import type { DesignSystemData } from "../shared/api.js";
 import type { ExtractedSignals } from "../shared/extract-design-system.js";
 
 const ENRICH_MODEL = "claude-sonnet-4-6";
-const ENRICH_MAX_TOKENS = 32000;
+const ENRICH_MAX_TOKENS = 64000;
 
 export interface EnrichUsage {
   inputTokens: number;
