@@ -5,26 +5,26 @@ export interface RenderPreviewOptions {
   designMd?: string;
 }
 
-const SAFE_COLOR = /^[#a-zA-Z0-9(),./%\s.-]+$/;
+export const SAFE_COLOR = /^[#a-zA-Z0-9(),./%\s.-]+$/;
 const SAFE_FONT = /^[a-zA-Z0-9 _-]+$/;
 // Font stacks contain comma-separated family names, quoted or bare, plus the
 // CSS generic keywords. We don't allow braces, semicolons, parens, or @ to
 // keep arbitrary CSS out of our <style> block.
 const SAFE_STACK = /^[a-zA-Z0-9 ,'"._\-]+$/;
-const SAFE_SIZE = /^\d+(\.\d+)?(px|rem|em|%)$/;
+export const SAFE_SIZE = /^\d+(\.\d+)?(px|rem|em|%)$/;
 const SAFE_WEIGHT = /^[1-9]00$|^\d{3}$/;
 // Padding shorthand: one to four space-separated length values.
 const SAFE_PADDING = /^\d+(\.\d+)?(px|rem|em|%)(\s+\d+(\.\d+)?(px|rem|em|%)){0,3}$/;
 // Border shorthand: "<width> <style> <color>" e.g. "1px solid #e5e5e5".
 const SAFE_BORDER = /^\d+(\.\d+)?(px|rem|em)\s+(solid|dashed|dotted|double)\s+#[0-9a-fA-F]{3,8}$/;
 
-function safe(value: string, pattern: RegExp): string {
+export function safe(value: string, pattern: RegExp): string {
   if (!value) return "";
   const trimmed = value.trim();
   return pattern.test(trimmed) ? trimmed : "";
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
