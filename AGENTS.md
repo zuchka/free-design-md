@@ -82,6 +82,46 @@ Env vars (`.env.local`):
 
 Slide-related secrets, ports, and config from the original slides template are gone — the only LLM the app talks to is Anthropic, and only for enrichment.
 
+## Auth — Builder.io SSO via `/cli-auth`
+
+`free-design-md` uses Builder.io's existing `/cli-auth` partner redirect
+flow to sign users in. There is no OAuth 2.0 endpoint on builder.io — auth
+is Firebase under the hood — so we lean on the same redirect-with-BPK flow
+that the Builder CLI and Figma plugin use.
+
+**Client seam** (`app/lib/auth/`): contract is fixed across mock + real.
+Set `VITE_FREE_DESIGN_MD_REAL_AUTH=1` to switch the seam to the real impl.
+
+**Server flow:**
+
+1. User clicks "Sign in with Builder.io" → `GET /api/auth/builder/start` sets
+   a state cookie and 302s to `https://builder.io/cli-auth` with
+   `redirect_url=…/api/auth/builder/callback?state=<nonce>` and attribution
+   params (`signupSource=agent-native`, `agentNativeFlow=design_extraction`).
+2. Builder forwards unauthenticated users to `/login` or `/signup`
+   (preserving our attribution params), then back to `/cli-auth`.
+3. User clicks Authorize. Builder redirects to our callback with
+   `?p-key=bpk-…&user-id=…&api-key=…`.
+4. Callback validates the state cookie, calls
+   `GET https://builder.io/api/v1/users/<user-id>?apiKey=…` with the BPK
+   as a bearer token. On 200, identity is verified.
+5. We upsert into `fdmd_users`, seed `fdmd_quota` (default 3), mint an
+   opaque token, store in `fdmd_sessions`, set `fdmd_session` cookie,
+   discard the BPK, and 302 back to the original page.
+6. The framework's `AuthOptions.getSession` is wired to read our cookie,
+   so `getSession(event)` in any handler returns
+   `{ email, userId, name }` for the Builder-verified user.
+
+**Production prerequisite:** the deployed hostname must be in
+`isAllowedRedirectUrl()` at
+`~/code/builder-internal/packages/app/components/CLIAuthPage.tsx:28`.
+Today: `localhost`, `*.agent-native.com`, `*.builder.io`. Either deploy
+under one of those, or land a one-line PR adding the prod host.
+
+**Env vars:** `PUBLIC_ORIGIN` (required in prod), `BUILDER_CLIENT_ID`
+(defaults to `free-design-md`), `VITE_FREE_DESIGN_MD_REAL_AUTH=1` to
+flip the client seam to the real impl.
+
 ## Phase 2 (deferred, not in this codebase yet)
 
 The spike verdict at `docs/spike-ai-enrichment-verdict.md` lays out the productization roadmap:
