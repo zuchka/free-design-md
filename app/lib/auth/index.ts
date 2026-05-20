@@ -12,7 +12,8 @@ import { useMockedAuth } from "@shared/flags";
 import * as mock from "./mock-auth";
 import * as real from "./real-auth";
 
-const impl = useMockedAuth() ? mock : real;
+const mocked = useMockedAuth();
+const impl = mocked ? mock : real;
 
 export const getCurrentUser = impl.getCurrentUser;
 export const signIn = impl.signIn;
@@ -20,6 +21,14 @@ export const signOut = impl.signOut;
 export const quotaRemaining = impl.quotaRemaining;
 export const consumeQuota = impl.consumeQuota;
 export const subscribe = impl.subscribe;
+
+let hydrationStarted = false;
+function maybeStartHydration(): void {
+  if (mocked || hydrationStarted) return;
+  if (typeof window === "undefined") return;
+  hydrationStarted = true;
+  void real._hydrate();
+}
 
 export type { MockUser as AuthUser } from "./mock-auth";
 
@@ -63,10 +72,12 @@ function maybeUpdateSnapshot(): boolean {
 }
 
 function getClientSnapshot(): AuthSnapshot {
-  // First client read hydrates from localStorage. Subsequent reads return
-  // the same reference until an external mutation flips it.
+  // First client read triggers async hydration (real seam: /api/auth/me;
+  // mock seam: reads localStorage synchronously at import). Subsequent
+  // reads return the same reference until an external mutation flips it.
   if (!isHydrated) {
     isHydrated = true;
+    maybeStartHydration();
     maybeUpdateSnapshot();
   }
   return cachedSnapshot;
