@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { appBasePath } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
+import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
+import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
 import type { DesignSystemData } from "../../shared/api";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
@@ -100,8 +102,16 @@ export default function IndexRoute() {
     if (!result) return "";
     return renderPreview(result.designSystemData, {
       title: result.signals?.title,
+      designMd: result.markdown,
     });
   }, [result]);
+
+  const enrichedPreviewHtml = useMemo(() => {
+    if (!enriched?.markdown) return null;
+    const parsed = parseEnrichedFrontmatter(enriched.markdown);
+    if (!parsed) return null;
+    return renderEnrichedPreview(parsed, enriched.markdown, result?.signals?.title);
+  }, [enriched?.markdown, result?.signals?.title]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -245,6 +255,9 @@ export default function IndexRoute() {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  const activePreviewHtml =
+    view === "enriched" && enrichedPreviewHtml ? enrichedPreviewHtml : previewHtml;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-6 py-12">
@@ -307,7 +320,7 @@ export default function IndexRoute() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <Pane title="Real site" className="lg:flex-1 lg:min-w-0">
                 {result.screenshotDataUrl ? (
-                  <div className="max-h-[560px] overflow-auto rounded-md border bg-muted/20">
+                  <div className="h-[560px] overflow-auto rounded-md border bg-muted/20">
                     <img
                       src={result.screenshotDataUrl}
                       alt={`Screenshot of ${result.url}`}
@@ -431,14 +444,27 @@ export default function IndexRoute() {
               </Pane>
             </div>
 
-            <Pane title="Preview from tokens">
-              <div className="h-[900px] w-full overflow-hidden rounded-md border">
+            <Pane
+              title="Preview from tokens"
+              action={
+                view === "enriched" && enrichedPreviewHtml ? (
+                  <span className="text-xs text-muted-foreground">AI-enriched</span>
+                ) : undefined
+              }
+            >
+              <div className="relative h-[900px] w-full overflow-hidden rounded-md border">
                 <iframe
-                  srcDoc={previewHtml}
+                  srcDoc={activePreviewHtml}
                   title="Synthetic preview"
                   sandbox="allow-same-origin"
                   className="block h-full w-full"
                 />
+                {isEnriching && view === "enriched" && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
+                    <Spinner className="size-6 text-foreground" />
+                    <p className="text-sm text-muted-foreground">Enriching with AI…</p>
+                  </div>
+                )}
               </div>
             </Pane>
           </div>
@@ -459,7 +485,7 @@ interface PaneProps {
 function Pane({ title, action, children, className }: PaneProps) {
   return (
     <section className={`flex flex-col gap-2${className ? ` ${className}` : ""}`}>
-      <div className="flex items-center justify-between">
+      <div className="flex h-9 items-center justify-between">
         <div className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
         </div>

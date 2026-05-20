@@ -1,7 +1,10 @@
 import { defineAction } from "@agent-native/core";
 import { z } from "zod";
-import { chromium } from "playwright";
+import { chromium } from "playwright-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import { designSystemToDesignMd } from "../shared/design-md.js";
+
+chromium.use(StealthPlugin());
 import {
   synthesizeDesignSystem,
   type ExtractedSignals,

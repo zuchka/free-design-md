@@ -982,4 +982,48 @@ describe("synthesizeDesignSystem", () => {
     expect(d.borders.radii.card).toBe("");
     expect(d.borders.radii.pill).toBe("");
   });
+
+  describe("dark background + dark text contrast guard", () => {
+    it("replaces dark text with near-white when background is also dark (Notion case)", () => {
+      const s = emptySignals();
+      s.body = {
+        backgroundColor: "#191918",
+        color: "rgba(0, 0, 0, 0.95)",
+        fontFamily: "sans-serif",
+        fontSize: "16px",
+        fontWeight: "400",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.colors.background).toBe("#191918");
+      expect(d.colors.text).toBe("#f5f5f5");
+    });
+
+    it("does not alter text when background is light and text is dark (normal case)", () => {
+      const s = emptySignals();
+      s.body = {
+        backgroundColor: "rgb(255, 255, 255)",
+        color: "rgb(20, 20, 20)",
+        fontFamily: "sans-serif",
+        fontSize: "16px",
+        fontWeight: "400",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.colors.background).toBe("#ffffff");
+      expect(d.colors.text).toBe("#141414");
+    });
+
+    it("does not alter text when background is dark and text is light (correct dark mode)", () => {
+      const s = emptySignals();
+      s.body = {
+        backgroundColor: "#191918",
+        color: "#f0efed",
+        fontFamily: "sans-serif",
+        fontSize: "16px",
+        fontWeight: "400",
+      };
+      const d = synthesizeDesignSystem(s);
+      expect(d.colors.background).toBe("#191918");
+      expect(d.colors.text).toBe("#f0efed");
+    });
+  });
 });

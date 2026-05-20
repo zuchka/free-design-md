@@ -332,3 +332,105 @@ describe("renderPreview", () => {
     expect(html).toMatch(/--ds-card-padding:\s*24px/);
   });
 });
+
+describe("showcase — typography", () => {
+  it("renders h1/h2/h3 samples with the brand heading font", () => {
+    const data = fullData();
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("sc-type-sample");
+    expect(html).toContain("The quick brown fox");
+    expect(html).toContain("56px");
+  });
+
+  it("renders body text sample", () => {
+    const data = fullData();
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("Body / Regular");
+  });
+});
+
+describe("showcase — colors", () => {
+  it("renders a swatch for each non-empty color", () => {
+    const data = fullData();
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("ds-showcase");
+    expect(html).toContain("#635bff"); // primary
+    expect(html).toContain("Primary");
+    expect(html).toContain("#ffffff"); // background
+    expect(html).toContain("Background");
+  });
+
+  it("skips empty colors", () => {
+    const data = fullData();
+    data.colors.secondary = "";
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).not.toContain("Secondary");
+  });
+
+  it("sanitizes malicious color values in swatch style attribute", () => {
+    const data = fullData();
+    data.colors.primary = "red; background-image: url(https://exfil.example)";
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).not.toContain("background-image");
+    expect(html).not.toContain("exfil");
+  });
+});
+
+describe("showcase — spacing + radii", () => {
+  it("renders spacing scale bars when scale is present", () => {
+    const data = fullData();
+    data.spacing.scale = ["4px", "8px", "16px", "24px", "32px"];
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("sc-spacing-bar");
+    expect(html).toContain("8px");
+  });
+
+  it("omits spacing section when scale is empty", () => {
+    const data = fullData();
+    data.spacing.scale = [];
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).not.toContain("sc-spacing-bar");
+  });
+
+  it("renders radius swatches for button, card, pill", () => {
+    const data = fullData();
+    data.borders.radii = { button: "8px", card: "12px", pill: "999px" };
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("sc-radius-chip");
+    expect(html).toContain("Button");
+  });
+});
+
+describe("showcase — components", () => {
+  it("renders live button with extracted styles", () => {
+    const data = fullData();
+    data.components = {
+      button: { primary: { background: "#635bff", color: "#ffffff", radius: "6px", padding: "12px 22px", fontSize: "15px", fontWeight: "600", border: "" } },
+    };
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).toContain("sc-component-section");
+    expect(html).toContain("Get started");
+  });
+
+  it("omits component section when no components extracted", () => {
+    const data = fullData();
+    data.components = undefined;
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).not.toContain("sc-component-section");
+  });
+});
+
+describe("showcase — design.md source", () => {
+  it("renders raw design.md when opts.designMd is provided", () => {
+    const data = fullData();
+    const html = renderPreview(data, { title: "Acme", designMd: "---\nname: Acme\n---\n\n## Overview\n" });
+    expect(html).toContain("sc-source-block");
+    expect(html).toContain("name: Acme");
+  });
+
+  it("omits source block when opts.designMd is empty", () => {
+    const data = fullData();
+    const html = renderPreview(data, { title: "Acme" });
+    expect(html).not.toContain("sc-source-block");
+  });
+});

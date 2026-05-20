@@ -2,28 +2,29 @@ import type { DesignSystemData } from "./api";
 
 export interface RenderPreviewOptions {
   title?: string;
+  designMd?: string;
 }
 
-const SAFE_COLOR = /^[#a-zA-Z0-9(),./%\s.-]+$/;
+export const SAFE_COLOR = /^[#a-zA-Z0-9(),./%\s.-]+$/;
 const SAFE_FONT = /^[a-zA-Z0-9 _-]+$/;
 // Font stacks contain comma-separated family names, quoted or bare, plus the
 // CSS generic keywords. We don't allow braces, semicolons, parens, or @ to
 // keep arbitrary CSS out of our <style> block.
 const SAFE_STACK = /^[a-zA-Z0-9 ,'"._\-]+$/;
-const SAFE_SIZE = /^\d+(\.\d+)?(px|rem|em|%)$/;
+export const SAFE_SIZE = /^\d+(\.\d+)?(px|rem|em|%)$/;
 const SAFE_WEIGHT = /^[1-9]00$|^\d{3}$/;
 // Padding shorthand: one to four space-separated length values.
 const SAFE_PADDING = /^\d+(\.\d+)?(px|rem|em|%)(\s+\d+(\.\d+)?(px|rem|em|%)){0,3}$/;
 // Border shorthand: "<width> <style> <color>" e.g. "1px solid #e5e5e5".
 const SAFE_BORDER = /^\d+(\.\d+)?(px|rem|em)\s+(solid|dashed|dotted|double)\s+#[0-9a-fA-F]{3,8}$/;
 
-function safe(value: string, pattern: RegExp): string {
+export function safe(value: string, pattern: RegExp): string {
   if (!value) return "";
   const trimmed = value.trim();
   return pattern.test(trimmed) ? trimmed : "";
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -31,6 +32,16 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+const COLOR_LABELS: { key: keyof DesignSystemData["colors"]; label: string }[] = [
+  { key: "primary",    label: "Primary"    },
+  { key: "secondary",  label: "Secondary"  },
+  { key: "accent",     label: "Accent"     },
+  { key: "background", label: "Background" },
+  { key: "surface",    label: "Surface"    },
+  { key: "text",       label: "Text"       },
+  { key: "textMuted",  label: "Text Muted" },
+];
 
 function buildFontFamily(stack: string, primary: string): string {
   // Use the brand's full captured stack verbatim when it survives sanitization
@@ -44,6 +55,206 @@ function buildFontFamily(stack: string, primary: string): string {
   const safePrimary = safe(primary, SAFE_FONT);
   if (safePrimary) return `"${safePrimary}", system-ui, sans-serif`;
   return "system-ui, sans-serif";
+}
+
+function renderShowcase(data: DesignSystemData, designMd: string): string {
+  // ── Colors ──────────────────────────────────────────────────
+  const colorSwatches = COLOR_LABELS
+    .filter(({ key }) => (data.colors[key] ?? "").trim())
+    .map(({ key, label }) => {
+      const value = safe(data.colors[key].trim(), SAFE_COLOR);
+      if (!value) return null;
+      return `<div class="sc-swatch">
+        <div class="sc-swatch-chip" style="background:${value}"></div>
+        <div class="sc-swatch-label">${escapeHtml(label)}</div>
+        <div class="sc-swatch-value">${escapeHtml(value)}</div>
+      </div>`;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  const colorsSection = colorSwatches
+    ? `<section class="sc-section">
+        <h2 class="sc-section-title">Colors</h2>
+        <div class="sc-swatches">${colorSwatches}</div>
+      </section>`
+    : "";
+
+  // ── Typography ───────────────────────────────────────────
+  const headingSamples = [
+    { size: safe(data.typography.headingSizes.h1, SAFE_SIZE) || "56px", label: "Heading 1" },
+    { size: safe(data.typography.headingSizes.h2, SAFE_SIZE) || "32px", label: "Heading 2" },
+    { size: safe(data.typography.headingSizes.h3, SAFE_SIZE) || "20px", label: "Heading 3" },
+  ].map(({ size, label }) => `
+  <div class="sc-type-sample">
+    <div class="sc-type-specimen" style="font-family:var(--ds-heading-font);font-weight:var(--ds-heading-weight);font-size:${size};line-height:1.1;">The quick brown fox</div>
+    <div class="sc-type-meta">${escapeHtml(label)} · ${escapeHtml(size)} · weight ${escapeHtml(safe(data.typography.headingWeight, SAFE_WEIGHT) || "700")}</div>
+  </div>`).join("\n");
+
+  const bodyLabel = `Body / Regular · ${escapeHtml(safe(data.typography.bodyFont, SAFE_FONT) || "system-ui")} · weight ${escapeHtml(safe(data.typography.bodyWeight, SAFE_WEIGHT) || "400")}`;
+  const bodySample = `
+  <div class="sc-type-sample">
+    <div class="sc-type-specimen" style="font-family:var(--ds-body-font);font-weight:var(--ds-body-weight);font-size:16px;line-height:1.6;">The quick brown fox jumps over the lazy dog. Bright vixens jump; dozy fowl quack. Pack my box with five dozen liquor jugs.</div>
+    <div class="sc-type-meta">${bodyLabel}</div>
+  </div>`;
+
+  const typographySection = `<section class="sc-section">
+  <h2 class="sc-section-title">Typography</h2>
+  <div class="sc-type-stack">
+    ${headingSamples}
+    ${bodySample}
+  </div>
+</section>`;
+
+  // ── Spacing scale ────────────────────────────────────────
+  const scale = data.spacing?.scale ?? [];
+  const spacingSection = scale.length
+    ? `<style>
+.sc-spacing-track { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.sc-spacing-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.sc-spacing-bar {
+  background: color-mix(in srgb, var(--ds-primary, var(--ds-text)) 60%, var(--ds-bg));
+  border-radius: 2px;
+  min-width: 4px; min-height: 4px;
+  max-width: 120px; max-height: 120px;
+}
+.sc-spacing-val { font-size: 11px; color: var(--ds-muted); font-family: monospace; }
+</style>
+<section class="sc-section">
+      <h2 class="sc-section-title">Spacing Scale</h2>
+      <div class="sc-spacing-track">
+        ${scale.map((v) => {
+          const sv = safe(v, SAFE_SIZE);
+          if (!sv) return "";
+          return `<div class="sc-spacing-item">
+            <div class="sc-spacing-bar" style="width:${escapeHtml(sv)};height:${escapeHtml(sv)};"></div>
+            <div class="sc-spacing-val">${escapeHtml(sv)}</div>
+          </div>`;
+        }).join("\n")}
+      </div>
+    </section>`
+    : "";
+
+  // ── Border radii ─────────────────────────────────────────
+  const radiiItems: { label: string; value: string }[] = [
+    { label: "Default", value: safe(data.borders.radius, SAFE_SIZE) },
+    { label: "Button",  value: safe(data.borders.radii?.button ?? "", SAFE_SIZE) },
+    { label: "Card",    value: safe(data.borders.radii?.card   ?? "", SAFE_SIZE) },
+    { label: "Pill",    value: safe(data.borders.radii?.pill   ?? "", SAFE_SIZE) },
+  ].filter(({ value }) => value);
+
+  const radiiSection = radiiItems.length
+    ? `<style>
+.sc-radius-chip {
+  width: 64px; height: 64px;
+  background: color-mix(in srgb, var(--ds-primary, var(--ds-text)) 25%, var(--ds-bg));
+  border: 1.5px solid color-mix(in srgb, var(--ds-primary, var(--ds-text)) 65%, var(--ds-bg));
+}
+</style>
+<section class="sc-section">
+      <h2 class="sc-section-title">Border Radii</h2>
+      <div class="sc-swatches">
+        ${radiiItems.map(({ label, value }) => `
+          <div class="sc-swatch">
+            <div class="sc-radius-chip" style="border-radius:${escapeHtml(value)};"></div>
+            <div class="sc-swatch-label">${escapeHtml(label)}</div>
+            <div class="sc-swatch-value">${escapeHtml(value)}</div>
+          </div>`).join("\n")}
+      </div>
+    </section>`
+    : "";
+
+  // ── Component anatomy ────────────────────────────────────
+  const comps = data.components;
+  let componentSection = "";
+  if (comps) {
+    const bp = comps.button?.primary;
+    const card = comps.card;
+    const link = comps.link;
+    const hasButton = !!(bp && (bp.background || bp.color || bp.radius));
+    const hasCard = !!(card && (card.background || card.border || card.padding));
+    const hasLink = !!(link && link.color);
+
+    if (hasButton || hasCard || hasLink) {
+      const btnBg = safe(bp?.background ?? "", SAFE_COLOR) || "var(--ds-primary)";
+      const btnColor = safe(bp?.color ?? "", SAFE_COLOR) || "var(--ds-bg)";
+      const btnRadius = safe(bp?.radius ?? "", SAFE_SIZE) || "var(--ds-button-radius)";
+      const btnPad = safe(bp?.padding ?? "", SAFE_PADDING) || "12px 22px";
+      const btnFs = safe(bp?.fontSize ?? "", SAFE_SIZE) || "15px";
+      const btnFw = safe(bp?.fontWeight ?? "", SAFE_WEIGHT) || "600";
+
+      const cardBgC = safe(card?.background ?? "", SAFE_COLOR) || "var(--ds-bg)";
+      const cardBorderC = safe(card?.border ?? "", SAFE_BORDER) || "1px solid var(--ds-border)";
+      const cardRadiusC = safe(card?.radius ?? "", SAFE_SIZE) || "var(--ds-card-radius)";
+      const cardPadC = safe(card?.padding ?? "", SAFE_PADDING) || "24px";
+
+      const linkColorC = safe(link?.color ?? "", SAFE_COLOR) || "var(--ds-primary)";
+      const linkDeco = (link?.textDecoration ?? "").trim() === "underline" ? "underline" : "none";
+
+      componentSection = `<section class="sc-section sc-component-section">
+      <h2 class="sc-section-title">Components</h2>
+      <div class="sc-comp-grid">
+        ${hasButton ? `<div class="sc-comp-item">
+          <button style="background:${btnBg};color:${btnColor};border-radius:${btnRadius};padding:${btnPad};font-size:${btnFs};font-weight:${btnFw};border:0;font-family:var(--ds-body-font);cursor:pointer;">Get started</button>
+          <div class="sc-comp-label">Primary Button</div>
+        </div>` : ""}
+        ${hasButton ? `<div class="sc-comp-item">
+          <button style="background:transparent;color:var(--ds-text);border-radius:${btnRadius};padding:${btnPad};font-size:${btnFs};font-weight:${btnFw};border:1px solid var(--ds-border);font-family:var(--ds-body-font);cursor:pointer;">Learn more</button>
+          <div class="sc-comp-label">Ghost Button</div>
+        </div>` : ""}
+        ${hasCard ? `<div class="sc-comp-item">
+          <div style="background:${cardBgC};border:${cardBorderC};border-radius:${cardRadiusC};padding:${cardPadC};max-width:220px;">
+            <div style="font-family:var(--ds-heading-font);font-weight:var(--ds-heading-weight);font-size:var(--ds-h3-size);margin:0 0 8px 0;">Card Title</div>
+            <div style="font-size:14px;color:var(--ds-muted);">Sample card body text extracted from the site.</div>
+          </div>
+          <div class="sc-comp-label">Card</div>
+        </div>` : ""}
+        ${hasLink ? `<div class="sc-comp-item">
+          <a style="color:${linkColorC};text-decoration:${linkDeco};font-family:var(--ds-body-font);">Example link text</a>
+          <div class="sc-comp-label">Link</div>
+        </div>` : ""}
+      </div>
+    </section>`;
+    }
+  }
+
+  // ── design.md source ──────────────────────────────────────
+  const sourceSection = designMd
+    ? `<style>
+.sc-source-block {
+  background: color-mix(in srgb, var(--ds-text) 4%, var(--ds-bg));
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  padding: 24px;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.7;
+  font-family: "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  color: var(--ds-text);
+  white-space: pre;
+  max-height: 480px;
+  overflow-y: auto;
+}
+</style>
+<section class="sc-section">
+  <h2 class="sc-section-title">design.md source</h2>
+  <pre class="sc-source-block"><code>${escapeHtml(designMd)}</code></pre>
+</section>`
+    : "";
+
+  return `
+<div class="ds-showcase">
+  <div class="sc-header">
+    <span class="sc-header-label">Design System Tokens</span>
+    <span class="sc-header-sub">Extracted deterministically — no LLM</span>
+  </div>
+  ${colorsSection}
+  ${typographySection}
+  ${spacingSection}
+  ${radiiSection}
+  ${componentSection}
+  ${sourceSection}
+</div>`;
 }
 
 export function renderPreview(
@@ -282,6 +493,59 @@ footer {
   color: var(--ds-muted);
   border-top: 1px solid var(--ds-border);
 }
+/* ── Design System Showcase ─────────────────────────── */
+.ds-showcase {
+  border-top: 2px solid var(--ds-border);
+  padding: 64px 40px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.sc-header {
+  display: flex; align-items: baseline; gap: 16px;
+  margin-bottom: 48px;
+}
+.sc-header-label {
+  font-family: var(--ds-heading-font);
+  font-weight: var(--ds-heading-weight);
+  font-size: 28px;
+  letter-spacing: -0.5px;
+}
+.sc-header-sub {
+  font-size: 13px;
+  color: var(--ds-muted);
+}
+.sc-section { margin-bottom: 56px; }
+.sc-section-title {
+  font-family: var(--ds-heading-font);
+  font-weight: var(--ds-heading-weight);
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ds-muted);
+  margin: 0 0 20px 0;
+}
+.sc-swatches {
+  display: flex; flex-wrap: wrap; gap: 16px;
+}
+.sc-swatch {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  min-width: 80px;
+}
+.sc-swatch-chip {
+  width: 64px; height: 64px;
+  border-radius: var(--ds-radius);
+  border: 1px solid var(--ds-border);
+}
+.sc-swatch-label { font-size: 12px; font-weight: 600; }
+.sc-swatch-value { font-size: 11px; color: var(--ds-muted); font-family: monospace; }
+.sc-type-stack { display: flex; flex-direction: column; gap: 32px; }
+.sc-type-sample { border-bottom: 1px solid var(--ds-border); padding-bottom: 24px; }
+.sc-type-sample:last-child { border-bottom: none; }
+.sc-type-specimen { color: var(--ds-text); word-break: break-word; }
+.sc-type-meta { font-size: 11px; color: var(--ds-muted); margin-top: 8px; font-family: monospace; }
+.sc-comp-grid { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+.sc-comp-item { display: flex; flex-direction: column; gap: 10px; }
+.sc-comp-label { font-size: 11px; color: var(--ds-muted); font-family: monospace; }
 </style>
 </head>
 <body>
@@ -323,6 +587,7 @@ footer {
   </section>
 </main>
 <footer>Preview generated by free-design-md from extracted design tokens.</footer>
+${renderShowcase(data, opts.designMd ?? "")}
 </body>
 </html>
 `;
