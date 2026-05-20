@@ -31,10 +31,14 @@ export default function SignInModal({ open, onOpenChange }: SignInModalProps) {
 
   async function handleSignIn() {
     setPending(true);
-    // Mocked seam: pretend we round-tripped to Builder.io and signed in
-    // as the default dev user. Real seam: redirect to /api/auth/builder/start
-    // and the page navigates away — the setPending(false) below never runs.
-    signIn("matt@builder.io");
+    // Real seam: page navigates away to /api/auth/builder/start — never returns.
+    // Mock seam: signIn() returns a non-empty email synchronously, so we
+    // close the modal and reset the spinner here.
+    const result = signIn("matt@builder.io");
+    if (result.email) {
+      setPending(false);
+      onOpenChange(false);
+    }
   }
 
   return (
