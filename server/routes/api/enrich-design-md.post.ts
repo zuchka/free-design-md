@@ -84,7 +84,7 @@ export default defineEventHandler(async (event) => {
     setResponseStatus(event, 402);
     setResponseHeader(event, "Content-Type", "application/json");
     return {
-      error: "You've used all 3 free AI enrichments on your account",
+      error: "You've used all your free AI enrichments on this account",
       remaining: 0,
     };
   }

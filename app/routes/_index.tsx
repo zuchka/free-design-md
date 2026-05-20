@@ -429,7 +429,7 @@ export default function IndexRoute() {
                           size="sm"
                           variant="outline"
                           disabled
-                          title="You've used all 3 free AI enrichments"
+                          title="You've used all your free AI enrichments"
                         >
                           <IconLock size={14} />
                           <span className="ml-1">Out of free enrichments</span>
