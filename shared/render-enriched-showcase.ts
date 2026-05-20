@@ -1,4 +1,4 @@
-import type { EnrichedFrontmatter } from "./parse-enriched-design-md";
+import type { EnrichedFrontmatter, EnrichedTypographyScale } from "./parse-enriched-design-md";
 import { buildTokenMap, resolveTokenRefs } from "./parse-enriched-design-md";
 import { safe, escapeHtml, SAFE_COLOR, SAFE_SIZE } from "./preview-template";
 
@@ -15,6 +15,18 @@ function pick(map: Record<string, string>, ...keys: string[]): string {
   return "";
 }
 
+function findTypoProp(
+  typography: Record<string, EnrichedTypographyScale>,
+  prop: keyof EnrichedTypographyScale,
+  ...preferredScales: string[]
+): string {
+  for (const scale of preferredScales) {
+    const v = typography[scale]?.[prop];
+    if (v) return v;
+  }
+  return "";
+}
+
 export function renderEnrichedPreview(
   enriched: EnrichedFrontmatter,
   markdownSource: string,
@@ -22,15 +34,47 @@ export function renderEnrichedPreview(
 ): string {
   const tokenMap = buildTokenMap(enriched);
 
+  // Base color tokens
   const bg = safe(pick(enriched.colors, "canvas", "canvas-soft", "background"), SAFE_COLOR) || "#ffffff";
   const text = safe(pick(enriched.colors, "ink", "text"), SAFE_COLOR) || "#1a1a1a";
   const primary = safe(enriched.colors["primary"] ?? "", SAFE_COLOR) || "";
   const border = safe(pick(enriched.colors, "hairline", "border"), SAFE_COLOR) || "";
   const radius = safe(pick(enriched.rounded, "md", "sm"), SAFE_SIZE) || "8px";
 
-  const safeTitle = escapeHtml((enriched.name ?? title ?? "Design System").trim());
+  // Landing page typography — search common enriched scale name patterns
+  const headingFont = safe(
+    findTypoProp(enriched.typography, "fontFamily", "display-xl", "display-lg", "display-md", "h1") || "system-ui, sans-serif",
+    SAFE_STACK,
+  ) || "system-ui, sans-serif";
+  const headingWeight = safe(
+    findTypoProp(enriched.typography, "fontWeight", "display-xl", "display-lg", "h1") || "700",
+    SAFE_WEIGHT,
+  ) || "700";
+  const bodyFont = safe(
+    findTypoProp(enriched.typography, "fontFamily", "body-md", "body-lg", "body", "body-sm") || "system-ui, sans-serif",
+    SAFE_STACK,
+  ) || "system-ui, sans-serif";
+  const bodyWeight = safe(
+    findTypoProp(enriched.typography, "fontWeight", "body-md", "body") || "400",
+    SAFE_WEIGHT,
+  ) || "400";
+  const h1Size = safe(
+    findTypoProp(enriched.typography, "fontSize", "display-xl", "display-lg", "h1") || "56px",
+    SAFE_SIZE,
+  ) || "56px";
+  const h3Size = safe(
+    findTypoProp(enriched.typography, "fontSize", "title", "display-sm", "h3", "body-lg") || "20px",
+    SAFE_SIZE,
+  ) || "20px";
+  const buttonRadius = safe(pick(enriched.rounded, "pill", "xl", "lg", "md"), SAFE_SIZE) || radius;
+  const cardRadius = safe(pick(enriched.rounded, "xl", "lg", "md"), SAFE_SIZE) || radius;
 
-  // ── Colors ──────────────────────────────────────────────────────────────────
+  const safeTitle = escapeHtml((enriched.name ?? title ?? "Design System").trim());
+  const initial = escapeHtml(((enriched.name ?? title ?? "B").charAt(0) || "B").toUpperCase());
+  const primaryVar = primary || "var(--eds-text)";
+  const borderVar = border || "color-mix(in srgb, var(--eds-text) 12%, var(--eds-bg))";
+
+  // ── Colors ────────────────────────────────────────────────────────────────────
   const colorEntries = Object.entries(enriched.colors);
   const colorSwatches = colorEntries.map(([tokenName, value]) => {
     const sv = safe(value, SAFE_COLOR);
@@ -49,7 +93,7 @@ export function renderEnrichedPreview(
       </section>`
     : "";
 
-  // ── Typography ───────────────────────────────────────────────────────────────
+  // ── Typography ────────────────────────────────────────────────────────────────
   const typographyEntries = Object.entries(enriched.typography);
   const typeSamples = typographyEntries.map(([scaleName, scale]) => {
     const fontSize = safe(scale.fontSize ?? "", SAFE_SIZE);
@@ -78,7 +122,7 @@ export function renderEnrichedPreview(
       </section>`
     : "";
 
-  // ── Spacing ──────────────────────────────────────────────────────────────────
+  // ── Spacing ───────────────────────────────────────────────────────────────────
   const spacingEntries = Object.entries(enriched.spacing);
   const spacingItems = spacingEntries.map(([tokenName, value]) => {
     const sv = safe(value, SAFE_SIZE);
@@ -97,7 +141,7 @@ export function renderEnrichedPreview(
       </section>`
     : "";
 
-  // ── Radii ────────────────────────────────────────────────────────────────────
+  // ── Radii ─────────────────────────────────────────────────────────────────────
   const radiiEntries = Object.entries(enriched.rounded);
   const radiiItems = radiiEntries.map(([tokenName, value]) => {
     const sv = safe(value.trim(), SAFE_SIZE);
@@ -116,7 +160,7 @@ export function renderEnrichedPreview(
       </section>`
     : "";
 
-  // ── Components ───────────────────────────────────────────────────────────────
+  // ── Components ────────────────────────────────────────────────────────────────
   const componentEntries = Object.entries(enriched.components);
   const componentCards = componentEntries.map(([compName, props]) => {
     const resolved = Object.fromEntries(
@@ -144,7 +188,7 @@ export function renderEnrichedPreview(
       <div class="eds-comp-name">${escapeHtml(compName)}</div>
       ${livePreview}
       <table class="eds-token-table">
-        <thead><tr><th>prop</th><th>resolved</th><th>token</th></tr></thead>
+        <thead><tr><th class="col-prop">prop</th><th class="col-resolved">resolved</th><th class="col-token">token</th></tr></thead>
         <tbody>${tokenRows}</tbody>
       </table>
     </div>`;
@@ -157,7 +201,7 @@ export function renderEnrichedPreview(
       </section>`
     : "";
 
-  // ── design.md source ─────────────────────────────────────────────────────────
+  // ── design.md source ──────────────────────────────────────────────────────────
   const sourceSection = markdownSource
     ? `<section class="eds-section">
         <h2 class="eds-section-title">design.md source</h2>
@@ -165,14 +209,11 @@ export function renderEnrichedPreview(
       </section>`
     : "";
 
-  const primaryVar = primary || "var(--eds-text)";
-  const borderVar = border || "color-mix(in srgb, var(--eds-text) 12%, var(--eds-bg))";
-
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>AI-Enriched Design System — ${safeTitle}</title>
+<title>AI-Enriched — ${safeTitle}</title>
 <style>
 :root {
   --eds-bg: ${bg};
@@ -181,13 +222,40 @@ export function renderEnrichedPreview(
   --eds-border: ${borderVar};
   --eds-muted: color-mix(in srgb, var(--eds-text) 50%, var(--eds-bg));
   --eds-radius: ${radius};
+  --eds-heading-font: ${headingFont};
+  --eds-heading-weight: ${headingWeight};
+  --eds-body-font: ${bodyFont};
+  --eds-body-weight: ${bodyWeight};
+  --eds-h1-size: ${h1Size};
+  --eds-h3-size: ${h3Size};
+  --eds-button-radius: ${buttonRadius};
+  --eds-card-radius: ${cardRadius};
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; background: var(--eds-bg); color: var(--eds-text); font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-.eds-wrap { max-width: 960px; margin: 0 auto; padding: 48px 40px 80px; }
+html, body { margin: 0; padding: 0; background: var(--eds-bg); color: var(--eds-text); font-family: var(--eds-body-font); font-weight: var(--eds-body-weight); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+/* ── Landing page ─────────────────────────────────────── */
+.lp-nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px; border-bottom: 1px solid var(--eds-border); }
+.lp-brand { display: flex; align-items: center; gap: 12px; }
+.lp-brand-initials { width: 32px; height: 32px; border-radius: 6px; background: ${primary || "var(--eds-text)"}; color: var(--eds-bg); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; font-family: var(--eds-heading-font); }
+.lp-brand-name { font-family: var(--eds-heading-font); font-weight: var(--eds-heading-weight); font-size: 18px; letter-spacing: -0.2px; }
+.lp-nav-links { display: flex; gap: 24px; color: var(--eds-muted); font-size: 14px; }
+.lp-hero { padding: 96px 40px 48px; max-width: 960px; margin: 0 auto; }
+.lp-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${primary || "var(--eds-muted)"}; margin-bottom: 20px; }
+.lp-hero h1 { font-family: var(--eds-heading-font); font-weight: var(--eds-heading-weight); font-size: var(--eds-h1-size); line-height: 1.08; letter-spacing: -1.5px; margin: 0 0 24px; text-wrap: balance; }
+.lp-lede { font-size: 18px; color: var(--eds-muted); margin: 0 0 40px; max-width: 640px; }
+.lp-ctas { display: flex; gap: 12px; }
+.lp-btn-primary { background: var(--eds-primary); color: var(--eds-bg); border: 0; border-radius: var(--eds-button-radius); padding: 12px 22px; font-family: var(--eds-body-font); font-weight: 600; font-size: 15px; cursor: pointer; }
+.lp-btn-ghost { background: transparent; color: var(--eds-text); border: 1px solid var(--eds-border); border-radius: var(--eds-button-radius); padding: 12px 22px; font-family: var(--eds-body-font); font-weight: 600; font-size: 15px; cursor: pointer; }
+.lp-cards { padding: 24px 40px 64px; max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.lp-card { padding: 24px; border-radius: var(--eds-card-radius); border: 1px solid var(--eds-border); }
+.lp-card h3 { font-family: var(--eds-heading-font); font-weight: var(--eds-heading-weight); font-size: var(--eds-h3-size); margin: 0 0 12px; letter-spacing: -0.3px; }
+.lp-card p { font-size: 14px; color: var(--eds-muted); margin: 0; line-height: 1.5; }
+.lp-footer { padding: 20px 40px; font-size: 13px; color: var(--eds-muted); border-top: 1px solid var(--eds-border); }
+/* ── Design System Showcase ───────────────────────────── */
+.eds-wrap { border-top: 2px solid var(--eds-border); padding: 64px 40px 80px; max-width: 960px; margin: 0 auto; }
 .eds-header { margin-bottom: 48px; }
-.eds-header-label { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; }
-.eds-header-sub { font-size: 12px; color: var(--eds-muted); margin-top: 4px; }
+.eds-header-label { font-family: var(--eds-heading-font); font-weight: var(--eds-heading-weight); font-size: 28px; letter-spacing: -0.5px; }
+.eds-header-sub { font-size: 13px; color: var(--eds-muted); margin-top: 4px; }
 .eds-section { margin-bottom: 56px; }
 .eds-section-title { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--eds-muted); margin: 0 0 20px; display: flex; align-items: center; gap: 8px; }
 .eds-count { font-size: 10px; font-weight: 500; letter-spacing: 0.5px; background: color-mix(in srgb, var(--eds-text) 8%, var(--eds-bg)); border-radius: 10px; padding: 2px 8px; }
@@ -213,23 +281,55 @@ html, body { margin: 0; padding: 0; background: var(--eds-bg); color: var(--eds-
 .eds-radius-name { font-size: 10px; font-weight: 600; font-family: monospace; }
 .eds-radius-val { font-size: 10px; color: var(--eds-muted); font-family: monospace; }
 .eds-comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-.eds-comp-card { border: 1px solid var(--eds-border); border-radius: var(--eds-radius); padding: 16px; }
+.eds-comp-card { border: 1px solid var(--eds-border); border-radius: var(--eds-radius); padding: 16px; overflow: hidden; min-width: 0; }
 .eds-comp-name { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; font-family: monospace; color: var(--eds-primary); margin-bottom: 10px; }
 .eds-comp-preview { margin-bottom: 12px; }
-.eds-token-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: monospace; }
-.eds-token-table th { text-align: left; font-weight: 600; color: var(--eds-muted); border-bottom: 1px solid var(--eds-border); padding: 3px 0; }
-.eds-token-table td { padding: 3px 4px 3px 0; vertical-align: top; }
-.eds-token-prop { font-weight: 600; color: var(--eds-text); white-space: nowrap; }
+.eds-token-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: monospace; table-layout: fixed; }
+.eds-token-table th { text-align: left; font-weight: 600; color: var(--eds-muted); border-bottom: 1px solid var(--eds-border); padding: 3px 4px 3px 0; }
+.col-prop { width: 32%; }
+.col-resolved { width: 35%; }
+.col-token { width: 33%; }
+.eds-token-table td { padding: 3px 4px 3px 0; vertical-align: top; word-break: break-word; overflow-wrap: break-word; }
+.eds-token-prop { font-weight: 600; color: var(--eds-text); }
 .eds-token-resolved { color: var(--eds-text); }
 .eds-token-ref { color: var(--eds-muted); }
 .eds-source-block { background: color-mix(in srgb, var(--eds-text) 4%, var(--eds-bg)); border: 1px solid var(--eds-border); border-radius: var(--eds-radius); padding: 20px; overflow-x: auto; font-size: 11px; line-height: 1.7; font-family: ui-monospace, monospace; white-space: pre; max-height: 480px; overflow-y: auto; }
 </style>
 </head>
 <body>
+<header class="lp-nav">
+  <div class="lp-brand">
+    <div class="lp-brand-initials">${initial}</div>
+    <div class="lp-brand-name">${safeTitle}</div>
+  </div>
+  <nav class="lp-nav-links">
+    <span>Product</span>
+    <span>Pricing</span>
+    <span>Docs</span>
+    <span>Log in</span>
+  </nav>
+</header>
+<main>
+  <section class="lp-hero">
+    <div class="lp-label">Built with AI-enriched tokens</div>
+    <h1>This is what ${safeTitle} could look like.</h1>
+    <p class="lp-lede">A synthetic landing page styled with the AI-enriched design system. Squint — does it feel like the brand?</p>
+    <div class="lp-ctas">
+      <button class="lp-btn-primary">Get started</button>
+      <button class="lp-btn-ghost">Read docs</button>
+    </div>
+  </section>
+  <section class="lp-cards">
+    <div class="lp-card"><h3>Fast</h3><p>Extraction runs in under 10 seconds with no LLM in the loop.</p></div>
+    <div class="lp-card"><h3>Deterministic</h3><p>The same URL always produces the same design.md. No hallucinations.</p></div>
+    <div class="lp-card"><h3>Honest</h3><p>Empty fields stay empty. We don't fabricate brand colors we can't see.</p></div>
+  </section>
+</main>
+<footer class="lp-footer">Preview generated by free-design-md · AI-enriched tokens</footer>
 <div class="eds-wrap">
   <div class="eds-header">
     <div class="eds-header-label">${safeTitle} — AI-Enriched Design System</div>
-    <div class="eds-header-sub">Generated by Claude Opus 4.7 · Google Stitch schema</div>
+    <div class="eds-header-sub">Generated by Claude · Google Stitch schema</div>
   </div>
   ${colorsSection}
   ${typographySection}

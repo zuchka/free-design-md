@@ -452,13 +452,19 @@ export default function IndexRoute() {
                 ) : undefined
               }
             >
-              <div className="h-[900px] w-full overflow-hidden rounded-md border">
+              <div className="relative h-[900px] w-full overflow-hidden rounded-md border">
                 <iframe
                   srcDoc={activePreviewHtml}
                   title="Synthetic preview"
                   sandbox="allow-same-origin"
                   className="block h-full w-full"
                 />
+                {isEnriching && view === "enriched" && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
+                    <Spinner className="size-6 text-foreground" />
+                    <p className="text-sm text-muted-foreground">Enriching with AI…</p>
+                  </div>
+                )}
               </div>
             </Pane>
           </div>
