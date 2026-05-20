@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
     return { error: "Sign in to unlock credits" };
   }
 
-  const body = await readBody(event);
+  const body = await readBody<Record<string, unknown>>(event);
   const apiKey =
     typeof body?.apiKey === "string" ? body.apiKey.trim() : "";
 

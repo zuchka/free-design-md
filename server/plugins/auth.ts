@@ -21,6 +21,9 @@ export default createAuthPlugin({
     // /api/auth/me returns 401 itself for unauthenticated users; the
     // framework must not intercept it first or the client never sees the JSON.
     "/api/auth/me",
+    // /api/auth/unlock-with-builder-key handles its own 401 for unauthenticated
+    // requests; the framework must not intercept it first.
+    "/api/auth/unlock-with-builder-key",
     // Google Docs OAuth callback (unrelated, pre-existing).
     "/_agent-native/google-docs/callback",
     // The enrich endpoint gates auth inside the handler (returns 401/402 JSON).
