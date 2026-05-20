@@ -1,4 +1,32 @@
 import { createAuthPlugin } from "@agent-native/core/server";
+import type { H3Event } from "h3";
+import { getCookie } from "h3";
+import {
+  SESSION_COOKIE_NAME,
+  lookupSession,
+} from "../lib/builder-session.js";
+
+/**
+ * Bridge the framework's getSession() escape hatch to our SQLite-backed
+ * Builder.io session cookie.
+ *
+ * When set, `AuthOptions.getSession` causes the framework to skip
+ * better-auth entirely. Every existing caller of `getSession(event)`
+ * (see server/handlers/request-auth-context.ts) keeps working without
+ * any changes — they read `{ email, userId }` off the AuthSession
+ * shape that this function returns.
+ */
+async function builderGetSession(event: H3Event) {
+  const token = getCookie(event, SESSION_COOKIE_NAME);
+  if (!token) return null;
+  const session = await lookupSession(token);
+  if (!session) return null;
+  return {
+    email: session.email,
+    userId: session.userId,
+    name: session.name ?? undefined,
+  };
+}
 
 export default createAuthPlugin({
   marketing: {
@@ -11,36 +39,26 @@ export default createAuthPlugin({
       "Drop the design.md into a Builder.io Space and iterate with an agent",
     ],
   },
+  getSession: builderGetSession,
   publicPaths: [
-    // The extractor (and its sibling /quality dashboard) are the product
-    // surface. They render without any real auth — the "Sign in" gate is
-    // a UX layer inside / that controls the AI-enrichment button, not a
-    // route-level redirect. The framework's auth plugin must let these
-    // routes through, otherwise it serves its own marketing/sign-in page.
+    // Product surface stays public — the "Sign in" gate is enforced
+    // at the enrich endpoint, not by a route-level redirect.
     "/",
     "/quality",
-    "/_agent-native/google-docs/callback",
-    // React Router's lazy route-discovery endpoint must stay public so
-    // the SPA can fetch its route manifest.
     "/__manifest",
-    // Curl-friendly extractor endpoint: returns text/markdown by default,
-    // or JSON with the full payload (screenshot + tokens + signals) when
-    // called with ?format=json. SSRF-guarded by assertSafeUrl.
     "/api/extract",
-    // AI enrichment endpoint. The per-user 3-free-enrichments gate is
-    // enforced client-side via the mocked auth seam (Phase 2). A real
-    // server-side gate ships in Phase 3 alongside Builder.io OAuth.
-    "/api/enrich-design-md",
-    // Builder OAuth flow — these must be public so unauthenticated users
-    // can sign in. The start route issues the redirect; the callback route
-    // receives the code and establishes the session.
+    // Auth endpoints must be public — they're how users sign in.
     "/api/auth/builder/start",
     "/api/auth/builder/callback",
-    // Signout is idempotent — must work even if the framework session has
-    // already expired or never existed.
     "/api/auth/builder/signout",
-    // me returns 401 itself when unauthenticated; the framework must not
-    // intercept it first or the client never sees our error shape.
     "/api/auth/me",
+    // Google Docs OAuth callback (unrelated, pre-existing).
+    "/_agent-native/google-docs/callback",
+    // The enrich endpoint is intentionally NOT in publicPaths — but
+    // because our framework auth guard only blocks unauthenticated
+    // visits when getSession returns null AND the path isn't here,
+    // we need it here too to avoid the framework's marketing page
+    // taking over. The real gate happens inside the handler.
+    "/api/enrich-design-md",
   ],
 });
