@@ -115,6 +115,63 @@ describe("parseEnrichedFrontmatter", () => {
     expect(result?.name).toBe("Acme Corp");
     expect(result?.colors["primary"]).toBe("#635BFF");
   });
+
+  it("parses fontFamily with an unquoted comma-separated fallback stack", () => {
+    // LLMs emit  fontFamily: "Courier New", Courier, monospace  (first entry quoted,
+    // rest unquoted) — the yaml library reads "Courier New" as the complete scalar
+    // and throws on the tail.  The parser must pre-process this before calling yaml.parse.
+    const md = `---
+version: alpha
+name: DING
+description: Test
+colors:
+  canvas: "#0e0e0e"
+typography:
+  display-xl:
+    fontFamily: "Courier New", Courier, monospace
+    fontSize: 57.6px
+    fontWeight: 700
+    lineHeight: 63.36px
+    letterSpacing: -1px
+rounded:
+  sm: 6px
+spacing:
+  xl: 20px
+components: {}
+---
+
+## Body
+`;
+    const result = parseEnrichedFrontmatter(md);
+    expect(result).not.toBeNull();
+    expect(result?.typography["display-xl"]?.fontFamily).toBe('"Courier New", Courier, monospace');
+    expect(result?.typography["display-xl"]?.fontSize).toBe("57.6px");
+  });
+
+  it("does not double-quote a fontFamily already fully wrapped in double quotes", () => {
+    const md = `---
+version: alpha
+name: Test
+description: Test
+colors:
+  canvas: "#fff"
+typography:
+  body-md:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: 16px
+    fontWeight: 400
+    lineHeight: 24px
+rounded:
+  sm: 6px
+spacing:
+  md: 16px
+components: {}
+---
+`;
+    const result = parseEnrichedFrontmatter(md);
+    expect(result).not.toBeNull();
+    expect(result?.typography["body-md"]?.fontFamily).toBe("Inter, system-ui, sans-serif");
+  });
 });
 
 describe("buildTokenMap", () => {

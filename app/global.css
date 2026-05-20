@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap");
 
 @import "tailwindcss";
@@ -13,78 +13,56 @@ button[title="Open agent sidebar"] {
 }
 
 :root {
-  --background: 240 6% 4%;
-  --foreground: 240 6% 93%;
-
-  --card: 240 5% 8%;
-  --card-foreground: 240 6% 93%;
-
-  --popover: 240 5% 10%;
-  --popover-foreground: 240 6% 93%;
-
-  --primary: 0 0% 75%;
-  --primary-foreground: 240 6% 4%;
-
-  --secondary: 240 4% 14%;
-  --secondary-foreground: 240 6% 93%;
-
-  --muted: 240 4% 14%;
-  --muted-foreground: 240 4% 55%;
-
-  --accent: 240 4% 14%;
-  --accent-foreground: 240 6% 93%;
-
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 0 0% 100%;
-
-  --border: 240 4% 16%;
-  --input: 240 4% 16%;
-  --ring: 0 0% 50%;
-
-  --radius: 0.5rem;
-
-  --surface: 240 5% 10%;
-  --surface-hover: 240 5% 13%;
-}
-
-.light {
+  /* Intuit light-mode design tokens */
   --background: 0 0% 100%;
-  --foreground: 240 6% 10%;
+  --foreground: 208 13% 15%;
 
   --card: 0 0% 100%;
-  --card-foreground: 240 6% 10%;
+  --card-foreground: 208 13% 15%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 240 6% 10%;
+  --popover-foreground: 208 13% 15%;
 
-  --primary: 240 6% 10%;
+  --primary: 220 100% 57%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 240 5% 96%;
-  --secondary-foreground: 240 6% 10%;
+  --secondary: 45 15% 95%;
+  --secondary-foreground: 229 3% 23%;
 
-  --muted: 240 5% 96%;
-  --muted-foreground: 240 4% 46%;
+  --muted: 45 15% 95%;
+  --muted-foreground: 231 3% 43%;
 
-  --accent: 240 5% 96%;
-  --accent-foreground: 240 6% 10%;
+  --accent: 45 15% 95%;
+  --accent-foreground: 229 3% 23%;
 
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
+  --destructive: 0 100% 36%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 240 6% 90%;
-  --input: 240 6% 90%;
-  --ring: 240 5% 65%;
+  --border: 218 11% 85%;
+  --input: 218 11% 85%;
+  --ring: 220 100% 57%;
 
-  --surface: 240 5% 96%;
-  --surface-hover: 240 5% 92%;
+  /* 4px — Intuit's universal UI radius */
+  --radius: 0.25rem;
+
+  --surface: 45 15% 95%;
+  --surface-hover: 45 15% 90%;
+
+  /* Intuit brand extras */
+  --intuit-hero-start: #0a1e4a;
+  --intuit-hero-end: #1a56b0;
+  --intuit-primary: #236cff;
+  --intuit-error-bg: #fad7d6;
+  --intuit-error: #b80000;
+  --intuit-link: #0077c5;
+  --intuit-card-shadow: rgba(35, 108, 255, 0.08) 0px 4px 16px 0px;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground antialiased;
     font-family:
-      "Inter",
+      "Nunito",
       system-ui,
       -apple-system,
       sans-serif;

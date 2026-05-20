@@ -22,7 +22,7 @@ export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
 ];
 
-const THEME_INIT_SCRIPT = getThemeInitScript("dark", true);
+const THEME_INIT_SCRIPT = getThemeInitScript("light", true);
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -39,7 +39,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         />
         <link rel="icon" type="image/svg+xml" href={appPath("/favicon.svg")} />
         <link rel="manifest" href={appPath("/manifest.json")} />
-        <meta name="theme-color" content="#EC4899" />
+        <meta name="theme-color" content="#236cff" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta
           name="apple-mobile-web-app-status-bar-style"
@@ -64,8 +64,8 @@ export default function Root() {
     <ClientOnly fallback={<DefaultSpinner />}>
       <ThemeProvider
         attribute="class"
-        defaultTheme="dark"
-        enableSystem
+        defaultTheme="light"
+        enableSystem={false}
         disableTransitionOnChange
       >
         <TooltipProvider>

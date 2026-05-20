@@ -8,7 +8,7 @@ import type { ExtractedSignals } from "../shared/extract-design-system.js";
  * whenever the prompt structure changes in a way that should produce
  * different output for the same URL.
  */
-export const PROMPT_VERSION = "v1";
+export const PROMPT_VERSION = "v2";
 
 export interface EnrichmentPromptInput {
   /** The URL the user is enriching a DESIGN.md for. */
@@ -92,6 +92,8 @@ Match the reference's structure exactly:
 3. **Never invent font names.** Use only the fonts present in the extracted typography signals. If the brand uses a proprietary face you can't name, write its closest open-source substitute as a 'fallback' note.
 4. **Token references are mandatory in components.** Component values must reference scales by '{token}' syntax, never raw values. The scales must be defined in the frontmatter blocks above.
 5. **The reference is for SCHEMA, not CONTENT.** Match the reference's SHAPE. Do not copy its colours, names, or prose — those belong to Vercel, not to the URL you're enriching.
+6. **fontFamily must be a single fully-quoted string.** Write fontFamily: "Courier New, Courier, monospace" — the entire font stack inside one set of double quotes. Never write fontFamily: "Courier New", Courier, monospace — quoting only the first name breaks YAML because the parser reads "Courier New" as the complete scalar and errors on the unquoted tail.
+7. **Scalar values containing ": " must be quoted.** If any value (especially the top-level description) contains a colon followed by a space, wrap the entire value in double quotes, e.g. description: "A brand: that uses colons".
 
 ## Reference DESIGN.md (Vercel — VoltAgent, MIT)
 
