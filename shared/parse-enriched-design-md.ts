@@ -33,8 +33,15 @@ export function parseEnrichedFrontmatter(markdown: string): EnrichedFrontmatter 
   // Allow trailing whitespace on the --- delimiters.
   const match = content.match(/(?:^|\n)---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
   if (!match?.[1]) return null;
+
+  // Wrap any unquoted root-level description value in double quotes so that
+  // long paragraphs containing ": " (colon-space) don't break yaml.parse.
+  const safeYaml = match[1].replace(
+    /^(description:\s+)([^|>"'\n].*?)(\s*)$/m,
+    (_, k, v, ws) => `${k}"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"${ws}`,
+  );
   try {
-    const raw = parse(match[1]);
+    const raw = parse(safeYaml);
     if (!raw || typeof raw !== "object") return null;
     return {
       version: typeof raw.version === "string" ? raw.version : undefined,
