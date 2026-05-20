@@ -15,7 +15,7 @@ import {
   IconLock,
   IconSparkles,
 } from "@tabler/icons-react";
-import { consumeQuota, useAuth } from "@/lib/auth";
+import { consumeQuota, useAuth, refreshQuota } from "@/lib/auth";
 import { readCache, writeCache } from "@/lib/extraction-cache";
 import SignInModal from "@/components/auth/SignInModal";
 import AccountChip from "@/components/auth/AccountChip";
@@ -504,6 +504,7 @@ export default function IndexRoute() {
                 hasScreenshot={!!result.screenshotDataUrl}
                 onEnrich={handleEnrich}
                 onSignIn={() => setSignInOpen(true)}
+                onUnlocked={() => void refreshQuota()}
               />
             )}
 
@@ -553,6 +554,7 @@ interface EnrichBannerProps {
   hasScreenshot: boolean;
   onEnrich: () => void;
   onSignIn: () => void;
+  onUnlocked: () => void;
 }
 
 function EnrichBanner({
@@ -562,10 +564,11 @@ function EnrichBanner({
   hasScreenshot,
   onEnrich,
   onSignIn,
+  onUnlocked,
 }: EnrichBannerProps) {
   const outOfQuota = user !== null && remaining === 0;
 
-  if (outOfQuota) return null;
+  if (outOfQuota) return <BuilderKeyUnlockCard onUnlocked={onUnlocked} />;
 
   return (
     <div
@@ -615,6 +618,132 @@ function EnrichBanner({
               Sign in to Enrich
             </Button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BuilderKeyUnlockCard({ onUnlocked }: { onUnlocked: () => void }) {
+  const [apiKey, setApiKey] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  async function handleUnlock() {
+    const trimmed = apiKey.trim();
+    if (!trimmed) return;
+    setStatus("loading");
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/auth/unlock-with-builder-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ apiKey: trimmed }),
+      });
+      const data = (await res.json()) as { error?: string; remaining?: number };
+      if (!res.ok) {
+        setStatus("error");
+        setErrorMsg(data.error ?? "Verification failed — try again.");
+        return;
+      }
+      setStatus("success");
+      await refreshQuota();
+      onUnlocked();
+    } catch {
+      setStatus("error");
+      setErrorMsg("Network error — check your connection and try again.");
+    }
+  }
+
+  if (status === "success") {
+    return (
+      <div
+        className="rounded-xl border p-6"
+        style={{
+          background: "linear-gradient(135deg, rgba(0,128,0,0.06) 0%, transparent 100%)",
+          borderColor: "rgba(0,160,0,0.2)",
+        }}
+      >
+        <p className="text-base font-semibold tracking-tight" style={{ color: "var(--intuit-primary)" }}>
+          10 more enrichments unlocked!
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your Builder.io space is linked. You're good to go.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-xl border p-6"
+      style={{
+        background: "linear-gradient(135deg, rgba(10,30,74,0.08) 0%, rgba(26,86,176,0.06) 60%, transparent 100%)",
+        borderColor: "rgba(35,108,255,0.18)",
+      }}
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <p className="text-base font-semibold tracking-tight">
+            You've used your 3 free enrichments.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Link a Builder.io space to unlock{" "}
+            <span style={{ color: "var(--intuit-primary)" }}>10 more — free, no credit card required.</span>
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            type="text"
+            placeholder="Paste your Builder.io public API key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void handleUnlock()}
+            disabled={status === "loading"}
+            className="h-9 flex-1 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+            style={{ borderColor: "rgba(35,108,255,0.3)" }}
+          />
+          <button
+            onClick={() => void handleUnlock()}
+            disabled={status === "loading" || !apiKey.trim()}
+            className="h-9 rounded-md px-4 text-sm font-medium text-white disabled:opacity-50"
+            style={{ background: "var(--intuit-primary)" }}
+          >
+            {status === "loading" ? "Verifying…" : "Unlock 10 more"}
+          </button>
+        </div>
+
+        {errorMsg && (
+          <p
+            className="rounded-md border px-3 py-2 text-xs"
+            style={{
+              borderColor: "rgba(184,0,0,0.25)",
+              backgroundColor: "var(--intuit-error-bg)",
+              color: "var(--intuit-error)",
+            }}
+          >
+            {errorMsg}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+          <span>
+            No Builder.io account?{" "}
+            <a
+              href="https://www.builder.io/signup?agentNativeFlow=design_extraction&source=free-design-md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              Sign up free — no credit card required →
+            </a>
+          </span>
+          <span>
+            Your public API key is in your Builder.io space settings under{" "}
+            <strong>Settings → Space → Public API Key</strong>.
+          </span>
         </div>
       </div>
     </div>
