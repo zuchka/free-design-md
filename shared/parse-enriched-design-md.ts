@@ -36,10 +36,20 @@ export function parseEnrichedFrontmatter(markdown: string): EnrichedFrontmatter 
 
   // Wrap any unquoted root-level description value in double quotes so that
   // long paragraphs containing ": " (colon-space) don't break yaml.parse.
-  const safeYaml = match[1].replace(
-    /^(description:\s+)([^|>"'\n].*?)(\s*)$/m,
-    (_, k, v, ws) => `${k}"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"${ws}`,
-  );
+  const safeYaml = match[1]
+    .replace(
+      /^(description:\s+)([^|>"'\n].*?)(\s*)$/m,
+      (_, k, v, ws) => `${k}"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"${ws}`,
+    )
+    // Fix font-stack values where only the first family name is double-quoted
+    // and the fallback list is an unquoted tail:
+    //   fontFamily: "Courier New", Courier, monospace
+    // yaml.parse reads "Courier New" as the complete scalar and errors on the tail.
+    // Wrapping the whole value in single quotes preserves the literal double quotes.
+    .replace(
+      /^([ \t]*\w[\w-]*:\s+)("(?:[^"\\]|\\.)*",\s*.+)$/mg,
+      (_, prefix, value) => `${prefix}'${value.replace(/'/g, "\\'")}'`,
+    );
   try {
     const raw = parse(safeYaml);
     if (!raw || typeof raw !== "object") return null;
