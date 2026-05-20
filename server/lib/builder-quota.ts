@@ -3,20 +3,28 @@ import { getDb, schema } from "../db/index.js";
 
 export const QUOTA_DEFAULT = 3;
 
-export async function ensureQuota(userId: string): Promise<void> {
+/**
+ * Callers pass `session.email` as the principal. The framework session
+ * sometimes resolves via the legacy `an_session_*` cookie path, which
+ * returns `{email, token}` with no `userId` — so email is the only
+ * identifier guaranteed to be present across both auth paths. The
+ * `fdmd_quota.user_id` column stores whatever stable string the caller
+ * passes; today that's the email.
+ */
+export async function ensureQuota(principal: string): Promise<void> {
   const db = getDb();
   await db
     .insert(schema.fdmdQuota)
-    .values({ userId, enrichCount: 0 })
+    .values({ userId: principal, enrichCount: 0 })
     .onConflictDoNothing({ target: schema.fdmdQuota.userId });
 }
 
-export async function quotaRemaining(userId: string): Promise<number> {
+export async function quotaRemaining(principal: string): Promise<number> {
   const db = getDb();
   const rows = await db
     .select({ enrichCount: schema.fdmdQuota.enrichCount })
     .from(schema.fdmdQuota)
-    .where(eq(schema.fdmdQuota.userId, userId))
+    .where(eq(schema.fdmdQuota.userId, principal))
     .limit(1);
   const used = rows[0]?.enrichCount ?? 0;
   return Math.max(0, QUOTA_DEFAULT - used);
@@ -31,9 +39,9 @@ export async function quotaRemaining(userId: string): Promise<number> {
  * insert one first.
  */
 export async function consumeQuota(
-  userId: string,
+  principal: string,
 ): Promise<{ ok: boolean; remaining: number }> {
-  await ensureQuota(userId);
+  await ensureQuota(principal);
   const db = getDb();
   const result = await db
     .update(schema.fdmdQuota)
@@ -42,7 +50,7 @@ export async function consumeQuota(
       updatedAt: sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`,
     })
     .where(
-      sql`${schema.fdmdQuota.userId} = ${userId} AND ${schema.fdmdQuota.enrichCount} < ${QUOTA_DEFAULT}`,
+      sql`${schema.fdmdQuota.userId} = ${principal} AND ${schema.fdmdQuota.enrichCount} < ${QUOTA_DEFAULT}`,
     )
     .returning({ enrichCount: schema.fdmdQuota.enrichCount });
 

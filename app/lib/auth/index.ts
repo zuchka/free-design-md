@@ -86,12 +86,21 @@ function getClientSnapshot(): AuthSnapshot {
 /**
  * React hook for subscribing to auth state. Use in components that need
  * to re-render when sign-in / sign-out / quota changes happen.
+ *
+ * `cb()` MUST fire unconditionally on every change event — gating it on
+ * `maybeUpdateSnapshot()` returning true breaks multi-subscriber scenes
+ * because the first listener mutates the shared `cachedSnapshot`, so the
+ * second listener sees no change and never wakes its React tree.
+ * Reference stability comes from `maybeUpdateSnapshot()` only replacing
+ * `cachedSnapshot` when the value actually changes; React's per-subscriber
+ * comparison in useSyncExternalStore handles dedupe of identical reads.
  */
 export function useAuth(): AuthSnapshot {
   return useSyncExternalStore<AuthSnapshot>(
     (cb) =>
       subscribe(() => {
-        if (maybeUpdateSnapshot()) cb();
+        maybeUpdateSnapshot();
+        cb();
       }),
     getClientSnapshot,
     () => SERVER_SNAPSHOT,
