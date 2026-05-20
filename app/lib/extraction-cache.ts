@@ -9,6 +9,8 @@ export interface CacheEntry {
   designSystemData: DesignSystemData
   signals?: { title?: string }
   screenshotDataUrl?: string
+  enrichedMarkdown?: string
+  enrichedModel?: string
 }
 
 interface StoredEntry extends CacheEntry {
@@ -32,16 +34,21 @@ export function readCache(url: string): CacheEntry | null {
 }
 
 export function writeCache(entry: CacheEntry): void {
-  const { url, markdown, designSystemData, signals, screenshotDataUrl } = entry
-  const stored = { url, markdown, designSystemData, signals, screenshotDataUrl, cachedAt: Date.now() }
+  const stored: StoredEntry = { ...entry, cachedAt: Date.now() }
+  const key = KEY_PREFIX + entry.url
   try {
-    localStorage.setItem(KEY_PREFIX + url, JSON.stringify(stored))
+    localStorage.setItem(key, JSON.stringify(stored))
+    return
+  } catch { /* quota — try progressively smaller */ }
+  try {
+    const { screenshotDataUrl: _s, ...withoutScreenshot } = stored
+    localStorage.setItem(key, JSON.stringify(withoutScreenshot))
+    return
+  } catch { /* still too big */ }
+  try {
+    const { enrichedMarkdown: _e, screenshotDataUrl: _s2, ...minimal } = stored
+    localStorage.setItem(key, JSON.stringify(minimal))
   } catch {
-    try {
-      const { screenshotDataUrl: _s, ...withoutScreenshot } = stored
-      localStorage.setItem(KEY_PREFIX + url, JSON.stringify(withoutScreenshot))
-    } catch {
-      // quota exceeded even without screenshot — silent fail
-    }
+    // quota exceeded even for minimal entry — silent fail
   }
 }

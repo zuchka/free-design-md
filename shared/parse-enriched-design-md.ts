@@ -20,19 +20,28 @@ export interface EnrichedFrontmatter {
 }
 
 export function parseEnrichedFrontmatter(markdown: string): EnrichedFrontmatter | null {
-  let content = markdown.trim();
+  // Normalize CRLF → LF (Claude streaming can emit \r\n on some paths)
+  let content = markdown.trim().replace(/\r\n/g, '\n');
 
   // Strip optional markdown/yaml code fence wrapper — LLMs sometimes add these
   // despite prompt instructions when using extended thinking.
-  const fenceMatch = content.match(/^```(?:markdown|yaml)?\n([\s\S]*?)\n```\s*$/);
+  const fenceMatch = content.match(/^```(?:markdown|yaml)?\s*\n([\s\S]*?)\n```\s*$/);
   if (fenceMatch?.[1]) content = fenceMatch[1].trim();
 
   // Find the first YAML frontmatter block. Allow optional preamble before ---
   // (extended thinking models occasionally emit a brief line before the delimiter).
-  const match = content.match(/(?:^|\n)---\n([\s\S]*?)\n---(?:\n|$)/);
+  // Allow trailing whitespace on the --- delimiters.
+  const match = content.match(/(?:^|\n)---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
   if (!match?.[1]) return null;
+
+  // Wrap any unquoted root-level description value in double quotes so that
+  // long paragraphs containing ": " (colon-space) don't break yaml.parse.
+  const safeYaml = match[1].replace(
+    /^(description:\s+)([^|>"'\n].*?)(\s*)$/m,
+    (_, k, v, ws) => `${k}"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"${ws}`,
+  );
   try {
-    const raw = parse(match[1]);
+    const raw = parse(safeYaml);
     if (!raw || typeof raw !== "object") return null;
     return {
       version: typeof raw.version === "string" ? raw.version : undefined,

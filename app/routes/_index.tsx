@@ -107,6 +107,16 @@ export default function IndexRoute() {
     if (cached) {
       setUrl(cached.url);
       setResult(cached);
+      if (cached.enrichedMarkdown) {
+        setEnriched({
+          markdown: cached.enrichedMarkdown,
+          model: cached.enrichedModel ?? 'cached',
+          latencyMs: 0,
+          usage: { inputTokens: 0, outputTokens: 0, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
+          stopReason: 'end_turn',
+        });
+        setView('enriched');
+      }
     } else {
       setUrl(urlParam);
       void extractUrl(urlParam);
@@ -127,6 +137,8 @@ export default function IndexRoute() {
     if (!parsed) return null;
     return renderEnrichedPreview(parsed, enriched.markdown, result?.signals?.title);
   }, [enriched?.markdown, result?.signals?.title]);
+
+  const enrichedPreviewFailed = enriched !== null && enrichedPreviewHtml === null;
 
   async function extractUrl(trimmed: string) {
     setIsLoading(true);
@@ -212,7 +224,19 @@ export default function IndexRoute() {
             setStreamingMarkdown(streamAccumRef.current);
           } else if (parsed.event === "done") {
             sawDone = true;
-            setEnriched(parsed.data as EnrichResult);
+            const enrichResult = parsed.data as EnrichResult;
+            setEnriched(enrichResult);
+            if (result) {
+              writeCache({
+                url: result.url,
+                markdown: result.markdown,
+                designSystemData: result.designSystemData,
+                signals: result.signals,
+                screenshotDataUrl: result.screenshotDataUrl,
+                enrichedMarkdown: enrichResult.markdown,
+                enrichedModel: enrichResult.model,
+              });
+            }
             // Charge the quota only when enrichment completed end-to-end.
             consumeQuota();
           } else if (parsed.event === "error") {
@@ -494,6 +518,14 @@ export default function IndexRoute() {
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
                     <Spinner className="size-6 text-foreground" />
                     <p className="text-sm text-muted-foreground">Enriching with AI…</p>
+                  </div>
+                )}
+                {enrichedPreviewFailed && view === "enriched" && !isEnriching && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 backdrop-blur-sm">
+                    <p className="text-sm font-medium">Enriched preview unavailable</p>
+                    <p className="text-xs text-muted-foreground max-w-xs text-center">
+                      The AI output didn't match the expected design token schema. The text view above has the full enriched content.
+                    </p>
                   </div>
                 )}
               </div>
