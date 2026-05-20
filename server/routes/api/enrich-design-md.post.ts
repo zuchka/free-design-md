@@ -4,6 +4,8 @@ import {
   setResponseHeader,
   setResponseStatus,
 } from "h3";
+import { getSession } from "@agent-native/core/server";
+import { consumeQuota } from "../../lib/builder-quota.js";
 import {
   enrichStream,
   type EnrichInput,
@@ -25,6 +27,22 @@ import {
  * usage stats.
  */
 export default defineEventHandler(async (event) => {
+  const session = await getSession(event).catch(() => null);
+  if (!session?.userId) {
+    setResponseStatus(event, 401);
+    setResponseHeader(event, "Content-Type", "application/json");
+    return { error: "Sign in with Builder.io to enrich" };
+  }
+  const charged = await consumeQuota(session.userId);
+  if (!charged.ok) {
+    setResponseStatus(event, 402);
+    setResponseHeader(event, "Content-Type", "application/json");
+    return {
+      error: "You've used all 3 free AI enrichments on your account",
+      remaining: 0,
+    };
+  }
+
   const body = await readBody(event);
 
   if (!body || typeof body !== "object") {
