@@ -4,6 +4,8 @@ import { safe, escapeHtml, SAFE_COLOR, SAFE_SIZE } from "./preview-template";
 
 const SAFE_WEIGHT = /^[1-9]00$|^\d{3}$/;
 const SAFE_LHEIGHT = /^\d+(\.\d+)?(px|rem|em|%)?$/;
+const SAFE_PADDING = /^\d+(\.\d+)?(px|rem|em|%)(\s+\d+(\.\d+)?(px|rem|em|%)){0,3}$/;
+const SAFE_STACK = /^[a-zA-Z0-9 ,'"._\-]+$/;
 
 function pick(map: Record<string, string>, ...keys: string[]): string {
   for (const k of keys) {
@@ -54,7 +56,7 @@ export function renderEnrichedPreview(
     const fontWeight = safe(scale.fontWeight ?? "", SAFE_WEIGHT);
     const lineHeight = safe(scale.lineHeight ?? "", SAFE_LHEIGHT);
     const letterSpacing = safe(scale.letterSpacing ?? "", /^-?\d+(\.\d+)?(px|em|rem)$/);
-    const fontFamily = scale.fontFamily ?? "system-ui, sans-serif";
+    const fontFamily = safe(scale.fontFamily ?? "system-ui, sans-serif", SAFE_STACK) || "system-ui, sans-serif";
     const displaySize = fontSize || "16px";
     const metaParts = [
       fontSize,
@@ -98,7 +100,7 @@ export function renderEnrichedPreview(
   // ── Radii ────────────────────────────────────────────────────────────────────
   const radiiEntries = Object.entries(enriched.rounded);
   const radiiItems = radiiEntries.map(([tokenName, value]) => {
-    const sv = value.trim();
+    const sv = safe(value.trim(), SAFE_SIZE);
     if (!sv) return "";
     return `<div class="eds-radius-item">
       <div class="eds-radius-chip" style="border-radius:${escapeHtml(sv)};"></div>
@@ -124,7 +126,7 @@ export function renderEnrichedPreview(
     const isButtonLike = !!(resolved["backgroundColor"] && resolved["color"] && resolved["padding"]);
     const livePreview = isButtonLike
       ? `<div class="eds-comp-preview">
-          <button style="background:${escapeHtml(safe(resolved["backgroundColor"] ?? "", SAFE_COLOR))};color:${escapeHtml(safe(resolved["color"] ?? "", SAFE_COLOR))};padding:${escapeHtml(resolved["padding"] ?? "8px 16px")};border-radius:${escapeHtml(safe(resolved["borderRadius"] ?? resolved["rounded"] ?? "4px", /^.*$/))};border:0;font-size:${escapeHtml(safe(resolved["fontSize"] ?? "14px", SAFE_SIZE))};font-weight:${escapeHtml(safe(resolved["fontWeight"] ?? "600", SAFE_WEIGHT))};cursor:pointer;">${escapeHtml(compName)}</button>
+          <button style="background:${escapeHtml(safe(resolved["backgroundColor"] ?? "", SAFE_COLOR))};color:${escapeHtml(safe(resolved["color"] ?? "", SAFE_COLOR))};padding:${escapeHtml(safe(resolved["padding"] ?? "8px 16px", SAFE_PADDING))};border-radius:${escapeHtml(safe(resolved["borderRadius"] ?? resolved["rounded"] ?? "4px", SAFE_SIZE))};border:0;font-size:${escapeHtml(safe(resolved["fontSize"] ?? "14px", SAFE_SIZE))};font-weight:${escapeHtml(safe(resolved["fontWeight"] ?? "600", SAFE_WEIGHT))};cursor:pointer;">${escapeHtml(compName)}</button>
         </div>`
       : "";
 
