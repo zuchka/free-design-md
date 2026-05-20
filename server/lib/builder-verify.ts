@@ -58,3 +58,43 @@ export async function verifyBuilderUser(
     name: typeof body.name === "string" ? body.name : null,
   };
 }
+
+import {
+  upsertUser,
+  createSession,
+} from "./builder-session.js";
+import { ensureQuota } from "./builder-quota.js";
+
+export type CallbackResult =
+  | {
+      ok: true;
+      sessionToken: string;
+      user: { id: string; email: string; name: string | null };
+    }
+  | { ok: false; reason: "verification_failed" };
+
+export async function handleCallback(
+  args: VerifyArgs,
+  fetchImpl: typeof fetch = fetch,
+): Promise<CallbackResult> {
+  let verified: VerifiedBuilderUser;
+  try {
+    verified = await verifyBuilderUser(args, fetchImpl);
+  } catch {
+    return { ok: false, reason: "verification_failed" };
+  }
+
+  const localUserId = `builder-${verified.id}`;
+  await upsertUser({
+    id: localUserId,
+    email: verified.email,
+    name: verified.name,
+  });
+  await ensureQuota(localUserId);
+  const { token } = await createSession(localUserId);
+  return {
+    ok: true,
+    sessionToken: token,
+    user: { id: localUserId, email: verified.email, name: verified.name },
+  };
+}
