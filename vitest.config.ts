@@ -13,5 +13,8 @@ export default defineConfig({
   test: {
     include: ["**/*.{test,spec}.?(c|m)[jt]s?(x)"],
     exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
+    // Run test files sequentially to prevent concurrent writes to the
+    // shared SQLite database (fdmd_users/sessions/quota tables).
+    fileParallelism: false,
   },
 });

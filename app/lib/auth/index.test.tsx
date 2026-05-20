@@ -1,8 +1,16 @@
 // @vitest-environment happy-dom
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { useAuth, signIn, signOut, consumeQuota } from "./index";
 import { _resetForTests } from "./mock-auth";
+
+// Force mock-auth seam regardless of VITE_FREE_DESIGN_MD_REAL_AUTH env var.
+// useMockedAuth() is evaluated at module load time in index.ts, so this mock
+// must be hoisted (vitest hoists vi.mock automatically).
+vi.mock("@shared/flags", () => ({
+  useMockedAuth: () => true,
+  useDemoBrandCache: () => true,
+}));
 
 /**
  * Regression test for "Maximum update depth exceeded": the original

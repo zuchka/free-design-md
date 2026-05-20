@@ -4,6 +4,8 @@ import {
   setResponseHeader,
   setResponseStatus,
 } from "h3";
+import { getSession } from "@agent-native/core/server";
+import { consumeQuota } from "../../lib/builder-quota.js";
 import {
   enrichStream,
   type EnrichInput,
@@ -25,6 +27,15 @@ import {
  * usage stats.
  */
 export default defineEventHandler(async (event) => {
+  const session = await getSession(event).catch(() => null);
+  if (!session?.userId) {
+    setResponseStatus(event, 401);
+    setResponseHeader(event, "Content-Type", "application/json");
+    return { error: "Sign in to enrich" };
+  }
+
+  // Validate the body BEFORE consuming quota so a malformed request
+  // doesn't burn one of the user's 3 free enrichments.
   const body = await readBody(event);
 
   if (!body || typeof body !== "object") {
@@ -62,6 +73,16 @@ export default defineEventHandler(async (event) => {
     setResponseStatus(event, 400);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
     return "missing one of: url, designSystemData, signals, screenshotDataUrl, deterministicMarkdown/markdown";
+  }
+
+  const charged = await consumeQuota(session.userId);
+  if (!charged.ok) {
+    setResponseStatus(event, 402);
+    setResponseHeader(event, "Content-Type", "application/json");
+    return {
+      error: "You've used all 3 free AI enrichments on your account",
+      remaining: 0,
+    };
   }
 
   const input: EnrichInput = {

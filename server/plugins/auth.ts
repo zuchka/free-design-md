@@ -12,24 +12,19 @@ export default createAuthPlugin({
     ],
   },
   publicPaths: [
-    // The extractor (and its sibling /quality dashboard) are the product
-    // surface. They render without any real auth — the "Sign in" gate is
-    // a UX layer inside / that controls the AI-enrichment button, not a
-    // route-level redirect. The framework's auth plugin must let these
-    // routes through, otherwise it serves its own marketing/sign-in page.
+    // Product surface stays public — the "Sign in" gate is enforced
+    // at the enrich endpoint, not by a route-level redirect.
     "/",
     "/quality",
-    "/_agent-native/google-docs/callback",
-    // React Router's lazy route-discovery endpoint must stay public so
-    // the SPA can fetch its route manifest.
     "/__manifest",
-    // Curl-friendly extractor endpoint: returns text/markdown by default,
-    // or JSON with the full payload (screenshot + tokens + signals) when
-    // called with ?format=json. SSRF-guarded by assertSafeUrl.
     "/api/extract",
-    // AI enrichment endpoint. The per-user 3-free-enrichments gate is
-    // enforced client-side via the mocked auth seam (Phase 2). A real
-    // server-side gate ships in Phase 3 alongside Builder.io OAuth.
+    // /api/auth/me returns 401 itself for unauthenticated users; the
+    // framework must not intercept it first or the client never sees the JSON.
+    "/api/auth/me",
+    // Google Docs OAuth callback (unrelated, pre-existing).
+    "/_agent-native/google-docs/callback",
+    // The enrich endpoint gates auth inside the handler (returns 401/402 JSON).
+    // Keep public so the framework doesn't serve the marketing page instead.
     "/api/enrich-design-md",
   ],
 });

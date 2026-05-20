@@ -97,3 +97,15 @@ export const enrichmentCache = table("enrichment_cache", {
   stopReason: text("stop_reason"),
   createdAt: text("created_at").notNull().default(now()),
 });
+
+/**
+ * Per-user AI-enrichment quota. Seeded to 3 on the user's first
+ * verified callback. Decremented atomically by the enrich endpoint
+ * on successful completion.
+ */
+export const fdmdQuota = table("fdmd_quota", {
+  userId: text("user_id").primaryKey(),
+  enrichCount: integer("enrich_count").notNull().default(0),
+  createdAt: text("created_at").notNull().default(now()),
+  updatedAt: text("updated_at").notNull().default(now()),
+});
