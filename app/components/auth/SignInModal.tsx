@@ -17,23 +17,24 @@ interface SignInModalProps {
 }
 
 /**
- * Mocked Builder.io sign-in. The button waits ~400ms (just long enough
- * to feel like a real OAuth round-trip), then calls signIn() against
- * the mock-auth seam and closes the modal. The AccountChip in the
- * header re-renders via useAuth() and confirms the success visually.
+ * Builder.io sign-in modal.
  *
- * No real OAuth here. See [[../../lib/auth/real-auth.ts]] — Phase 3
- * replaces this with a real flow.
+ * Mocked seam: calls signIn() against mock-auth → instant sign-in as
+ * the dev user. Modal closes and AccountChip re-renders.
+ *
+ * Real seam: signIn() redirects to /api/auth/builder/start → Builder
+ * cli-auth flow → callback mints session → returns here. The page
+ * navigates away, so the modal never needs to close itself.
  */
 export default function SignInModal({ open, onOpenChange }: SignInModalProps) {
   const [pending, setPending] = useState(false);
 
   async function handleSignIn() {
     setPending(true);
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    // Mocked seam: pretend we round-tripped to Builder.io and signed in
+    // as the default dev user. Real seam: redirect to /api/auth/builder/start
+    // and the page navigates away — the setPending(false) below never runs.
     signIn("matt@builder.io");
-    setPending(false);
-    onOpenChange(false);
   }
 
   return (
