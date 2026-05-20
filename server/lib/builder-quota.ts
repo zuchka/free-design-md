@@ -88,23 +88,28 @@ export async function applyBuilderKeyBonus(
     return { ok: false, reason: "key_already_used" };
   }
 
-  // Reject if this user already has a bonus applied
-  await ensureQuota(principal);
-  const quotaRows = await db
-    .select({ bonusCredits: schema.fdmdQuota.bonusCredits })
-    .from(schema.fdmdQuota)
-    .where(eq(schema.fdmdQuota.userId, principal))
+  // Reject if this user has already submitted any key
+  const existingUserKey = await db
+    .select({ apiKey: schema.fdmdBuilderKeys.apiKey })
+    .from(schema.fdmdBuilderKeys)
+    .where(eq(schema.fdmdBuilderKeys.userId, principal))
     .limit(1);
 
-  if ((quotaRows[0]?.bonusCredits ?? 0) > 0) {
+  if (existingUserKey.length > 0) {
     return { ok: false, reason: "already_unlocked" };
   }
 
-  // Record the key and apply the bonus (two sequential writes; SQLite
-  // serializes all writes so there is no race between them in practice)
-  await db
-    .insert(schema.fdmdBuilderKeys)
-    .values({ apiKey, userId: principal });
+  await ensureQuota(principal);
+
+  // Write the key record first; catch constraint violation from concurrent same-key submissions
+  try {
+    await db
+      .insert(schema.fdmdBuilderKeys)
+      .values({ apiKey, userId: principal });
+  } catch {
+    return { ok: false, reason: "key_already_used" };
+  }
+
   await db
     .update(schema.fdmdQuota)
     .set({
