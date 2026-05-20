@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { appBasePath } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
+import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
+import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
 import type { DesignSystemData } from "../../shared/api";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
@@ -103,6 +105,13 @@ export default function IndexRoute() {
       designMd: result.markdown,
     });
   }, [result]);
+
+  const enrichedPreviewHtml = useMemo(() => {
+    if (!enriched?.markdown) return null;
+    const parsed = parseEnrichedFrontmatter(enriched.markdown);
+    if (!parsed) return null;
+    return renderEnrichedPreview(parsed, enriched.markdown, result?.signals?.title);
+  }, [enriched?.markdown, result?.signals?.title]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -245,6 +254,9 @@ export default function IndexRoute() {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
+
+  const activePreviewHtml =
+    view === "enriched" && enrichedPreviewHtml ? enrichedPreviewHtml : previewHtml;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -432,10 +444,17 @@ export default function IndexRoute() {
               </Pane>
             </div>
 
-            <Pane title="Preview from tokens">
+            <Pane
+              title="Preview from tokens"
+              action={
+                view === "enriched" && enrichedPreviewHtml ? (
+                  <span className="text-xs text-muted-foreground">AI-enriched</span>
+                ) : undefined
+              }
+            >
               <div className="h-[900px] w-full overflow-hidden rounded-md border">
                 <iframe
-                  srcDoc={previewHtml}
+                  srcDoc={activePreviewHtml}
                   title="Synthetic preview"
                   sandbox="allow-same-origin"
                   className="block h-full w-full"
