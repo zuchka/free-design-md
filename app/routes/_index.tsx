@@ -697,6 +697,7 @@ function BuilderKeyUnlockCard({ onUnlocked }: { onUnlocked: () => void }) {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             type="text"
+            aria-label="Builder.io public API key"
             placeholder="Paste your Builder.io public API key"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
