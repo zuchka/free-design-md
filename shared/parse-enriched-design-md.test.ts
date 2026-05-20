@@ -101,6 +101,20 @@ describe("parseEnrichedFrontmatter", () => {
   it("returns null for broken YAML", () => {
     expect(parseEnrichedFrontmatter("---\n: broken: [yaml\n---")).toBeNull();
   });
+
+  it("parses frontmatter wrapped in a markdown code fence", () => {
+    const fenced = "```markdown\n" + SAMPLE_ENRICHED_MD.trim() + "\n```";
+    const result = parseEnrichedFrontmatter(fenced);
+    expect(result?.name).toBe("Acme Corp");
+    expect(result?.colors["primary"]).toBe("#635BFF");
+  });
+
+  it("parses frontmatter with a preamble line before the --- delimiter", () => {
+    const withPreamble = "Here is your DESIGN.md:\n" + SAMPLE_ENRICHED_MD;
+    const result = parseEnrichedFrontmatter(withPreamble);
+    expect(result?.name).toBe("Acme Corp");
+    expect(result?.colors["primary"]).toBe("#635BFF");
+  });
 });
 
 describe("buildTokenMap", () => {

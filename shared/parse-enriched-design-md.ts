@@ -20,7 +20,16 @@ export interface EnrichedFrontmatter {
 }
 
 export function parseEnrichedFrontmatter(markdown: string): EnrichedFrontmatter | null {
-  const match = markdown.match(/^---\n([\s\S]*?)\n---/);
+  let content = markdown.trim();
+
+  // Strip optional markdown/yaml code fence wrapper — LLMs sometimes add these
+  // despite prompt instructions when using extended thinking.
+  const fenceMatch = content.match(/^```(?:markdown|yaml)?\n([\s\S]*?)\n```\s*$/);
+  if (fenceMatch?.[1]) content = fenceMatch[1].trim();
+
+  // Find the first YAML frontmatter block. Allow optional preamble before ---
+  // (extended thinking models occasionally emit a brief line before the delimiter).
+  const match = content.match(/(?:^|\n)---\n([\s\S]*?)\n---(?:\n|$)/);
   if (!match?.[1]) return null;
   try {
     const raw = parse(match[1]);
