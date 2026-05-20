@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDb, schema } from "../db/index.js";
 import {
   ensureQuota,
   quotaRemaining,
   consumeQuota,
+  applyBuilderKeyBonus,
   QUOTA_DEFAULT,
+  QUOTA_BUILDER_BONUS,
 } from "./builder-quota.js";
 
 describe("builder-quota", () => {
@@ -68,5 +70,98 @@ describe("builder-quota", () => {
       ok: false,
       remaining: 0,
     });
+  });
+});
+
+describe("applyBuilderKeyBonus", () => {
+  beforeEach(async () => {
+    const db = getDb();
+    await db.delete(schema.fdmdQuota);
+    await db.delete(schema.fdmdBuilderKeys);
+    vi.restoreAllMocks();
+  });
+
+  it("QUOTA_BUILDER_BONUS is 10", () => {
+    expect(QUOTA_BUILDER_BONUS).toBe(10);
+  });
+
+  it("grants bonus credits when key is valid and unused", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true } as Response),
+    );
+    await ensureQuota("user@example.com");
+    const result = await applyBuilderKeyBonus("user@example.com", "validkey123");
+    expect(result).toEqual({ ok: true, remaining: QUOTA_DEFAULT + QUOTA_BUILDER_BONUS });
+  });
+
+  it("quotaRemaining reflects bonus after grant", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true } as Response),
+    );
+    await ensureQuota("user@example.com");
+    await applyBuilderKeyBonus("user@example.com", "validkey123");
+    expect(await quotaRemaining("user@example.com")).toBe(QUOTA_DEFAULT + QUOTA_BUILDER_BONUS);
+  });
+
+  it("consumeQuota works past the base quota when bonus is applied", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true } as Response),
+    );
+    await ensureQuota("user@example.com");
+    // Exhaust base quota
+    await consumeQuota("user@example.com");
+    await consumeQuota("user@example.com");
+    await consumeQuota("user@example.com");
+    expect(await quotaRemaining("user@example.com")).toBe(0);
+    // Apply bonus
+    await applyBuilderKeyBonus("user@example.com", "validkey123");
+    expect(await quotaRemaining("user@example.com")).toBe(QUOTA_BUILDER_BONUS);
+    // Can still consume
+    const result = await consumeQuota("user@example.com");
+    expect(result).toEqual({ ok: true, remaining: QUOTA_BUILDER_BONUS - 1 });
+  });
+
+  it("returns invalid_key when Builder.io CDN rejects the key", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 401 } as Response),
+    );
+    const result = await applyBuilderKeyBonus("user@example.com", "badkey");
+    expect(result).toEqual({ ok: false, reason: "invalid_key" });
+  });
+
+  it("returns verification_failed when fetch throws", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("network error")),
+    );
+    const result = await applyBuilderKeyBonus("user@example.com", "anykey");
+    expect(result).toEqual({ ok: false, reason: "verification_failed" });
+  });
+
+  it("returns key_already_used when the same key is submitted twice", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true } as Response),
+    );
+    await ensureQuota("user-a@example.com");
+    await ensureQuota("user-b@example.com");
+    await applyBuilderKeyBonus("user-a@example.com", "sharedkey");
+    const result = await applyBuilderKeyBonus("user-b@example.com", "sharedkey");
+    expect(result).toEqual({ ok: false, reason: "key_already_used" });
+  });
+
+  it("returns already_unlocked when the same user submits a second key", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true } as Response),
+    );
+    await ensureQuota("user@example.com");
+    await applyBuilderKeyBonus("user@example.com", "firstkey");
+    const result = await applyBuilderKeyBonus("user@example.com", "secondkey");
+    expect(result).toEqual({ ok: false, reason: "already_unlocked" });
   });
 });
