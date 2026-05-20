@@ -464,6 +464,17 @@ export default function IndexRoute() {
               </Pane>
             </div>
 
+            {!hasEnrichedContent && (
+              <EnrichBanner
+                user={user}
+                remaining={remaining}
+                isEnriching={isEnriching}
+                hasScreenshot={!!result.screenshotDataUrl}
+                onEnrich={handleEnrich}
+                onSignIn={() => setSignInOpen(true)}
+              />
+            )}
+
             <Pane
               title="Preview from tokens"
               action={
@@ -491,6 +502,76 @@ export default function IndexRoute() {
         )}
       </div>
       <SignInModal open={signInOpen} onOpenChange={setSignInOpen} />
+    </div>
+  );
+}
+
+interface EnrichBannerProps {
+  user: { email: string } | null;
+  remaining: number;
+  isEnriching: boolean;
+  hasScreenshot: boolean;
+  onEnrich: () => void;
+  onSignIn: () => void;
+}
+
+function EnrichBanner({
+  user,
+  remaining,
+  isEnriching,
+  hasScreenshot,
+  onEnrich,
+  onSignIn,
+}: EnrichBannerProps) {
+  const outOfQuota = user !== null && remaining === 0;
+
+  if (outOfQuota) return null;
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-transparent p-6">
+      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1.5 max-w-2xl">
+          <p className="text-base font-semibold tracking-tight">
+            Your design.md is a skeleton. AI enrichment makes it{" "}
+            <span className="text-violet-400">10–15× more detailed.</span>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            The deterministic pass captures raw tokens — colors, fonts, radii. AI enrichment adds
+            brand voice, component intent, spacing rationale, and accessibility notes, reaching the
+            depth of{" "}
+            <span className="font-medium text-foreground">getdesign.md</span>
+            {" "}reference files — or beyond. Powered by{" "}
+            <span className="font-medium text-foreground">Claude Opus 4.7</span>.
+            {user
+              ? ` ${remaining} free enrichment${remaining === 1 ? "" : "s"} remaining.`
+              : " Free with a Builder.io account."}
+          </p>
+        </div>
+        <div className="shrink-0">
+          {user ? (
+            <Button
+              size="lg"
+              variant="default"
+              onClick={onEnrich}
+              disabled={isEnriching || !hasScreenshot}
+              className="gap-2 bg-violet-600 hover:bg-violet-500 text-white border-0"
+            >
+              <IconSparkles size={18} />
+              {isEnriching ? "Enriching…" : "Enrich with AI"}
+            </Button>
+          ) : (
+            <Button
+              size="lg"
+              variant="default"
+              onClick={onSignIn}
+              className="gap-2 bg-violet-600 hover:bg-violet-500 text-white border-0"
+            >
+              <IconSparkles size={18} />
+              Sign in to Enrich
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
