@@ -43,17 +43,16 @@ export function quotaRemaining(): number {
 }
 
 /**
- * Redirect to the server's sign-in entry. The server sets a state
- * cookie, redirects to Builder.io's /cli-auth, and (after the user
- * authorizes) lands back on /api/auth/builder/callback which mints
- * a session cookie and bounces them back to ?return.
+ * Navigate to the framework's built-in sign-in page. The /sign-in route
+ * is unprotected-by-the-handler but not in publicPaths, so the framework's
+ * auth guard intercepts unauthenticated requests and shows the email/password
+ * form. After sign-in the handler redirects back to ?return.
  */
 export function signIn(_emailIgnored?: string): MockUser {
   if (!isClient()) throw new Error("signIn called outside the browser");
-  const target = `/api/auth/builder/start?return=${encodeURIComponent(window.location.href)}`;
-  window.location.assign(target);
-  // signIn's return value is by-contract a MockUser, but the page
-  // is unloading. Return a placeholder; callers can't observe it.
+  const returnPath = window.location.pathname + window.location.search;
+  window.location.assign(`/sign-in?return=${encodeURIComponent(returnPath)}`);
+  // Page is navigating away — return placeholder; callers can't observe it.
   return { email: "" };
 }
 
@@ -61,14 +60,11 @@ export function signOut(): void {
   if (!isClient()) return;
   cache = { user: null, remaining: QUOTA_DEFAULT };
   dispatchChange();
-  void fetch("/api/auth/builder/signout", {
+  void fetch("/_agent-native/auth/ba/sign-out", {
     method: "POST",
     credentials: "include",
   }).catch(() => {
-    // Best-effort — the cookie is httpOnly so the client can't clear
-    // it locally. If the network call fails, the next page load will
-    // still see the cookie and the server's lookupSession will treat
-    // the row as present until it expires.
+    // Best-effort — session cookie is cleared on next reload if this fails.
   });
 }
 

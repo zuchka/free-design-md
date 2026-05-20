@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
   if (!session?.userId) {
     setResponseStatus(event, 401);
     setResponseHeader(event, "Content-Type", "application/json");
-    return { error: "Sign in with Builder.io to enrich" };
+    return { error: "Sign in to enrich" };
   }
 
   // Validate the body BEFORE consuming quota so a malformed request

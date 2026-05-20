@@ -161,26 +161,8 @@ export default runMigrations(
   );
   CREATE INDEX IF NOT EXISTS deck_versions_deck_owner_created_idx ON deck_versions (deck_id, owner_email, created_at)`,
     },
-    // v19-v21: Builder.io SSO — users, sessions, and per-user enrichment quota.
-    // Prefixed fdmd_ to avoid collisions with future framework tables.
-    {
-      version: 19,
-      sql: `CREATE TABLE IF NOT EXISTS fdmd_users (
-    id TEXT PRIMARY KEY,
-    email TEXT NOT NULL,
-    name TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )`,
-    },
-    {
-      version: 20,
-      sql: `CREATE TABLE IF NOT EXISTS fdmd_sessions (
-    token TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )`,
-    },
+    // v21: per-user AI-enrichment quota. Prefixed fdmd_ to avoid collisions
+    // with future framework tables.
     {
       version: 21,
       sql: `CREATE TABLE IF NOT EXISTS fdmd_quota (

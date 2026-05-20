@@ -17,14 +17,14 @@ interface SignInModalProps {
 }
 
 /**
- * Builder.io sign-in modal.
+ * Sign-in/sign-up modal.
  *
- * Mocked seam: calls signIn() against mock-auth → instant sign-in as
- * the dev user. Modal closes and AccountChip re-renders.
+ * Mocked seam: signIn() instantly signs in as the dev user → modal closes.
  *
- * Real seam: signIn() redirects to /api/auth/builder/start → Builder
- * cli-auth flow → callback mints session → returns here. The page
- * navigates away, so the modal never needs to close itself.
+ * Real seam: signIn() navigates to /sign-in?return=<current-path>.
+ * The framework's auth guard intercepts and shows the email/password form.
+ * After sign-in the /sign-in handler redirects back here. The page
+ * navigates away so the modal never needs to close itself.
  */
 export default function SignInModal({ open, onOpenChange }: SignInModalProps) {
   const [pending, setPending] = useState(false);
@@ -65,7 +65,7 @@ export default function SignInModal({ open, onOpenChange }: SignInModalProps) {
               <BuilderLogo className="w-5 h-5" />
             )}
             <span>
-              {pending ? "Signing you in…" : "Sign in with Builder.io"}
+              {pending ? "Signing you in…" : "Sign in / Create account"}
             </span>
           </Button>
           <p className="text-center text-xs text-muted-foreground">

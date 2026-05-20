@@ -99,32 +99,6 @@ export const enrichmentCache = table("enrichment_cache", {
 });
 
 /**
- * Identity records for users who signed in via Builder.io.
- * The `id` is the Builder user ID prefixed with `builder-` so future
- * identity providers can coexist (e.g. `google-…`).
- *
- * We do NOT store the BPK that Builder returns at callback time —
- * it's used once for verification and discarded.
- */
-export const fdmdUsers = table("fdmd_users", {
-  id: text("id").primaryKey(), // "builder-${builderUserId}"
-  email: text("email").notNull(),
-  name: text("name"),
-  createdAt: text("created_at").notNull().default(now()),
-});
-
-/**
- * Opaque server-side session tokens. The token in the cookie is
- * meaningless without a matching row here.
- */
-export const fdmdSessions = table("fdmd_sessions", {
-  token: text("token").primaryKey(),
-  userId: text("user_id").notNull(),
-  expiresAt: text("expires_at").notNull(),
-  createdAt: text("created_at").notNull().default(now()),
-});
-
-/**
  * Per-user AI-enrichment quota. Seeded to 3 on the user's first
  * verified callback. Decremented atomically by the enrich endpoint
  * on successful completion.

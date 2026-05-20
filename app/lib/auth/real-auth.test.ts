@@ -52,14 +52,15 @@ describe("real-auth", () => {
     expect(quotaRemaining()).toBe(3);
   });
 
-  it("signIn redirects to /api/auth/builder/start with the current href as return", () => {
+  it("signIn navigates to /sign-in with the current pathname as return", () => {
     const assignMock = vi.fn();
     Object.defineProperty(window, "location", {
       writable: true,
       value: {
         ...originalLocation,
         assign: assignMock,
-        href: "http://localhost:8080/some/page",
+        pathname: "/some/page",
+        search: "",
       },
     });
 
@@ -67,10 +68,8 @@ describe("real-auth", () => {
 
     expect(assignMock).toHaveBeenCalledTimes(1);
     const target = assignMock.mock.calls[0][0] as string;
-    expect(target).toContain("/api/auth/builder/start?return=");
-    expect(decodeURIComponent(target.split("return=")[1])).toBe(
-      "http://localhost:8080/some/page",
-    );
+    expect(target).toContain("/sign-in?return=");
+    expect(decodeURIComponent(target.split("return=")[1])).toBe("/some/page");
   });
 
   it("signOut POSTs to /api/auth/builder/signout and clears the cache", async () => {
@@ -95,7 +94,7 @@ describe("real-auth", () => {
     expect(getCurrentUser()).toBeNull();
     await new Promise((r) => setTimeout(r, 0));
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      "/api/auth/builder/signout",
+      "/_agent-native/auth/ba/sign-out",
       expect.objectContaining({ method: "POST", credentials: "include" }),
     );
   });
