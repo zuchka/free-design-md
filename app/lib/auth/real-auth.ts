@@ -112,6 +112,11 @@ export async function _hydrate(): Promise<void> {
   }
 }
 
+/** Re-fetch quota from the server and update the local cache. */
+export async function refreshQuota(): Promise<void> {
+  await _hydrate();
+}
+
 /** Test-only — reset module state. Not exported from the auth seam. */
 export function _resetForTests(): void {
   cache = { user: null, remaining: QUOTA_DEFAULT };

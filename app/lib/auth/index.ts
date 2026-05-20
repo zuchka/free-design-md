@@ -21,6 +21,7 @@ export const signOut = impl.signOut;
 export const quotaRemaining = impl.quotaRemaining;
 export const consumeQuota = impl.consumeQuota;
 export const subscribe = impl.subscribe;
+export const refreshQuota = impl.refreshQuota;
 
 let hydrationStarted = false;
 function maybeStartHydration(): void {

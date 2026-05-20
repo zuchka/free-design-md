@@ -100,3 +100,6 @@ export function _resetForTests(): void {
   window.localStorage.removeItem(STORAGE_USER_KEY);
   window.localStorage.removeItem(STORAGE_QUOTA_KEY);
 }
+
+/** No-op in mock mode — quota state is already in sync via localStorage. */
+export async function refreshQuota(): Promise<void> {}
