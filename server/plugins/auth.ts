@@ -36,5 +36,11 @@ export default createAuthPlugin({
     // receives the code and establishes the session.
     "/api/auth/builder/start",
     "/api/auth/builder/callback",
+    // Signout is idempotent — must work even if the framework session has
+    // already expired or never existed.
+    "/api/auth/builder/signout",
+    // me returns 401 itself when unauthenticated; the framework must not
+    // intercept it first or the client never sees our error shape.
+    "/api/auth/me",
   ],
 });
