@@ -26,7 +26,9 @@ export default defineEventHandler(async (event) => {
     return { error: "Sign in to unlock credits" };
   }
 
-  const body = await readBody<Record<string, unknown>>(event);
+  const body = await readBody<Record<string, unknown>>(event).catch(
+    () => ({}) as Record<string, unknown>,
+  );
   const apiKey =
     typeof body?.apiKey === "string" ? body.apiKey.trim() : "";
 
@@ -35,8 +37,8 @@ export default defineEventHandler(async (event) => {
     return { error: "apiKey is required" };
   }
 
-  // Builder.io public API keys are alphanumeric, typically 20 chars
-  if (!/^[a-zA-Z0-9]{10,40}$/.test(apiKey)) {
+  // Light sanity check — the CDN call is the authoritative validator
+  if (!/^[a-zA-Z0-9_-]{8,64}$/.test(apiKey)) {
     setResponseStatus(event, 400);
     return {
       error:
