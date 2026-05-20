@@ -345,7 +345,10 @@ export default function IndexRoute() {
         </form>
 
         {error && (
-          <div className="mb-8 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
+          <div
+            className="mb-8 rounded-md border px-4 py-3 text-sm"
+            style={{ borderColor: "rgba(184,0,0,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
+          >
             {error}
           </div>
         )}
@@ -364,7 +367,7 @@ export default function IndexRoute() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <Pane title="Real site" className="lg:flex-1 lg:min-w-0">
                 {result.screenshotDataUrl ? (
-                  <div className="h-[560px] overflow-auto rounded-md border bg-muted/20">
+                  <div className="h-[560px] overflow-auto rounded-md border bg-muted/20" style={{ boxShadow: "var(--intuit-card-shadow)" }}>
                     <img
                       src={result.screenshotDataUrl}
                       alt={`Screenshot of ${result.url}`}
@@ -388,14 +391,16 @@ export default function IndexRoute() {
                         <button
                           type="button"
                           onClick={() => setView("deterministic")}
-                          className={`px-2 py-1 ${view === "deterministic" ? "bg-foreground text-background" : "bg-transparent text-muted-foreground"}`}
+                          className={`px-2 py-1 transition-colors ${view === "deterministic" ? "text-white" : "bg-transparent text-muted-foreground"}`}
+                          style={view === "deterministic" ? { backgroundColor: "var(--intuit-primary)" } : undefined}
                         >
                           Deterministic
                         </button>
                         <button
                           type="button"
                           onClick={() => setView("enriched")}
-                          className={`px-2 py-1 ${view === "enriched" ? "bg-foreground text-background" : "bg-transparent text-muted-foreground"}`}
+                          className={`px-2 py-1 transition-colors ${view === "enriched" ? "text-white" : "bg-transparent text-muted-foreground"}`}
+                          style={view === "enriched" ? { backgroundColor: "var(--intuit-primary)" } : undefined}
                         >
                           AI-enriched{isEnriching && !enriched ? "…" : ""}
                         </button>
@@ -469,7 +474,10 @@ export default function IndexRoute() {
                 }
               >
                 {enrichError && (
-                  <div className="mb-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600">
+                  <div
+                    className="mb-2 rounded-md border px-3 py-2 text-xs"
+                    style={{ borderColor: "rgba(184,0,0,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
+                  >
                     {enrichError}
                   </div>
                 )}
@@ -507,7 +515,7 @@ export default function IndexRoute() {
                 ) : undefined
               }
             >
-              <div className="relative h-[900px] w-full overflow-hidden rounded-md border">
+              <div className="relative h-[900px] w-full overflow-hidden rounded-md border" style={{ boxShadow: "var(--intuit-card-shadow)" }}>
                 <iframe
                   srcDoc={activePreviewHtml}
                   title="Synthetic preview"
@@ -560,12 +568,15 @@ function EnrichBanner({
   if (outOfQuota) return null;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-transparent p-6">
+    <div
+      className="relative overflow-hidden rounded-xl border p-6"
+      style={{ background: "linear-gradient(135deg, rgba(10,30,74,0.08) 0%, rgba(26,86,176,0.06) 60%, transparent 100%)", borderColor: "rgba(35,108,255,0.18)" }}
+    >
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1.5 max-w-2xl">
           <p className="text-base font-semibold tracking-tight">
             Your design.md is a skeleton. AI enrichment makes it{" "}
-            <span className="text-violet-400">10–15× more detailed.</span>
+            <span style={{ color: "var(--intuit-primary)" }}>10–15× more detailed.</span>
           </p>
           <p className="text-sm text-muted-foreground">
             The deterministic pass captures raw tokens — colors, fonts, radii. AI enrichment adds
@@ -586,7 +597,8 @@ function EnrichBanner({
               variant="default"
               onClick={onEnrich}
               disabled={isEnriching || !hasScreenshot}
-              className="gap-2 bg-violet-600 hover:bg-violet-500 text-white border-0"
+              className="gap-2 text-white border-0 hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: "var(--intuit-primary)" }}
             >
               <IconSparkles size={18} />
               {isEnriching ? "Enriching…" : "Enrich with AI"}
@@ -596,7 +608,8 @@ function EnrichBanner({
               size="lg"
               variant="default"
               onClick={onSignIn}
-              className="gap-2 bg-violet-600 hover:bg-violet-500 text-white border-0"
+              className="gap-2 text-white border-0 hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: "var(--intuit-primary)" }}
             >
               <IconSparkles size={18} />
               Sign in to Enrich
