@@ -57,9 +57,14 @@ describe('extraction-cache', () => {
       expect(stored.cachedAt).toBeLessThanOrEqual(after)
     })
 
-    it('does not store screenshotDataUrl even when passed via cast', () => {
-      const withExtra = { ...MOCK_DATA, screenshotDataUrl: 'data:image/png;base64,...' } as any
-      writeCache(withExtra)
+    it('stores screenshotDataUrl when provided', () => {
+      writeCache({ ...MOCK_DATA, screenshotDataUrl: 'data:image/png;base64,abc' })
+      const stored = JSON.parse(localStorage.getItem('fdmd:extraction:stripe.com')!)
+      expect(stored.screenshotDataUrl).toBe('data:image/png;base64,abc')
+    })
+
+    it('stores entry without screenshotDataUrl when not provided', () => {
+      writeCache(MOCK_DATA) // no screenshotDataUrl
       const stored = JSON.parse(localStorage.getItem('fdmd:extraction:stripe.com')!)
       expect(stored).not.toHaveProperty('screenshotDataUrl')
     })
@@ -69,6 +74,20 @@ describe('extraction-cache', () => {
         throw new DOMException('QuotaExceededError')
       })
       expect(() => writeCache(MOCK_DATA)).not.toThrow()
+    })
+
+    it('falls back to storing without screenshotDataUrl when setItem throws once', () => {
+      let callCount = 0
+      const original = localStorage.setItem
+      vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+        callCount++
+        if (callCount === 1) throw new DOMException('QuotaExceededError')
+        original.call(localStorage, key, value)
+      })
+      writeCache({ ...MOCK_DATA, screenshotDataUrl: 'data:image/png;base64,abc' })
+      const stored = JSON.parse(localStorage.getItem('fdmd:extraction:stripe.com')!)
+      expect(stored.url).toBe('stripe.com')
+      expect(stored).not.toHaveProperty('screenshotDataUrl')
     })
   })
 })

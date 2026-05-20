@@ -8,6 +8,7 @@ export interface CacheEntry {
   markdown: string
   designSystemData: DesignSystemData
   signals?: { title?: string }
+  screenshotDataUrl?: string
 }
 
 interface StoredEntry extends CacheEntry {
@@ -31,13 +32,16 @@ export function readCache(url: string): CacheEntry | null {
 }
 
 export function writeCache(entry: CacheEntry): void {
+  const { url, markdown, designSystemData, signals, screenshotDataUrl } = entry
+  const stored = { url, markdown, designSystemData, signals, screenshotDataUrl, cachedAt: Date.now() }
   try {
-    const { url, markdown, designSystemData, signals } = entry
-    localStorage.setItem(
-      KEY_PREFIX + url,
-      JSON.stringify({ url, markdown, designSystemData, signals, cachedAt: Date.now() }),
-    )
+    localStorage.setItem(KEY_PREFIX + url, JSON.stringify(stored))
   } catch {
-    // localStorage unavailable (private browsing, quota exceeded) — silent fail
+    try {
+      const { screenshotDataUrl: _s, ...withoutScreenshot } = stored
+      localStorage.setItem(KEY_PREFIX + url, JSON.stringify(withoutScreenshot))
+    } catch {
+      // quota exceeded even without screenshot — silent fail
+    }
   }
 }

@@ -16,7 +16,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { consumeQuota, useAuth } from "@/lib/auth";
-import { writeCache } from "@/lib/extraction-cache";
+import { readCache, writeCache } from "@/lib/extraction-cache";
 import SignInModal from "@/components/auth/SignInModal";
 import AccountChip from "@/components/auth/AccountChip";
 
@@ -99,6 +99,20 @@ export default function IndexRoute() {
     return () => clearInterval(id);
   }, [isLoading]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlParam = params.get('url');
+    if (!urlParam) return;
+    const cached = readCache(urlParam);
+    if (cached) {
+      setUrl(cached.url);
+      setResult(cached);
+    } else {
+      setUrl(urlParam);
+      void extractUrl(urlParam);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const previewHtml = useMemo(() => {
     if (!result) return "";
     return renderPreview(result.designSystemData, {
@@ -130,7 +144,7 @@ export default function IndexRoute() {
       }
       const data = (await res.json()) as ExtractResult;
       setResult(data);
-      writeCache({ url: data.url, markdown: data.markdown, designSystemData: data.designSystemData, signals: data.signals });
+      writeCache({ url: data.url, markdown: data.markdown, designSystemData: data.designSystemData, signals: data.signals, screenshotDataUrl: data.screenshotDataUrl });
       history.replaceState(null, '', `?url=${encodeURIComponent(data.url)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
