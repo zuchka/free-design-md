@@ -172,6 +172,22 @@ export default runMigrations(
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
     },
+    // v22: bonus_credits column on fdmd_quota — extra enrichments earned by
+    // pasting a valid Builder.io public API key.
+    {
+      version: 22,
+      sql: `ALTER TABLE fdmd_quota ADD COLUMN IF NOT EXISTS bonus_credits INTEGER NOT NULL DEFAULT 0`,
+    },
+    // v23: deduplication table for Builder.io API keys — prevents the same
+    // key from unlocking quota on multiple accounts.
+    {
+      version: 23,
+      sql: `CREATE TABLE IF NOT EXISTS fdmd_builder_keys (
+    api_key TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    verified_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+    },
   ],
   { table: "slides_migrations" },
 );

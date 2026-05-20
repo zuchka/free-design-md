@@ -8,6 +8,14 @@ import {
 } from "./builder-quota.js";
 
 describe("builder-quota", () => {
+  it("fdmdQuota schema has bonus_credits column", () => {
+    expect(schema.fdmdQuota.bonusCredits).toBeDefined();
+  });
+
+  it("fdmdBuilderKeys table is defined in schema", () => {
+    expect(schema.fdmdBuilderKeys).toBeDefined();
+  });
+
   beforeEach(async () => {
     const db = getDb();
     await db.delete(schema.fdmdQuota);

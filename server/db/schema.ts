@@ -106,6 +106,13 @@ export const enrichmentCache = table("enrichment_cache", {
 export const fdmdQuota = table("fdmd_quota", {
   userId: text("user_id").primaryKey(),
   enrichCount: integer("enrich_count").notNull().default(0),
+  bonusCredits: integer("bonus_credits").notNull().default(0),
   createdAt: text("created_at").notNull().default(now()),
   updatedAt: text("updated_at").notNull().default(now()),
+});
+
+export const fdmdBuilderKeys = table("fdmd_builder_keys", {
+  apiKey: text("api_key").primaryKey(),
+  userId: text("user_id").notNull(),
+  verifiedAt: text("verified_at").notNull().default(now()),
 });
