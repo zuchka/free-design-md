@@ -107,6 +107,16 @@ export default function IndexRoute() {
     if (cached) {
       setUrl(cached.url);
       setResult(cached);
+      if (cached.enrichedMarkdown) {
+        setEnriched({
+          markdown: cached.enrichedMarkdown,
+          model: cached.enrichedModel ?? 'cached',
+          latencyMs: 0,
+          usage: { inputTokens: 0, outputTokens: 0, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
+          stopReason: 'end_turn',
+        });
+        setView('enriched');
+      }
     } else {
       setUrl(urlParam);
       void extractUrl(urlParam);
@@ -214,7 +224,19 @@ export default function IndexRoute() {
             setStreamingMarkdown(streamAccumRef.current);
           } else if (parsed.event === "done") {
             sawDone = true;
-            setEnriched(parsed.data as EnrichResult);
+            const enrichResult = parsed.data as EnrichResult;
+            setEnriched(enrichResult);
+            if (result) {
+              writeCache({
+                url: result.url,
+                markdown: result.markdown,
+                designSystemData: result.designSystemData,
+                signals: result.signals,
+                screenshotDataUrl: result.screenshotDataUrl,
+                enrichedMarkdown: enrichResult.markdown,
+                enrichedModel: enrichResult.model,
+              });
+            }
             // Charge the quota only when enrichment completed end-to-end.
             consumeQuota();
           } else if (parsed.event === "error") {
