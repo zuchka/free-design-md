@@ -31,5 +31,10 @@ export default createAuthPlugin({
     // enforced client-side via the mocked auth seam (Phase 2). A real
     // server-side gate ships in Phase 3 alongside Builder.io OAuth.
     "/api/enrich-design-md",
+    // Builder OAuth flow — these must be public so unauthenticated users
+    // can sign in. The start route issues the redirect; the callback route
+    // receives the code and establishes the session.
+    "/api/auth/builder/start",
+    "/api/auth/builder/callback",
   ],
 });
