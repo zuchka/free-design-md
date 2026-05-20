@@ -28,7 +28,11 @@ import {
  */
 export default defineEventHandler(async (event) => {
   const session = await getSession(event).catch(() => null);
-  if (!session?.userId) {
+  // The framework session always carries `email`, but `userId` is only set
+  // when resolution goes through Better Auth — the legacy `an_session_*`
+  // cookie path returns `{email, token}` only. Gate on `email` so both
+  // paths unlock enrichment.
+  if (!session?.email) {
     setResponseStatus(event, 401);
     setResponseHeader(event, "Content-Type", "application/json");
     return { error: "Sign in to enrich" };
@@ -75,7 +79,7 @@ export default defineEventHandler(async (event) => {
     return "missing one of: url, designSystemData, signals, screenshotDataUrl, deterministicMarkdown/markdown";
   }
 
-  const charged = await consumeQuota(session.userId);
+  const charged = await consumeQuota(session.email);
   if (!charged.ok) {
     setResponseStatus(event, 402);
     setResponseHeader(event, "Content-Type", "application/json");

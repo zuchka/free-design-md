@@ -77,4 +77,44 @@ describe("useAuth", () => {
     });
     expect(screen.getByTestId("email").textContent).toBe("none");
   });
+
+  // Regression for the post-sign-in stale-button bug: when multiple
+  // components subscribe to useAuth, the first listener that fires
+  // refreshes the shared cachedSnapshot. The old implementation gated cb()
+  // on `maybeUpdateSnapshot()` returning true, so every subsequent
+  // subscriber's cb was skipped and those components never re-rendered.
+  // AccountChip (child, subscribed first) would update; IndexRoute
+  // (parent, subscribed second) would stay stuck on "Enrich with AI · Sign
+  // in" even though the user was authenticated.
+  it("re-renders ALL subscribers on a change, not just the first listener", () => {
+    function Parent() {
+      return (
+        <div>
+          <span data-testid="parent-email">
+            {useAuth().user?.email ?? "none"}
+          </span>
+          <Child />
+        </div>
+      );
+    }
+    function Child() {
+      return (
+        <span data-testid="child-email">
+          {useAuth().user?.email ?? "none"}
+        </span>
+      );
+    }
+    render(<Parent />);
+    expect(screen.getByTestId("parent-email").textContent).toBe("none");
+    expect(screen.getByTestId("child-email").textContent).toBe("none");
+    act(() => {
+      signIn("matt@builder.io");
+    });
+    expect(screen.getByTestId("child-email").textContent).toBe(
+      "matt@builder.io",
+    );
+    expect(screen.getByTestId("parent-email").textContent).toBe(
+      "matt@builder.io",
+    );
+  });
 });
