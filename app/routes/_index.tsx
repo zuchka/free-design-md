@@ -16,6 +16,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { consumeQuota, useAuth } from "@/lib/auth";
+import { writeCache } from "@/lib/extraction-cache";
 import SignInModal from "@/components/auth/SignInModal";
 import AccountChip from "@/components/auth/AccountChip";
 
@@ -113,10 +114,7 @@ export default function IndexRoute() {
     return renderEnrichedPreview(parsed, enriched.markdown, result?.signals?.title);
   }, [enriched?.markdown, result?.signals?.title]);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = url.trim();
-    if (!trimmed) return;
+  async function extractUrl(trimmed: string) {
     setIsLoading(true);
     setError(null);
     setResult(null);
@@ -132,11 +130,19 @@ export default function IndexRoute() {
       }
       const data = (await res.json()) as ExtractResult;
       setResult(data);
+      writeCache({ url: data.url, markdown: data.markdown, designSystemData: data.designSystemData, signals: data.signals });
+      history.replaceState(null, '', `?url=${encodeURIComponent(data.url)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = url.trim();
+    if (trimmed) void extractUrl(trimmed);
   }
 
   async function handleEnrich() {
