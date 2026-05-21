@@ -11,9 +11,15 @@ import {
   IconCheck,
   IconCopy,
   IconExternalLink,
+  IconInfoCircle,
   IconLock,
   IconSparkles,
 } from "@tabler/icons-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { consumeQuota, useAuth, refreshQuota } from "@/lib/auth";
 import { readCache, writeCache } from "@/lib/extraction-cache";
 import SignInModal from "@/components/auth/SignInModal";
@@ -464,6 +470,23 @@ export default function IndexRoute() {
                         </Button>
                       )
                     )}
+                    {enriched && view === "enriched" && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Enrichment details"
+                          >
+                            <IconInfoCircle size={15} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                          <p>{enriched.model}</p>
+                          <p>{Math.round(enriched.latencyMs / 100) / 10}s · {enriched.usage.inputTokens.toLocaleString()} in · {enriched.usage.outputTokens.toLocaleString()} out</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -482,15 +505,6 @@ export default function IndexRoute() {
                     style={{ borderColor: "rgba(239,68,68,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
                   >
                     {enrichError}
-                  </div>
-                )}
-                {enriched && view === "enriched" && (
-                  <div className="mb-2 flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                    <span>
-                      {enriched.model} · {Math.round(enriched.latencyMs / 100) / 10}s ·
-                      input {enriched.usage.inputTokens.toLocaleString()} tok ·
-                      output {enriched.usage.outputTokens.toLocaleString()} tok
-                    </span>
                   </div>
                 )}
                 <pre className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap" style={{ maxHeight: screenshotHeight ? `${screenshotHeight}px` : "600px" }}>
