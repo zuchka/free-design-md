@@ -5,6 +5,7 @@ import {
   _hydrate,
   getCurrentUser,
   quotaRemaining,
+  hasBuilderSpace,
   signOut,
   signIn,
   consumeQuota,
@@ -132,5 +133,34 @@ describe("real-auth", () => {
     );
     await _hydrate();
     expect(consumeQuota()).toEqual({ ok: false, remaining: 0 });
+  });
+
+  it("_hydrate populates hasBuilderSpace=true when the server says so", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          user: { email: "matt@builder.io", name: "Matt" },
+          remaining: 0,
+          hasBuilderSpace: true,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    await _hydrate();
+    expect(hasBuilderSpace()).toBe(true);
+  });
+
+  it("_hydrate leaves hasBuilderSpace=false when field is absent", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          user: { email: "matt@builder.io", name: "Matt" },
+          remaining: 3,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    await _hydrate();
+    expect(hasBuilderSpace()).toBe(false);
   });
 });

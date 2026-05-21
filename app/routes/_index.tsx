@@ -84,7 +84,7 @@ export default function IndexRoute() {
   const [signInOpen, setSignInOpen] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
-  const { user, remaining } = useAuth();
+  const { user, remaining, hasBuilderSpace } = useAuth();
 
   useEffect(() => {
     if (!isLoading) return;
@@ -355,6 +355,7 @@ export default function IndexRoute() {
               <EnrichBanner
                 user={user}
                 remaining={remaining}
+                hasBuilderSpace={hasBuilderSpace}
                 isEnriching={isEnriching}
                 hasScreenshot={!!result.screenshotDataUrl}
                 onEnrich={handleEnrich}
@@ -530,6 +531,7 @@ export default function IndexRoute() {
 interface EnrichBannerProps {
   user: { email: string } | null;
   remaining: number;
+  hasBuilderSpace: boolean;
   isEnriching: boolean;
   hasScreenshot: boolean;
   onEnrich: () => void;
@@ -540,6 +542,7 @@ interface EnrichBannerProps {
 function EnrichBanner({
   user,
   remaining,
+  hasBuilderSpace,
   isEnriching,
   hasScreenshot,
   onEnrich,
@@ -548,6 +551,7 @@ function EnrichBanner({
 }: EnrichBannerProps) {
   const outOfQuota = user !== null && remaining === 0;
 
+  if (outOfQuota && hasBuilderSpace) return <BuilderPlanUpgradeBanner />;
   if (outOfQuota) return <BuilderKeyUnlockCard onUnlocked={onUnlocked} />;
 
   return (
@@ -598,6 +602,46 @@ function EnrichBanner({
               Sign in to Enrich
             </Button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BuilderPlanUpgradeBanner() {
+  return (
+    <div
+      className="relative overflow-hidden rounded-lg border px-5 py-3"
+      style={{
+        background:
+          "linear-gradient(135deg, rgba(24,182,246,0.08) 0%, rgba(24,182,246,0.04) 60%, transparent 100%)",
+        borderColor: "rgba(24,182,246,0.22)",
+      }}
+    >
+      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1.5 max-w-2xl">
+          <p className="text-base font-semibold tracking-tight">
+            You've used all 13 AI enrichments.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Builder.io Growth plan users and above get{" "}
+            <span style={{ color: "var(--intuit-primary)" }}>
+              unlimited AI enrichments — free.
+            </span>{" "}
+            Upgrade your plan to keep extracting at full depth.
+          </p>
+        </div>
+        <div className="shrink-0">
+          <a
+            href="https://www.builder.io/m/upgrade?source=free-design-md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-10 items-center gap-2 rounded-md px-4 text-sm font-medium text-black border-0 hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: "var(--intuit-primary)" }}
+          >
+            <IconSparkles size={16} />
+            View Builder.io Plans
+          </a>
         </div>
       </div>
     </div>

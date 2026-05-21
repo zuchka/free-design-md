@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { eq } from "drizzle-orm";
 import { getDb, schema } from "../db/index.js";
 import {
   ensureQuota,
   quotaRemaining,
   consumeQuota,
   applyBuilderKeyBonus,
+  quotaStatus,
   QUOTA_DEFAULT,
   QUOTA_BUILDER_BONUS,
 } from "./builder-quota.js";
@@ -163,5 +165,38 @@ describe("applyBuilderKeyBonus", () => {
     await applyBuilderKeyBonus("user@example.com", "firstkey");
     const result = await applyBuilderKeyBonus("user@example.com", "secondkey");
     expect(result).toEqual({ ok: false, reason: "already_unlocked" });
+  });
+});
+
+describe("quotaStatus", () => {
+  beforeEach(async () => {
+    const db = getDb();
+    await db.delete(schema.fdmdQuota);
+    await db.delete(schema.fdmdBuilderKeys);
+  });
+
+  it("returns hasBuilderSpace=false for a new user with no linked space", async () => {
+    await ensureQuota("status-user-no-space");
+    const result = await quotaStatus("status-user-no-space");
+    expect(result.hasBuilderSpace).toBe(false);
+    expect(result.remaining).toBe(QUOTA_DEFAULT);
+  });
+
+  it("returns hasBuilderSpace=true when bonusCredits > 0", async () => {
+    await ensureQuota("status-user-with-space");
+    const db = getDb();
+    await db
+      .update(schema.fdmdQuota)
+      .set({ bonusCredits: QUOTA_BUILDER_BONUS })
+      .where(eq(schema.fdmdQuota.userId, "status-user-with-space"));
+    const result = await quotaStatus("status-user-with-space");
+    expect(result.hasBuilderSpace).toBe(true);
+    expect(result.remaining).toBe(QUOTA_DEFAULT + QUOTA_BUILDER_BONUS);
+  });
+
+  it("returns hasBuilderSpace=false for an unseen user", async () => {
+    const result = await quotaStatus("status-user-never-seen");
+    expect(result.hasBuilderSpace).toBe(false);
+    expect(result.remaining).toBe(QUOTA_DEFAULT);
   });
 });
