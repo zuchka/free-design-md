@@ -10,15 +10,9 @@ import { Input } from "@/components/ui/input";
 import {
   IconCheck,
   IconCopy,
-  IconInfoCircle,
   IconLock,
   IconSparkles,
 } from "@tabler/icons-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { consumeQuota, useAuth, refreshQuota } from "@/lib/auth";
 import { readCache, writeCache } from "@/lib/extraction-cache";
 import SignInModal from "@/components/auth/SignInModal";
@@ -448,17 +442,6 @@ export default function IndexRoute() {
                           </span>
                         </Button>
                       )
-                    )}
-                    {enriched && view === "enriched" && (
-                      <Tooltip>
-                        <TooltipTrigger className="flex items-center text-muted-foreground hover:text-foreground transition-colors" aria-label="Enrichment details">
-                          <IconInfoCircle size={15} />
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs">
-                          <p>{enriched.model}</p>
-                          <p>{Math.round(enriched.latencyMs / 100) / 10}s · {enriched.usage.inputTokens.toLocaleString()} in · {enriched.usage.outputTokens.toLocaleString()} out</p>
-                        </TooltipContent>
-                      </Tooltip>
                     )}
                     <Button
                       size="sm"
