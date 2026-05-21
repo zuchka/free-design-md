@@ -12,6 +12,8 @@ export default createAuthPlugin({
     ],
   },
   publicPaths: [
+    // Railway health check — must be public or the deploy never becomes healthy.
+    "/api/health",
     // Product surface stays public — the "Sign in" gate is enforced
     // at the enrich endpoint, not by a route-level redirect.
     "/",
