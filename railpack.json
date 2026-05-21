@@ -1,0 +1,20 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "steps": {
+    "build": {
+      "commands": [
+        "...",
+        { "cmd": "pnpm exec playwright install chromium" }
+      ],
+      "variables": {
+        "PLAYWRIGHT_BROWSERS_PATH": "/app/.playwright-browsers"
+      }
+    }
+  },
+  "deploy": {
+    "startCommand": "pnpm start",
+    "variables": {
+      "PLAYWRIGHT_BROWSERS_PATH": "/app/.playwright-browsers"
+    }
+  }
+}

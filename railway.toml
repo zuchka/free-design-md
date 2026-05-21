@@ -1,5 +1,8 @@
 [deploy]
 healthcheckPath = "/"
-healthcheckTimeout = 60
+healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
+
+# SQLite persistence: add a Railway Volume in the dashboard and mount it at /app/data
+# Database file will live at /app/data/app.db
