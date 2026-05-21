@@ -12,9 +12,8 @@
     }
   },
   "deploy": {
-    "startCommand": "pnpm start",
+    "startCommand": "NITRO_HOST=0.0.0.0 PORT=3000 node .output/server/index.mjs",
     "variables": {
-      "NITRO_HOST": "0.0.0.0",
       "PLAYWRIGHT_BROWSERS_PATH": "/app/.playwright-browsers"
     }
   }
