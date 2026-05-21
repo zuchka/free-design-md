@@ -8,6 +8,7 @@ import {
   getThemeInitScript,
 } from "@agent-native/core/client";
 import { ThemeProvider } from "next-themes";
+import NavBar from "@/components/NavBar";
 import type { LinksFunction } from "react-router";
 import stylesheet from "./global.css?url";
 
@@ -69,6 +70,7 @@ export default function Root() {
         disableTransitionOnChange
       >
         <TooltipProvider>
+          <NavBar />
           <Outlet />
         </TooltipProvider>
       </ThemeProvider>

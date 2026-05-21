@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
 import { appBasePath } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
@@ -18,7 +17,6 @@ import {
 import { consumeQuota, useAuth, refreshQuota } from "@/lib/auth";
 import { readCache, writeCache } from "@/lib/extraction-cache";
 import SignInModal from "@/components/auth/SignInModal";
-import AccountChip from "@/components/auth/AccountChip";
 
 export function meta() {
   return [
@@ -85,6 +83,8 @@ export default function IndexRoute() {
   // just delta N's fragment.
   const streamAccumRef = useRef("");
   const [signInOpen, setSignInOpen] = useState(false);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
+  const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
   const { user, remaining } = useAuth();
   const builderSpaceUrl = import.meta.env.VITE_BUILDER_SPACE_URL as
     | string
@@ -147,6 +147,8 @@ export default function IndexRoute() {
     setEnriched(null);
     setEnrichError(null);
     setView("deterministic");
+    setPreviewExpanded(false);
+    setScreenshotHeight(null);
     try {
       const endpoint = `${appBasePath()}/api/extract?url=${encodeURIComponent(trimmed)}&format=json`;
       const res = await fetch(endpoint);
@@ -305,27 +307,16 @@ export default function IndexRoute() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <header>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Extract a design system from any URL
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Type a URL. We headlessly load the page, capture its colors,
-              fonts, and shapes, and render a portable design.md spec. No
-              sign-in required for the deterministic pass.
-            </p>
-          </header>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/quality"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              Quality
-            </Link>
-            <AccountChip />
-          </div>
-        </div>
+        <header className="mb-6">
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Extract a design system from any URL
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Type a URL. We headlessly load the page, capture its colors,
+            fonts, and shapes, and render a portable design.md spec. No
+            sign-in required for the deterministic pass.
+          </p>
+        </header>
 
         <form
           onSubmit={handleSubmit}
@@ -347,7 +338,7 @@ export default function IndexRoute() {
         {error && (
           <div
             className="mb-8 rounded-md border px-4 py-3 text-sm"
-            style={{ borderColor: "rgba(184,0,0,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
+            style={{ borderColor: "rgba(239,68,68,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
           >
             {error}
           </div>
@@ -364,14 +355,26 @@ export default function IndexRoute() {
 
         {result && !isLoading && (
           <div className="flex flex-col gap-6">
+            {!hasEnrichedContent && (
+              <EnrichBanner
+                user={user}
+                remaining={remaining}
+                isEnriching={isEnriching}
+                hasScreenshot={!!result.screenshotDataUrl}
+                onEnrich={handleEnrich}
+                onSignIn={() => setSignInOpen(true)}
+                onUnlocked={() => void refreshQuota()}
+              />
+            )}
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <Pane title="Real site" className="lg:flex-1 lg:min-w-0">
                 {result.screenshotDataUrl ? (
-                  <div className="h-[560px] overflow-auto rounded-md border bg-muted/20" style={{ boxShadow: "var(--intuit-card-shadow)" }}>
+                  <div className="overflow-hidden rounded-md border bg-muted/20" style={{ boxShadow: "var(--intuit-card-shadow)" }}>
                     <img
                       src={result.screenshotDataUrl}
                       alt={`Screenshot of ${result.url}`}
                       className="block w-full h-auto"
+                      onLoad={(e) => setScreenshotHeight(e.currentTarget.offsetHeight)}
                     />
                   </div>
                 ) : (
@@ -476,7 +479,7 @@ export default function IndexRoute() {
                 {enrichError && (
                   <div
                     className="mb-2 rounded-md border px-3 py-2 text-xs"
-                    style={{ borderColor: "rgba(184,0,0,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
+                    style={{ borderColor: "rgba(239,68,68,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
                   >
                     {enrichError}
                   </div>
@@ -490,23 +493,11 @@ export default function IndexRoute() {
                     </span>
                   </div>
                 )}
-                <pre className="max-h-[560px] overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap">
+                <pre className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap" style={{ maxHeight: screenshotHeight ? `${screenshotHeight}px` : "600px" }}>
                   {currentMarkdown}
                 </pre>
               </Pane>
             </div>
-
-            {!hasEnrichedContent && (
-              <EnrichBanner
-                user={user}
-                remaining={remaining}
-                isEnriching={isEnriching}
-                hasScreenshot={!!result.screenshotDataUrl}
-                onEnrich={handleEnrich}
-                onSignIn={() => setSignInOpen(true)}
-                onUnlocked={() => void refreshQuota()}
-              />
-            )}
 
             <Pane
               title="Preview from tokens"
@@ -516,27 +507,46 @@ export default function IndexRoute() {
                 ) : undefined
               }
             >
-              <div className="relative h-[900px] w-full overflow-hidden rounded-md border" style={{ boxShadow: "var(--intuit-card-shadow)" }}>
-                <iframe
-                  srcDoc={activePreviewHtml}
-                  title="Synthetic preview"
-                  sandbox="allow-same-origin"
-                  className="block h-full w-full"
-                />
-                {isEnriching && view === "enriched" && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
-                    <Spinner className="size-6 text-foreground" />
-                    <p className="text-sm text-muted-foreground">Enriching with AI…</p>
+              <div className="rounded-md border overflow-hidden" style={{ boxShadow: "var(--intuit-card-shadow)" }}>
+                <div
+                  className="relative overflow-hidden"
+                  style={{ height: previewExpanded ? "900px" : "260px", transition: "height 0.3s ease" }}
+                >
+                  <div style={{ height: "900px" }}>
+                    <iframe
+                      srcDoc={activePreviewHtml}
+                      title="Synthetic preview"
+                      sandbox="allow-same-origin"
+                      className="block h-full w-full"
+                    />
                   </div>
-                )}
-                {enrichedPreviewFailed && view === "enriched" && !isEnriching && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 backdrop-blur-sm">
-                    <p className="text-sm font-medium">Enriched preview unavailable</p>
-                    <p className="text-xs text-muted-foreground max-w-xs text-center">
-                      The AI output didn't match the expected design token schema. The text view above has the full enriched content.
-                    </p>
-                  </div>
-                )}
+                  {!previewExpanded && (
+                    <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
+                  )}
+                  {isEnriching && view === "enriched" && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
+                      <Spinner className="size-6 text-foreground" />
+                      <p className="text-sm text-muted-foreground">Enriching with AI…</p>
+                    </div>
+                  )}
+                  {enrichedPreviewFailed && view === "enriched" && !isEnriching && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 backdrop-blur-sm">
+                      <p className="text-sm font-medium">Enriched preview unavailable</p>
+                      <p className="text-xs text-muted-foreground max-w-xs text-center">
+                        The AI output didn't match the expected design token schema. The text view above has the full enriched content.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-center border-t py-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewExpanded((v) => !v)}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+                  >
+                    {previewExpanded ? "Collapse preview ↑" : "Expand full preview ↓"}
+                  </button>
+                </div>
               </div>
             </Pane>
           </div>
@@ -572,10 +582,10 @@ function EnrichBanner({
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl border p-6"
-      style={{ background: "linear-gradient(135deg, rgba(10,30,74,0.08) 0%, rgba(26,86,176,0.06) 60%, transparent 100%)", borderColor: "rgba(35,108,255,0.18)" }}
+      className="relative overflow-hidden rounded-lg border px-5 py-3"
+      style={{ background: "linear-gradient(135deg, rgba(24,182,246,0.08) 0%, rgba(24,182,246,0.04) 60%, transparent 100%)", borderColor: "rgba(24,182,246,0.22)" }}
     >
-      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1.5 max-w-2xl">
           <p className="text-base font-semibold tracking-tight">
             Your design.md is a skeleton. AI enrichment makes it{" "}
@@ -600,7 +610,7 @@ function EnrichBanner({
               variant="default"
               onClick={onEnrich}
               disabled={isEnriching || !hasScreenshot}
-              className="gap-2 text-white border-0 hover:opacity-90 transition-opacity"
+              className="gap-2 border-0 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: "var(--intuit-primary)" }}
             >
               <IconSparkles size={18} />
@@ -611,7 +621,7 @@ function EnrichBanner({
               size="lg"
               variant="default"
               onClick={onSignIn}
-              className="gap-2 text-white border-0 hover:opacity-90 transition-opacity"
+              className="gap-2 border-0 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: "var(--intuit-primary)" }}
             >
               <IconSparkles size={18} />
@@ -659,7 +669,7 @@ function BuilderKeyUnlockCard({ onUnlocked }: { onUnlocked: () => void }) {
   if (status === "success") {
     return (
       <div
-        className="rounded-xl border p-6"
+        className="rounded-lg border px-5 py-3"
         style={{
           background: "linear-gradient(135deg, rgba(0,128,0,0.06) 0%, transparent 100%)",
           borderColor: "rgba(0,160,0,0.2)",
@@ -677,13 +687,13 @@ function BuilderKeyUnlockCard({ onUnlocked }: { onUnlocked: () => void }) {
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl border p-6"
+      className="relative overflow-hidden rounded-lg border px-5 py-3"
       style={{
-        background: "linear-gradient(135deg, rgba(10,30,74,0.08) 0%, rgba(26,86,176,0.06) 60%, transparent 100%)",
-        borderColor: "rgba(35,108,255,0.18)",
+        background: "linear-gradient(135deg, rgba(24,182,246,0.08) 0%, rgba(24,182,246,0.04) 60%, transparent 100%)",
+        borderColor: "rgba(24,182,246,0.22)",
       }}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
           <p className="text-base font-semibold tracking-tight">
             You've used your 3 free enrichments.
@@ -704,12 +714,12 @@ function BuilderKeyUnlockCard({ onUnlocked }: { onUnlocked: () => void }) {
             onKeyDown={(e) => e.key === "Enter" && void handleUnlock()}
             disabled={status === "loading"}
             className="h-9 flex-1 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
-            style={{ borderColor: "rgba(35,108,255,0.3)" }}
+            style={{ borderColor: "rgba(24,182,246,0.4)" }}
           />
           <button
             onClick={() => void handleUnlock()}
             disabled={status === "loading" || !apiKey.trim()}
-            className="h-9 rounded-md px-4 text-sm font-medium text-white disabled:opacity-50"
+            className="h-9 rounded-md px-4 text-sm font-medium text-black disabled:opacity-50"
             style={{ background: "var(--intuit-primary)" }}
           >
             {status === "loading" ? "Verifying…" : "Unlock 10 more"}
