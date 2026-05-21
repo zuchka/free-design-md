@@ -27,6 +27,27 @@ export async function quotaRemaining(principal: string): Promise<number> {
   return Math.max(0, QUOTA_DEFAULT + bonus - used);
 }
 
+export async function quotaStatus(principal: string): Promise<{
+  remaining: number;
+  hasBuilderSpace: boolean;
+}> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      enrichCount: schema.fdmdQuota.enrichCount,
+      bonusCredits: schema.fdmdQuota.bonusCredits,
+    })
+    .from(schema.fdmdQuota)
+    .where(eq(schema.fdmdQuota.userId, principal))
+    .limit(1);
+  const used = rows[0]?.enrichCount ?? 0;
+  const bonus = rows[0]?.bonusCredits ?? 0;
+  return {
+    remaining: Math.max(0, QUOTA_DEFAULT + bonus - used),
+    hasBuilderSpace: bonus > 0,
+  };
+}
+
 export async function consumeQuota(
   principal: string,
 ): Promise<{ ok: boolean; remaining: number }> {
