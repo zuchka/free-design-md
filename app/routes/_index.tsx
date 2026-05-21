@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import {
   IconCheck,
   IconCopy,
-  IconExternalLink,
   IconInfoCircle,
   IconLock,
   IconSparkles,
@@ -92,9 +91,6 @@ export default function IndexRoute() {
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
   const { user, remaining } = useAuth();
-  const builderSpaceUrl = import.meta.env.VITE_BUILDER_SPACE_URL as
-    | string
-    | undefined;
 
   useEffect(() => {
     if (!isLoading) return;
@@ -400,7 +396,7 @@ export default function IndexRoute() {
                         <button
                           type="button"
                           onClick={() => setView("deterministic")}
-                          className={`px-2 py-1 transition-colors ${view === "deterministic" ? "text-white" : "bg-transparent text-muted-foreground"}`}
+                          className={`whitespace-nowrap px-2 py-1 transition-colors ${view === "deterministic" ? "text-white" : "bg-transparent text-muted-foreground"}`}
                           style={view === "deterministic" ? { backgroundColor: "var(--intuit-primary)" } : undefined}
                         >
                           Deterministic
@@ -408,29 +404,12 @@ export default function IndexRoute() {
                         <button
                           type="button"
                           onClick={() => setView("enriched")}
-                          className={`px-2 py-1 transition-colors ${view === "enriched" ? "text-white" : "bg-transparent text-muted-foreground"}`}
+                          className={`whitespace-nowrap px-2 py-1 transition-colors ${view === "enriched" ? "text-white" : "bg-transparent text-muted-foreground"}`}
                           style={view === "enriched" ? { backgroundColor: "var(--intuit-primary)" } : undefined}
                         >
                           AI-enriched{isEnriching && !enriched ? "…" : ""}
                         </button>
                       </div>
-                    )}
-                    {enriched && builderSpaceUrl && (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        asChild
-                        title="Drop this design.md into a Builder.io Space and iterate with an agent"
-                      >
-                        <a
-                          href={builderSpaceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <IconExternalLink size={14} />
-                          <span className="ml-1">Open in Builder Space</span>
-                        </a>
-                      </Button>
                     )}
                     {!hasEnrichedContent && (
                       user && remaining === 0 ? (
@@ -472,14 +451,8 @@ export default function IndexRoute() {
                     )}
                     {enriched && view === "enriched" && (
                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="Enrichment details"
-                          >
-                            <IconInfoCircle size={15} />
-                          </button>
+                        <TooltipTrigger className="flex items-center text-muted-foreground hover:text-foreground transition-colors" aria-label="Enrichment details">
+                          <IconInfoCircle size={15} />
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="text-xs">
                           <p>{enriched.model}</p>
