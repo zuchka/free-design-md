@@ -27,14 +27,6 @@ export default function NavBar() {
           >
             Quality
           </Link>
-          <a
-            href="https://agent-native.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            agent-native.com ↗
-          </a>
           <AccountChip />
         </nav>
       </div>
