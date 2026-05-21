@@ -21,9 +21,10 @@ const CHANGE_EVENT = "free-design-md:real-auth:change";
 interface CacheState {
   user: MockUser | null;
   remaining: number;
+  hasBuilderSpace: boolean;
 }
 
-let cache: CacheState = { user: null, remaining: QUOTA_DEFAULT };
+let cache: CacheState = { user: null, remaining: QUOTA_DEFAULT, hasBuilderSpace: false };
 
 function isClient(): boolean {
   return typeof window !== "undefined";
@@ -42,6 +43,10 @@ export function quotaRemaining(): number {
   return cache.remaining;
 }
 
+export function hasBuilderSpace(): boolean {
+  return cache.hasBuilderSpace;
+}
+
 /**
  * Navigate to the framework's built-in sign-in page. The /sign-in route
  * is unprotected-by-the-handler but not in publicPaths, so the framework's
@@ -58,7 +63,7 @@ export function signIn(_emailIgnored?: string): MockUser {
 
 export function signOut(): void {
   if (!isClient()) return;
-  cache = { user: null, remaining: QUOTA_DEFAULT };
+  cache = { user: null, remaining: QUOTA_DEFAULT, hasBuilderSpace: false };
   dispatchChange();
   void fetch("/_agent-native/auth/ba/sign-out", {
     method: "POST",
@@ -100,11 +105,13 @@ export async function _hydrate(): Promise<void> {
     const body = (await res.json()) as {
       user?: { email?: string; name?: string | null };
       remaining?: number;
+      hasBuilderSpace?: boolean;
     };
     if (!body.user?.email) return;
     cache = {
       user: { email: body.user.email },
       remaining: typeof body.remaining === "number" ? body.remaining : QUOTA_DEFAULT,
+      hasBuilderSpace: body.hasBuilderSpace === true,
     };
     dispatchChange();
   } catch {
@@ -119,5 +126,5 @@ export async function refreshQuota(): Promise<void> {
 
 /** Test-only — reset module state. Not exported from the auth seam. */
 export function _resetForTests(): void {
-  cache = { user: null, remaining: QUOTA_DEFAULT };
+  cache = { user: null, remaining: QUOTA_DEFAULT, hasBuilderSpace: false };
 }

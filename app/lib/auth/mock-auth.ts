@@ -103,3 +103,8 @@ export function _resetForTests(): void {
 
 /** No-op in mock mode — quota state is already in sync via localStorage. */
 export async function refreshQuota(): Promise<void> {}
+
+/** Mock always returns false — mock users never have a linked Builder space. */
+export function hasBuilderSpace(): boolean {
+  return false;
+}

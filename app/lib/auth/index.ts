@@ -19,6 +19,7 @@ export const getCurrentUser = impl.getCurrentUser;
 export const signIn = impl.signIn;
 export const signOut = impl.signOut;
 export const quotaRemaining = impl.quotaRemaining;
+export const hasBuilderSpace = impl.hasBuilderSpace;
 export const consumeQuota = impl.consumeQuota;
 export const subscribe = impl.subscribe;
 export const refreshQuota = impl.refreshQuota;
@@ -36,9 +37,10 @@ export type { MockUser as AuthUser } from "./mock-auth";
 interface AuthSnapshot {
   user: ReturnType<typeof getCurrentUser>;
   remaining: number;
+  hasBuilderSpace: boolean;
 }
 
-const SERVER_SNAPSHOT: AuthSnapshot = { user: null, remaining: 3 };
+const SERVER_SNAPSHOT: AuthSnapshot = { user: null, remaining: 3, hasBuilderSpace: false };
 
 // useSyncExternalStore requires getSnapshot to return a STABLE reference
 // between unchanged reads. The previous version of this file called
@@ -58,11 +60,19 @@ let cachedSnapshot: AuthSnapshot = SERVER_SNAPSHOT;
 let isHydrated = false;
 
 function recompute(): AuthSnapshot {
-  return { user: getCurrentUser(), remaining: quotaRemaining() };
+  return {
+    user: getCurrentUser(),
+    remaining: quotaRemaining(),
+    hasBuilderSpace: hasBuilderSpace(),
+  };
 }
 
 function snapshotsEqual(a: AuthSnapshot, b: AuthSnapshot): boolean {
-  return a.remaining === b.remaining && a.user?.email === b.user?.email;
+  return (
+    a.remaining === b.remaining &&
+    a.user?.email === b.user?.email &&
+    a.hasBuilderSpace === b.hasBuilderSpace
+  );
 }
 
 function maybeUpdateSnapshot(): boolean {
