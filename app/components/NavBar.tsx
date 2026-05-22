@@ -1,5 +1,4 @@
 import { Link } from "react-router";
-import AccountChip from "@/components/auth/AccountChip";
 
 export default function NavBar() {
   return (
@@ -27,7 +26,6 @@ export default function NavBar() {
           >
             Quality
           </Link>
-          <AccountChip />
         </nav>
       </div>
     </header>

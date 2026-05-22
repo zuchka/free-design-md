@@ -10,10 +10,9 @@ import { Input } from "@/components/ui/input";
 import {
   IconCheck,
   IconCopy,
-  IconLock,
   IconSparkles,
 } from "@tabler/icons-react";
-import { useAuth } from "@/components/auth/AuthProvider";
+import BuilderConnectCta from "@/components/auth/BuilderConnectCta";
 import { readCache, writeCache } from "@/lib/extraction-cache";
 
 export function meta() {
@@ -82,7 +81,6 @@ export default function IndexRoute() {
   const streamAccumRef = useRef("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
-  const { user, remaining, hasBuilderSpace, signIn, consumeQuota, refreshQuota } = useAuth();
 
   useEffect(() => {
     if (!isLoading) return;
@@ -169,14 +167,6 @@ export default function IndexRoute() {
 
   async function handleEnrich() {
     if (!result) return;
-    if (!user) {
-      signIn();
-      return;
-    }
-    if (remaining <= 0) {
-      setEnrichError("Out of free AI enrichments. Upgrade to keep going.");
-      return;
-    }
     setIsEnriching(true);
     setEnrichError(null);
     setStreamingMarkdown("");
@@ -233,8 +223,6 @@ export default function IndexRoute() {
                 enrichedModel: enrichResult.model,
               });
             }
-            // Charge the quota only when enrichment completed end-to-end.
-            consumeQuota();
           } else if (parsed.event === "error") {
             const { message } = parsed.data as { message: string };
             throw new Error(message);
@@ -351,14 +339,9 @@ export default function IndexRoute() {
           <div className="flex flex-col gap-6">
             {!hasEnrichedContent && (
               <EnrichBanner
-                user={user}
-                remaining={remaining}
-                hasBuilderSpace={hasBuilderSpace}
                 isEnriching={isEnriching}
                 hasScreenshot={!!result.screenshotDataUrl}
                 onEnrich={handleEnrich}
-                onSignIn={signIn}
-                onUnlocked={() => void refreshQuota()}
               />
             )}
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -405,42 +388,22 @@ export default function IndexRoute() {
                       </div>
                     )}
                     {!hasEnrichedContent && (
-                      user && remaining === 0 ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled
-                          title="You've used all your free AI enrichments"
-                        >
-                          <IconLock size={14} />
-                          <span className="ml-1">Out of free enrichments</span>
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleEnrich}
-                          disabled={isEnriching || !result.screenshotDataUrl}
-                          title={
-                            user
-                              ? `Enrich with Claude Opus 4.7 (~30-60s) — ${remaining} free left`
-                              : "Sign in to unlock AI enrichment"
-                          }
-                        >
-                          {isEnriching ? (
-                            <Spinner className="size-3.5" />
-                          ) : (
-                            <IconSparkles size={14} />
-                          )}
-                          <span className="ml-1">
-                            {isEnriching
-                              ? "Enriching…"
-                              : user
-                                ? "Enrich with AI"
-                                : "Enrich with AI · Sign in"}
-                          </span>
-                        </Button>
-                      )
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleEnrich}
+                        disabled={isEnriching || !result.screenshotDataUrl}
+                        title="Enrich with Claude Opus 4.7 (~30-60s)"
+                      >
+                        {isEnriching ? (
+                          <Spinner className="size-3.5" />
+                        ) : (
+                          <IconSparkles size={14} />
+                        )}
+                        <span className="ml-1">
+                          {isEnriching ? "Enriching…" : "Enrich with AI"}
+                        </span>
+                      </Button>
                     )}
                     <Button
                       size="sm"
@@ -526,56 +489,41 @@ export default function IndexRoute() {
 }
 
 interface EnrichBannerProps {
-  user: { email: string } | null;
-  remaining: number;
-  hasBuilderSpace: boolean;
   isEnriching: boolean;
   hasScreenshot: boolean;
   onEnrich: () => void;
-  onSignIn: () => void;
-  onUnlocked: () => void;
 }
 
-function EnrichBanner({
-  user,
-  remaining,
-  hasBuilderSpace,
-  isEnriching,
-  hasScreenshot,
-  onEnrich,
-  onSignIn,
-  onUnlocked,
-}: EnrichBannerProps) {
-  const outOfQuota = user !== null && remaining === 0;
-
-  if (outOfQuota && hasBuilderSpace) return <BuilderPlanUpgradeBanner />;
-  if (outOfQuota) return <BuilderKeyUnlockCard onUnlocked={onUnlocked} />;
-
+function EnrichBanner({ isEnriching, hasScreenshot, onEnrich }: EnrichBannerProps) {
   return (
     <div
       className="relative overflow-hidden rounded-lg border px-5 py-3"
-      style={{ background: "linear-gradient(135deg, rgba(24,182,246,0.08) 0%, rgba(24,182,246,0.04) 60%, transparent 100%)", borderColor: "rgba(24,182,246,0.22)" }}
+      style={{
+        background:
+          "linear-gradient(135deg, rgba(24,182,246,0.08) 0%, rgba(24,182,246,0.04) 60%, transparent 100%)",
+        borderColor: "rgba(24,182,246,0.22)",
+      }}
     >
-      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1.5 max-w-2xl">
-          <p className="text-base font-semibold tracking-tight">
-            Your design.md is a skeleton. AI enrichment makes it{" "}
-            <span style={{ color: "var(--intuit-primary)" }}>10–15× more detailed.</span>
-          </p>
-          <p className="text-sm text-muted-foreground">
-            The deterministic pass captures raw tokens — colors, fonts, radii. AI enrichment adds
-            brand voice, component intent, spacing rationale, and accessibility notes, reaching the
-            depth of{" "}
-            <span className="font-medium text-foreground">getdesign.md</span>
-            {" "}reference files — or beyond. Powered by{" "}
-            <span className="font-medium text-foreground">Claude Opus 4.7</span>.
-            {user
-              ? ` ${remaining} free enrichment${remaining === 1 ? "" : "s"} remaining.`
-              : " Free with a Builder.io account."}
-          </p>
-        </div>
-        <div className="shrink-0">
-          {user ? (
+      <div className="relative flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1.5 max-w-2xl">
+            <p className="text-base font-semibold tracking-tight">
+              Your design.md is a skeleton. AI enrichment makes it{" "}
+              <span style={{ color: "var(--intuit-primary)" }}>
+                10–15× more detailed.
+              </span>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              The deterministic pass captures raw tokens — colors, fonts, radii.
+              AI enrichment adds brand voice, component intent, spacing
+              rationale, and accessibility notes. Powered by{" "}
+              <span className="font-medium text-foreground">
+                Claude Opus 4.7
+              </span>
+              .
+            </p>
+          </div>
+          <div className="shrink-0">
             <Button
               size="lg"
               variant="default"
@@ -587,187 +535,9 @@ function EnrichBanner({
               <IconSparkles size={18} />
               {isEnriching ? "Enriching…" : "Enrich with AI"}
             </Button>
-          ) : (
-            <Button
-              size="lg"
-              variant="default"
-              onClick={onSignIn}
-              className="gap-2 border-0 hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: "var(--intuit-primary)" }}
-            >
-              <IconSparkles size={18} />
-              Sign in to Enrich
-            </Button>
-          )}
+          </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function BuilderPlanUpgradeBanner() {
-  return (
-    <div
-      className="relative overflow-hidden rounded-lg border px-5 py-3"
-      style={{
-        background:
-          "linear-gradient(135deg, rgba(24,182,246,0.08) 0%, rgba(24,182,246,0.04) 60%, transparent 100%)",
-        borderColor: "rgba(24,182,246,0.22)",
-      }}
-    >
-      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1.5 max-w-2xl">
-          <p className="text-base font-semibold tracking-tight">
-            You've used all 13 AI enrichments.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Builder.io Growth plan users and above get{" "}
-            <span style={{ color: "var(--intuit-primary)" }}>
-              unlimited AI enrichments — free.
-            </span>{" "}
-            Upgrade your plan to keep extracting at full depth.
-          </p>
-        </div>
-        <div className="shrink-0">
-          <a
-            href="https://www.builder.io/m/upgrade?source=free-design-md"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-10 items-center gap-2 rounded-md px-4 text-sm font-medium text-black border-0 hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: "var(--intuit-primary)" }}
-          >
-            <IconSparkles size={16} />
-            View Builder.io Plans
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BuilderKeyUnlockCard({ onUnlocked }: { onUnlocked: () => void }) {
-  const { refreshQuota } = useAuth();
-  const [apiKey, setApiKey] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-
-  async function handleUnlock() {
-    const trimmed = apiKey.trim();
-    if (!trimmed) return;
-    setStatus("loading");
-    setErrorMsg("");
-    try {
-      const res = await fetch("/api/auth/unlock-with-builder-key", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ apiKey: trimmed }),
-      });
-      const data = (await res.json()) as { error?: string; remaining?: number };
-      if (!res.ok) {
-        setStatus("error");
-        setErrorMsg(data.error ?? "Verification failed — try again.");
-        return;
-      }
-      setStatus("success");
-      await refreshQuota();
-      onUnlocked();
-    } catch {
-      setStatus("error");
-      setErrorMsg("Network error — check your connection and try again.");
-    }
-  }
-
-  if (status === "success") {
-    return (
-      <div
-        className="rounded-lg border px-5 py-3"
-        style={{
-          background: "linear-gradient(135deg, rgba(0,128,0,0.06) 0%, transparent 100%)",
-          borderColor: "rgba(0,160,0,0.2)",
-        }}
-      >
-        <p className="text-base font-semibold tracking-tight" style={{ color: "var(--intuit-primary)" }}>
-          10 more enrichments unlocked!
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your Builder.io space is linked. You're good to go.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="relative overflow-hidden rounded-lg border px-5 py-3"
-      style={{
-        background: "linear-gradient(135deg, rgba(24,182,246,0.08) 0%, rgba(24,182,246,0.04) 60%, transparent 100%)",
-        borderColor: "rgba(24,182,246,0.22)",
-      }}
-    >
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1.5">
-          <p className="text-base font-semibold tracking-tight">
-            You've used your 3 free enrichments.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Link a Builder.io space to unlock{" "}
-            <span style={{ color: "var(--intuit-primary)" }}>10 more — free, no credit card required.</span>
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <input
-            type="text"
-            aria-label="Builder.io public API key"
-            placeholder="Paste your Builder.io public API key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && void handleUnlock()}
-            disabled={status === "loading"}
-            className="h-9 flex-1 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
-            style={{ borderColor: "rgba(24,182,246,0.4)" }}
-          />
-          <button
-            onClick={() => void handleUnlock()}
-            disabled={status === "loading" || !apiKey.trim()}
-            className="h-9 rounded-md px-4 text-sm font-medium text-black disabled:opacity-50"
-            style={{ background: "var(--intuit-primary)" }}
-          >
-            {status === "loading" ? "Verifying…" : "Unlock 10 more"}
-          </button>
-        </div>
-
-        {errorMsg && (
-          <p
-            className="rounded-md border px-3 py-2 text-xs"
-            style={{
-              borderColor: "rgba(184,0,0,0.25)",
-              backgroundColor: "var(--intuit-error-bg)",
-              color: "var(--intuit-error)",
-            }}
-          >
-            {errorMsg}
-          </p>
-        )}
-
-        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-          <span>
-            No Builder.io account?{" "}
-            <a
-              href="https://www.builder.io/signup?agentNativeFlow=design_extraction&source=free-design-md"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground"
-            >
-              Sign up free — no credit card required →
-            </a>
-          </span>
-          <span>
-            Your public API key is in your Builder.io space settings under{" "}
-            <strong>Settings → Space → Public API Key</strong>.
-          </span>
-        </div>
+        <BuilderConnectCta />
       </div>
     </div>
   );
