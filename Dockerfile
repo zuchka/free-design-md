@@ -12,9 +12,6 @@ RUN pnpm install --frozen-lockfile
 # Source
 COPY . .
 
-# Bake real Builder.io auth into the client bundle (not mock auth).
-ENV VITE_FREE_DESIGN_MD_REAL_AUTH=1
-
 # Build (agent-native build → .output/server/index.mjs)
 RUN pnpm build
 

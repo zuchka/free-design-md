@@ -13,9 +13,8 @@ import {
   IconLock,
   IconSparkles,
 } from "@tabler/icons-react";
-import { consumeQuota, useAuth, refreshQuota } from "@/lib/auth";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { readCache, writeCache } from "@/lib/extraction-cache";
-import SignInModal from "@/components/auth/SignInModal";
 
 export function meta() {
   return [
@@ -81,10 +80,9 @@ export default function IndexRoute() {
   // renders into one, that render shows the full text through delta N, not
   // just delta N's fragment.
   const streamAccumRef = useRef("");
-  const [signInOpen, setSignInOpen] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
-  const { user, remaining, hasBuilderSpace } = useAuth();
+  const { user, remaining, hasBuilderSpace, signIn, consumeQuota, refreshQuota } = useAuth();
 
   useEffect(() => {
     if (!isLoading) return;
@@ -172,7 +170,7 @@ export default function IndexRoute() {
   async function handleEnrich() {
     if (!result) return;
     if (!user) {
-      setSignInOpen(true);
+      signIn();
       return;
     }
     if (remaining <= 0) {
@@ -359,7 +357,7 @@ export default function IndexRoute() {
                 isEnriching={isEnriching}
                 hasScreenshot={!!result.screenshotDataUrl}
                 onEnrich={handleEnrich}
-                onSignIn={() => setSignInOpen(true)}
+                onSignIn={signIn}
                 onUnlocked={() => void refreshQuota()}
               />
             )}
@@ -523,7 +521,6 @@ export default function IndexRoute() {
           </div>
         )}
       </div>
-      <SignInModal open={signInOpen} onOpenChange={setSignInOpen} />
     </div>
   );
 }
@@ -649,6 +646,7 @@ function BuilderPlanUpgradeBanner() {
 }
 
 function BuilderKeyUnlockCard({ onUnlocked }: { onUnlocked: () => void }) {
+  const { refreshQuota } = useAuth();
   const [apiKey, setApiKey] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");

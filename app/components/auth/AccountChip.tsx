@@ -1,4 +1,4 @@
-import { signOut, useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,7 +20,7 @@ import { IconLogout, IconBolt } from "@tabler/icons-react";
  * with Sign out.
  */
 export default function AccountChip() {
-  const { user, remaining } = useAuth();
+  const { user, remaining, signOut } = useAuth();
 
   if (!user) return null;
 
