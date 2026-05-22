@@ -116,3 +116,17 @@ export const fdmdBuilderKeys = table("fdmd_builder_keys", {
   userId: text("user_id").notNull(),
   verifiedAt: text("verified_at").notNull().default(now()),
 });
+
+export const fdmdUsers = table("fdmd_users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  name: text("name"),
+  createdAt: text("created_at").notNull().default(now()),
+});
+
+export const fdmdSessions = table("fdmd_sessions", {
+  token: text("token").primaryKey(),
+  userId: text("user_id").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull().default(now()),
+});
