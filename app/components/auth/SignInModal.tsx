@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { signIn } from "@/lib/auth";
+import { useEffect } from "react";
+import { useBuilderConnectFlow } from "@agent-native/core/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,59 +17,63 @@ interface SignInModalProps {
 }
 
 /**
- * Sign-in/sign-up modal.
+ * "Connect Builder.io" gate for AI enrichment.
  *
- * Mocked seam: signIn() instantly signs in as the dev user → modal closes.
- *
- * Real seam: signIn() navigates to /sign-in?return=<current-path>.
- * The framework's auth guard intercepts and shows the email/password form.
- * After sign-in the /sign-in handler redirects back here. The page
- * navigates away so the modal never needs to close itself.
+ * Uses the framework's useBuilderConnectFlow() hook — it owns the popup,
+ * CSRF state, status polling, and credential persistence to app_secrets.
+ * Server routes (/_agent-native/builder/{status,connect,callback}) are
+ * auto-mounted by createCoreRoutesPlugin() in server/plugins/core-routes.ts.
  */
 export default function SignInModal({ open, onOpenChange }: SignInModalProps) {
-  const [pending, setPending] = useState(false);
-
-  async function handleSignIn() {
-    setPending(true);
-    // Real seam: page navigates away to /api/auth/builder/start — never returns.
-    // Mock seam: signIn() returns a non-empty email synchronously, so we
-    // close the modal and reset the spinner here.
-    const result = signIn("matt@builder.io");
-    if (result.email) {
-      setPending(false);
+  const { configured, connecting, error, orgName, start } = useBuilderConnectFlow({
+    trackingSource: "free_design_md_signin_modal",
+    trackingFlow: "enrich_design_md",
+    onConnected: () => {
       onOpenChange(false);
-    }
-  }
+    },
+  });
+
+  useEffect(() => {
+    if (open && configured) onOpenChange(false);
+  }, [open, configured, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Sign in to enrich</DialogTitle>
+          <DialogTitle>Connect Builder.io to enrich</DialogTitle>
           <DialogDescription>
             Free design.md is free for everyone — deterministic extractions
-            stay open. Sign in with your Builder.io account and we'll throw
-            in 3 AI enrichments on us, powered by Claude Opus 4.7.
+            stay open. Connect your Builder.io account and we'll throw in
+            3 AI enrichments on us, powered by Claude Opus 4.7.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 pt-2">
           <Button
             size="lg"
-            onClick={handleSignIn}
-            disabled={pending}
+            onClick={() => start()}
+            disabled={connecting}
             className="w-full justify-center gap-3"
           >
-            {pending ? (
+            {connecting ? (
               <Spinner className="size-4" />
             ) : (
               <BuilderLogo className="w-5 h-5" />
             )}
             <span>
-              {pending ? "Signing you in…" : "Sign in / Create account"}
+              {connecting ? "Waiting for Builder.io…" : "Connect Builder.io"}
             </span>
           </Button>
+          {error && (
+            <p className="text-center text-xs text-destructive">{error}</p>
+          )}
+          {configured && orgName && (
+            <p className="text-center text-xs text-muted-foreground">
+              Connected as {orgName}
+            </p>
+          )}
           <p className="text-center text-xs text-muted-foreground">
-            By signing in you agree to drop into Builder.io's platform to
+            By connecting you agree to drop into Builder.io's platform to
             iterate on your design.md with a real agent.
           </p>
         </div>
