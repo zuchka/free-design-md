@@ -36,7 +36,7 @@ export function getCurrentUser(): MockUser | null {
   }
 }
 
-export function signIn(email: string): MockUser {
+export function signIn(email = "dev@example.local"): MockUser {
   if (!isClient()) throw new Error("signIn called outside the browser");
   const user: MockUser = { email };
   window.localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user));

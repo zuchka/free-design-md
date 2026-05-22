@@ -56,7 +56,7 @@ export function hasBuilderSpace(): boolean {
 export function signIn(_emailIgnored?: string): MockUser {
   if (!isClient()) throw new Error("signIn called outside the browser");
   const returnPath = window.location.pathname + window.location.search;
-  window.location.assign(`/sign-in?return=${encodeURIComponent(returnPath)}`);
+  window.location.assign(`/api/auth/builder/start?return=${encodeURIComponent(returnPath)}`);
   // Page is navigating away — return placeholder; callers can't observe it.
   return { email: "" };
 }
@@ -65,12 +65,10 @@ export function signOut(): void {
   if (!isClient()) return;
   cache = { user: null, remaining: QUOTA_DEFAULT, hasBuilderSpace: false };
   dispatchChange();
-  void fetch("/_agent-native/auth/ba/sign-out", {
+  void fetch("/api/auth/sign-out", {
     method: "POST",
     credentials: "include",
-  }).catch(() => {
-    // Best-effort — session cookie is cleared on next reload if this fails.
-  });
+  }).catch(() => {});
 }
 
 export function consumeQuota(): { ok: boolean; remaining: number } {

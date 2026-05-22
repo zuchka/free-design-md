@@ -34,7 +34,7 @@ export default function SignInModal({ open, onOpenChange }: SignInModalProps) {
     // Real seam: page navigates away to /api/auth/builder/start — never returns.
     // Mock seam: signIn() returns a non-empty email synchronously, so we
     // close the modal and reset the spinner here.
-    const result = signIn("matt@builder.io");
+    const result = signIn();
     if (result.email) {
       setPending(false);
       onOpenChange(false);
