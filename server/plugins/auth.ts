@@ -31,5 +31,11 @@ export default createAuthPlugin({
     // The enrich endpoint gates auth inside the handler (returns 401/402 JSON).
     // Keep public so the framework doesn't serve the marketing page instead.
     "/api/enrich-design-md",
+    // Builder.io CLI-auth flow — must be public so unauthenticated users
+    // reach start/callback without being intercepted by the auth guard.
+    "/api/auth/builder/start",
+    "/api/auth/builder/callback",
+    // Sign-out clears the session; public so the guard doesn't reject the POST.
+    "/api/auth/sign-out",
   ],
 });
