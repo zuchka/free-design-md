@@ -69,7 +69,7 @@ describe("real-auth", () => {
 
     expect(assignMock).toHaveBeenCalledTimes(1);
     const target = assignMock.mock.calls[0][0] as string;
-    expect(target).toContain("/api/auth/builder/start?return=");
+    expect(target).toContain("/sign-in?return=");
     expect(decodeURIComponent(target.split("return=")[1])).toBe("/some/page");
   });
 
@@ -95,7 +95,7 @@ describe("real-auth", () => {
     expect(getCurrentUser()).toBeNull();
     await new Promise((r) => setTimeout(r, 0));
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      "/api/auth/sign-out",
+      "/_agent-native/auth/ba/sign-out",
       expect.objectContaining({ method: "POST", credentials: "include" }),
     );
   });

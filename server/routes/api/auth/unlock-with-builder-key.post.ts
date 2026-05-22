@@ -4,7 +4,7 @@ import {
   setResponseHeader,
   setResponseStatus,
 } from "h3";
-import { getMySession } from "../../../lib/session.js";
+import { getSession } from "@agent-native/core/server";
 import { applyBuilderKeyBonus } from "../../../lib/builder-quota.js";
 
 const REASON_MESSAGES: Record<string, string> = {
@@ -20,8 +20,8 @@ const REASON_MESSAGES: Record<string, string> = {
 export default defineEventHandler(async (event) => {
   setResponseHeader(event, "Content-Type", "application/json");
 
-  const session = await getMySession(event);
-  if (!session) {
+  const session = await getSession(event).catch(() => null);
+  if (!session?.email) {
     setResponseStatus(event, 401);
     return { error: "Sign in to unlock credits" };
   }
