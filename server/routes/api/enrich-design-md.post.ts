@@ -4,8 +4,6 @@ import {
   setResponseHeader,
   setResponseStatus,
 } from "h3";
-import { getSession } from "@agent-native/core/server";
-import { consumeQuota } from "../../lib/builder-quota.js";
 import {
   enrichStream,
   type EnrichInput,
@@ -14,32 +12,13 @@ import {
 /**
  * POST /api/enrich-design-md (SSE)
  *
- * Body: JSON payload from a prior /api/extract?format=json call
- * (url + designSystemData + signals + deterministicMarkdown + screenshotDataUrl).
+ * Public endpoint — no auth, no quota. Server reads ANTHROPIC_API_KEY (or a
+ * future Builder-connected credential) and streams the enriched design.md.
  *
- * Response: text/event-stream with these event types:
- *   - event: delta   data: {"text": "<chunk>"}
- *   - event: done    data: {"url","markdown","model","latencyMs","usage","stopReason"}
- *   - event: error   data: {"message": "..."}
- *
- * The client (app/routes/_index.tsx) appends each delta to the AI-enriched
- * pane as it arrives; on `done` it swaps in the final EnrichResult with
- * usage stats.
+ * Body: JSON payload from a prior /api/extract?format=json call.
+ * Response: text/event-stream with delta/done/error events.
  */
 export default defineEventHandler(async (event) => {
-  const session = await getSession(event).catch(() => null);
-  // The framework session always carries `email`, but `userId` is only set
-  // when resolution goes through Better Auth — the legacy `an_session_*`
-  // cookie path returns `{email, token}` only. Gate on `email` so both
-  // paths unlock enrichment.
-  if (!session?.email) {
-    setResponseStatus(event, 401);
-    setResponseHeader(event, "Content-Type", "application/json");
-    return { error: "Sign in to enrich" };
-  }
-
-  // Validate the body BEFORE consuming quota so a malformed request
-  // doesn't burn one of the user's 3 free enrichments.
   const body = await readBody(event);
 
   if (!body || typeof body !== "object") {
@@ -57,8 +36,6 @@ export default defineEventHandler(async (event) => {
     markdown,
   } = body as Record<string, unknown>;
 
-  // Accept either `deterministicMarkdown` or `markdown` (the field name on the
-  // /api/extract response). Prefer the explicit one if both are present.
   const md =
     typeof deterministicMarkdown === "string"
       ? deterministicMarkdown
@@ -79,16 +56,6 @@ export default defineEventHandler(async (event) => {
     return "missing one of: url, designSystemData, signals, screenshotDataUrl, deterministicMarkdown/markdown";
   }
 
-  const charged = await consumeQuota(session.email);
-  if (!charged.ok) {
-    setResponseStatus(event, 402);
-    setResponseHeader(event, "Content-Type", "application/json");
-    return {
-      error: "You've used all your free AI enrichments on this account",
-      remaining: 0,
-    };
-  }
-
   const input: EnrichInput = {
     url,
     designSystemData,
@@ -100,7 +67,6 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(event, "Content-Type", "text/event-stream; charset=utf-8");
   setResponseHeader(event, "Cache-Control", "no-cache, no-transform");
   setResponseHeader(event, "Connection", "keep-alive");
-  // Hint to proxies (nginx, h3 SSE clients) to disable buffering.
   setResponseHeader(event, "X-Accel-Buffering", "no");
 
   return new ReadableStream({
