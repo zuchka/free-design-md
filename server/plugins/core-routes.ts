@@ -1,7 +1,8 @@
 import { createCoreRoutesPlugin } from "@agent-native/core/server";
 import { envKeys } from "../lib/env-config.js";
+import { ANONYMOUS_OWNER } from "../lib/owner.js";
 
 export default createCoreRoutesPlugin({
   envKeys,
-  anonymousOwner: () => "anonymous@free-design-md.local",
+  anonymousOwner: () => ANONYMOUS_OWNER,
 });
