@@ -360,11 +360,27 @@ export default function IndexRoute() {
 
   function handleKeep() {
     if (!iterSession || !iterCandidate || !iterCandidateId) return;
+    const newMarkdown = iterCandidate;
     const s = advanceSession(iterSession.url, {
       id: iterCandidateId,
-      markdown: iterCandidate,
+      markdown: newMarkdown,
     });
     setIterSession(s);
+    // Promote the kept iteration into the main enriched view + extraction
+    // cache so it survives a reload. The original enrichment is still
+    // recoverable via iterSession.previous.markdown for the side-by-side.
+    setEnriched((prev) => (prev ? { ...prev, markdown: newMarkdown } : prev));
+    if (result) {
+      writeCache({
+        url: result.url,
+        markdown: result.markdown,
+        designSystemData: result.designSystemData,
+        signals: result.signals,
+        screenshotDataUrl: result.screenshotDataUrl,
+        enrichedMarkdown: newMarkdown,
+        enrichedModel: enriched?.model,
+      });
+    }
     setIterCandidate("");
     setIterCandidateId(null);
   }
@@ -534,10 +550,14 @@ export default function IndexRoute() {
                   isStreaming={iterStreaming}
                   remaining={credits?.remaining ?? null}
                 />
-                {(iterStreaming || iterCandidate) && (
+                {(iterStreaming || iterCandidate || iterSession.previous) && (
                   <SideBySideMemo
-                    previous={iterSession.current.markdown}
-                    next={iterCandidate}
+                    previous={
+                      iterStreaming || iterCandidate
+                        ? iterSession.current.markdown
+                        : iterSession.previous?.markdown ?? ""
+                    }
+                    next={iterCandidate || iterSession.current.markdown}
                     isStreaming={iterStreaming}
                     candidatePending={!!iterCandidate}
                     onKeep={handleKeep}
