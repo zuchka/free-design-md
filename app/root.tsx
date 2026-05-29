@@ -9,6 +9,7 @@ import {
 } from "@agent-native/core/client";
 import { ThemeProvider } from "next-themes";
 import NavBar from "@/components/NavBar";
+import { CreditsProvider } from "@/lib/use-credits";
 import type { LinksFunction } from "react-router";
 import stylesheet from "./global.css?url";
 
@@ -70,8 +71,10 @@ export default function Root() {
         disableTransitionOnChange
       >
         <TooltipProvider>
-          <NavBar />
-          <Outlet />
+          <CreditsProvider>
+            <NavBar />
+            <Outlet />
+          </CreditsProvider>
         </TooltipProvider>
       </ThemeProvider>
     </ClientOnly>

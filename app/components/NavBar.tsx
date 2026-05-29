@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import CreditsChip from "@/components/CreditsChip";
 
 export default function NavBar() {
   return (
@@ -20,6 +21,7 @@ export default function NavBar() {
           </a>
         </div>
         <nav aria-label="Main" className="flex items-center gap-4">
+          <CreditsChip />
           <Link
             to="/quality"
             className="text-sm text-muted-foreground transition-colors hover:text-foreground"

@@ -22,6 +22,7 @@ import {
   iterate,
   type IterationSession,
 } from "@/lib/iteration-client";
+import { useCredits } from "@/lib/use-credits";
 
 export function meta() {
   return [
@@ -99,16 +100,7 @@ export default function IndexRoute() {
   const [iterCandidate, setIterCandidate] = useState<string>("");
   const [iterCandidateId, setIterCandidateId] = useState<string | null>(null);
   const [iterStreaming, setIterStreaming] = useState(false);
-  const [credits, setCredits] = useState<{ remaining: number; allowed: number } | null>(null);
-
-  useEffect(() => {
-    fetch("/api/me/credits")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) setCredits(data as { remaining: number; allowed: number });
-      })
-      .catch(() => {});
-  }, []);
+  const { credits, setRemaining: setCreditsRemaining } = useCredits();
 
   useEffect(() => {
     if (enriched?.markdown && result?.url) {
@@ -362,7 +354,7 @@ export default function IndexRoute() {
     }
     if (resolvedDone) {
       const done = resolvedDone as { id: string; markdown: string; remaining: number };
-      setCredits((c) => (c ? { ...c, remaining: done.remaining } : c));
+      setCreditsRemaining(done.remaining);
     }
   }
 
