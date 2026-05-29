@@ -97,6 +97,7 @@ export default function IndexRoute() {
   });
   const [iterSession, setIterSession] = useState<IterationSession | null>(null);
   const [iterCandidate, setIterCandidate] = useState<string>("");
+  const [iterCandidateId, setIterCandidateId] = useState<string | null>(null);
   const [iterStreaming, setIterStreaming] = useState(false);
   const [credits, setCredits] = useState<{ remaining: number; allowed: number } | null>(null);
 
@@ -327,6 +328,7 @@ export default function IndexRoute() {
     if (!iterSession) return;
     setIterStreaming(true);
     setIterCandidate("");
+    setIterCandidateId(null);
     let resolvedDone: { id: string; markdown: string; remaining: number } | null =
       null;
     let errorMsg: string | null = null;
@@ -344,6 +346,7 @@ export default function IndexRoute() {
         onDone: (d) => {
           resolvedDone = d;
           setIterCandidate(d.markdown);
+          setIterCandidateId(d.id);
         },
         onError: (m) => {
           errorMsg = m;
@@ -353,6 +356,7 @@ export default function IndexRoute() {
     setIterStreaming(false);
     if (errorMsg) {
       setIterCandidate("");
+      setIterCandidateId(null);
       window.alert(`Iteration failed: ${errorMsg}`);
       return;
     }
@@ -363,16 +367,18 @@ export default function IndexRoute() {
   }
 
   function handleKeep() {
-    if (!iterSession || !iterCandidate) return;
+    if (!iterSession || !iterCandidate || !iterCandidateId) return;
     const s = advanceSession(iterSession.url, {
-      id: "promoted",
+      id: iterCandidateId,
       markdown: iterCandidate,
     });
     setIterSession(s);
     setIterCandidate("");
+    setIterCandidateId(null);
   }
   function handleDiscard() {
     setIterCandidate("");
+    setIterCandidateId(null);
   }
 
   const activePreviewHtml =
