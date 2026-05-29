@@ -7,7 +7,7 @@ export const INPUT_CAPS = {
 } as const;
 
 const BLOCKLIST: { name: string; pattern: RegExp }[] = [
-  { name: "ignore_instructions", pattern: /\bignore\s+(all\s+|previous\s+|the\s+)?(prior\s+)?(instructions?|prompts?|rules?|context|above)\b/i },
+  { name: "ignore_instructions", pattern: /\bignore\s+((all|previous|the|prior)\s+)+(instructions?|prompts?|rules?|context|above)\b|\bignore\s+(instructions?|prompts?|rules?|context|above)\b/i },
   { name: "disregard_above",     pattern: /\bdisregard\s+(everything|all|the|prior|previous|above)\b/i },
   { name: "reveal_system",       pattern: /\b(reveal|show|print|repeat|leak|dump)\s+(the\s+|your\s+)?(all\s+)?(system\s+prompt|instructions?|hidden\s+prompt|instructions?\s+verbatim)\b/i },
   { name: "role_change",         pattern: /\byou\s+are\s+(now|actually|really)\s+(a|an|\w+,)/i },
