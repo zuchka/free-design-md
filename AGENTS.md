@@ -51,6 +51,7 @@ Returns the AI-enriched design.md plus latency and token usage.
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `extract-design-md`  | `--url <url>`                                                                                                          | Headless visit + computed-CSS extraction → `{ url, markdown, designSystemData, signals, screenshotDataUrl }`. Deterministic; no LLM. |
 | `enrich-design-md`   | `--url <url> --designSystemData '<json>' --signals '<json>' --screenshotDataUrl <data-url> --deterministicMarkdown '<md>'` | Sends the deterministic extraction + screenshot to Claude Opus 4.7. Returns a richer design.md plus usage and latency. Requires `ANTHROPIC_API_KEY`. |
+| `iterate-design-md`  | `--previousMarkdown '<md>' --userPrompt '<text>' [--sectionTarget <slug>]` | One-shot revision of an AI-enriched design.md per a user instruction. User input is treated as untrusted data — wrapped in nonce-delimited tags, run through a blocklist, and the output is shape-validated before return. Consumes 1 credit from `fdmd_quota`. Requires `ANTHROPIC_API_KEY`. |
 | `export-design-md`   | `--id <designSystemId>`                                                                                                | Re-render a stored design system as design.md.                                                         |
 | `db-health` / `db-status` / `db-connect` | —                                                                                          | Framework DB health checks (kept for diagnostics).                                                     |
 
@@ -61,7 +62,9 @@ Use `pnpm action <name> [args]` to invoke any of them. Output is JSON on stdout.
 | Method | Path                                  | What it does                                                          |
 | ------ | ------------------------------------- | --------------------------------------------------------------------- |
 | GET    | `/api/extract?url=<url>&format=json`  | Thin wrapper over `extract-design-md`. Public.                        |
-| POST   | `/api/enrich-design-md`               | Thin wrapper over `enrich-design-md`. Public (only gated by `ANTHROPIC_API_KEY` being set). Phase 2 will add Builder SSO + per-user quota. |
+| POST   | `/api/enrich-design-md`               | Thin wrapper over `enrich-design-md`. Public at the route level; UI gates the button behind Builder Connect (`useBuilderConnectFlow().configured`). |
+| POST   | `/api/iterate-design-md`              | SSE wrapper over `iterate-design-md`. Decrements `fdmd_quota` for the resolved owner (the framework's `anonymousOwner` — `anonymous@free-design-md.local` for this single-tenant app). Returns 402 when out of credits, 422 on blocklist hit (no credit charged), 400 on input-cap violations. UI gates the panel on Builder Connect. |
+| GET    | `/api/me/credits`                     | Returns `{ allowed, remaining }` for the resolved owner. Used by the UI to render the "X credits left" counter on the iteration panel. |
 
 ## Dev
 
