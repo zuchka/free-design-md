@@ -3,6 +3,7 @@ import {
   parseEnrichedFrontmatter,
   buildTokenMap,
   resolveTokenRefs,
+  extractSectionList,
 } from "./parse-enriched-design-md";
 
 const SAMPLE_ENRICHED_MD = `---
@@ -205,5 +206,37 @@ describe("resolveTokenRefs", () => {
   it("resolves mixed token + literal", () => {
     const map = new Map([["colors.hairline", "#E0E0E0"]]);
     expect(resolveTokenRefs("1px solid {colors.hairline}", map)).toBe("1px solid #E0E0E0");
+  });
+});
+
+describe("extractSectionList", () => {
+  it("returns slugged H2 headings in order", () => {
+    const md = [
+      "---",
+      "name: Demo",
+      "---",
+      "",
+      "## Colors",
+      "...",
+      "## Typography",
+      "...",
+      "## Component Library",
+      "...",
+    ].join("\n");
+    expect(extractSectionList(md)).toEqual(["colors", "typography", "component-library"]);
+  });
+
+  it("returns [] for memos with no H2", () => {
+    expect(extractSectionList("---\nname: X\n---\n\nNo sections here.")).toEqual([]);
+  });
+
+  it("ignores H3 and lower", () => {
+    expect(extractSectionList("## A\n### B\n## C")).toEqual(["a", "c"]);
+  });
+
+  it("dedupes adjacent dashes and trims to 40 chars", () => {
+    const long = "## " + "A".repeat(60);
+    const [slug] = extractSectionList(long);
+    expect(slug?.length).toBeLessThanOrEqual(40);
   });
 });
