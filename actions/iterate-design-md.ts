@@ -53,6 +53,7 @@ export interface IterationInput {
   previousMarkdown: string;
   userPrompt: string;
   sectionTarget?: string;
+  anthropicApiKey?: string;
 }
 
 const InputSchema = z.object({
@@ -62,6 +63,7 @@ const InputSchema = z.object({
     .string()
     .regex(/^[a-z0-9-]{1,40}$/)
     .optional(),
+  anthropicApiKey: z.string().min(1).optional(),
 });
 
 export async function* iterateStream(
@@ -84,8 +86,11 @@ export async function* iterateStream(
     throw new Error(`blocked: ${blockHit}`);
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY is not set. Add it to .env.local to enable iteration.");
+  const apiKey = input.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "ANTHROPIC_API_KEY is not set. Add it to .env.local or pass anthropicApiKey on the call.",
+    );
   }
 
   const { system, user } = buildIterationPrompt({
@@ -94,7 +99,7 @@ export async function* iterateStream(
     sectionTarget: input.sectionTarget,
   });
 
-  const client = new Anthropic();
+  const client = new Anthropic({ apiKey });
   const startedAt = Date.now();
 
   let stream: ReturnType<typeof client.messages.stream>;
