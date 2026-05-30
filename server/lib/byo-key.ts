@@ -1,13 +1,14 @@
 import type { H3Event } from "h3";
 import { getCookie } from "h3";
 import { getDbExec } from "@agent-native/core/db";
+import { FDMD_ANON_COOKIE } from "./cookie-names";
 
 /**
  * Returns the BYO Anthropic API key for the visitor identified by their
  * `fdmd_anon` cookie, or null if none is stored.
  */
 export async function getBYOKeyForEvent(event: H3Event): Promise<string | null> {
-  const token = getCookie(event, "fdmd_anon");
+  const token = getCookie(event, FDMD_ANON_COOKIE);
   if (!token) return null;
   const exec = getDbExec();
   const r = await exec.execute({
@@ -23,7 +24,7 @@ export async function getBYOKeyForEvent(event: H3Event): Promise<string | null> 
  * No-op if the visitor has no `fdmd_anon` cookie.
  */
 export async function setBYOKeyForEvent(event: H3Event, apiKey: string): Promise<void> {
-  const token = getCookie(event, "fdmd_anon");
+  const token = getCookie(event, FDMD_ANON_COOKIE);
   if (!token) return;
   const exec = getDbExec();
   await exec.execute({

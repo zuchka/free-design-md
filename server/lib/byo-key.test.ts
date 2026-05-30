@@ -52,10 +52,9 @@ describe("setBYOKeyForEvent", () => {
     mockGetCookie.mockReturnValue("test-token");
     fakeExec.execute.mockResolvedValue({ rows: [] });
     await setBYOKeyForEvent({} as never, "sk-new-key");
-    expect(fakeExec.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sql: expect.stringContaining("INSERT"),
-      }),
-    );
+    expect(fakeExec.execute).toHaveBeenCalledWith({
+      sql: expect.stringContaining("INSERT"),
+      args: ["test-token", "sk-new-key"],
+    });
   });
 });
