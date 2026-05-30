@@ -217,6 +217,16 @@ export default runMigrations(
       version: 25,
       sql: `UPDATE fdmd_quota SET bonus_credits = 3 WHERE bonus_credits = 0`,
     },
+    // v26: per-visitor BYO Anthropic API key store. The token is the value
+    // of the `fdmd_anon` cookie set by server/plugins/anon-session.ts.
+    {
+      version: 26,
+      sql: `CREATE TABLE IF NOT EXISTS fdmd_byo_keys (
+    token TEXT PRIMARY KEY,
+    api_key TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+    },
   ],
   { table: "slides_migrations" },
 );
