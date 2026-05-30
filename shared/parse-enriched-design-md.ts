@@ -122,3 +122,19 @@ function coerceComponents(val: unknown): Record<string, Record<string, string>> 
   }
   return result;
 }
+
+export function extractSectionList(markdown: string): string[] {
+  const out: string[] = [];
+  for (const line of markdown.split("\n")) {
+    const m = /^##\s+(.+)$/.exec(line);
+    if (!m) continue;
+    const slug = m[1]
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40);
+    if (slug) out.push(slug);
+  }
+  return out;
+}

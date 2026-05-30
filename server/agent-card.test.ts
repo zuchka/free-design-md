@@ -14,6 +14,7 @@ const REQUIRED_DESIGN_MD_ACTIONS = [
   "extract-design-md",
   "enrich-design-md",
   "export-design-md",
+  "iterate-design-md",
 ];
 
 describe("free-design-md agent card", () => {

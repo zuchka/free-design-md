@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { appBasePath } from "@agent-native/core/client";
+import { appBasePath, useBuilderConnectFlow } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
@@ -14,6 +14,15 @@ import {
 } from "@tabler/icons-react";
 import BuilderConnectCta from "@/components/auth/BuilderConnectCta";
 import { readCache, writeCache } from "@/lib/extraction-cache";
+import IteratePanel from "@/components/IteratePanel";
+import SideBySideMemo from "@/components/SideBySideMemo";
+import {
+  advanceSession,
+  getOrCreateSession,
+  iterate,
+  type IterationSession,
+} from "@/lib/iteration-client";
+import { useCredits } from "@/lib/use-credits";
 
 export function meta() {
   return [
@@ -81,6 +90,24 @@ export default function IndexRoute() {
   const streamAccumRef = useRef("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
+
+  // Iteration state: separate from the enrichment SSE flow. A session
+  // represents one extract→enrich→iterate chain keyed on the URL.
+  const { configured } = useBuilderConnectFlow({
+    trackingSource: "free_design_md_index",
+  });
+  const [iterSession, setIterSession] = useState<IterationSession | null>(null);
+  const [iterCandidate, setIterCandidate] = useState<string>("");
+  const [iterCandidateId, setIterCandidateId] = useState<string | null>(null);
+  const [iterStreaming, setIterStreaming] = useState(false);
+  const { credits, setRemaining: setCreditsRemaining } = useCredits();
+
+  useEffect(() => {
+    if (enriched?.markdown && result?.url) {
+      const s = getOrCreateSession(result.url, enriched.markdown);
+      setIterSession(s);
+    }
+  }, [enriched?.markdown, result?.url]);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -283,6 +310,85 @@ export default function IndexRoute() {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  async function handleIterate({
+    userPrompt,
+    sectionTarget,
+  }: {
+    userPrompt: string;
+    sectionTarget?: string;
+  }) {
+    if (!iterSession) return;
+    setIterStreaming(true);
+    setIterCandidate("");
+    setIterCandidateId(null);
+    let resolvedDone: { id: string; markdown: string; remaining: number } | null =
+      null;
+    let errorMsg: string | null = null;
+    await iterate(
+      {
+        sessionId: iterSession.sessionId,
+        url: iterSession.url,
+        previousMarkdown: iterSession.current.markdown,
+        userPrompt,
+        sectionTarget,
+        parentId: iterSession.current.id,
+      },
+      {
+        onDelta: (t) => setIterCandidate((cur) => cur + t),
+        onDone: (d) => {
+          resolvedDone = d;
+          setIterCandidate(d.markdown);
+          setIterCandidateId(d.id);
+        },
+        onError: (m) => {
+          errorMsg = m;
+        },
+      },
+    );
+    setIterStreaming(false);
+    if (errorMsg) {
+      setIterCandidate("");
+      setIterCandidateId(null);
+      window.alert(`Iteration failed: ${errorMsg}`);
+      return;
+    }
+    if (resolvedDone) {
+      const done = resolvedDone as { id: string; markdown: string; remaining: number };
+      setCreditsRemaining(done.remaining);
+    }
+  }
+
+  function handleKeep() {
+    if (!iterSession || !iterCandidate || !iterCandidateId) return;
+    const newMarkdown = iterCandidate;
+    const s = advanceSession(iterSession.url, {
+      id: iterCandidateId,
+      markdown: newMarkdown,
+    });
+    setIterSession(s);
+    // Promote the kept iteration into the main enriched view + extraction
+    // cache so it survives a reload. The original enrichment is still
+    // recoverable via iterSession.previous.markdown for the side-by-side.
+    setEnriched((prev) => (prev ? { ...prev, markdown: newMarkdown } : prev));
+    if (result) {
+      writeCache({
+        url: result.url,
+        markdown: result.markdown,
+        designSystemData: result.designSystemData,
+        signals: result.signals,
+        screenshotDataUrl: result.screenshotDataUrl,
+        enrichedMarkdown: newMarkdown,
+        enrichedModel: enriched?.model,
+      });
+    }
+    setIterCandidate("");
+    setIterCandidateId(null);
+  }
+  function handleDiscard() {
+    setIterCandidate("");
+    setIterCandidateId(null);
+  }
+
   const activePreviewHtml =
     view === "enriched" && enrichedPreviewHtml ? enrichedPreviewHtml : previewHtml;
 
@@ -341,6 +447,7 @@ export default function IndexRoute() {
               <EnrichBanner
                 isEnriching={isEnriching}
                 hasScreenshot={!!result.screenshotDataUrl}
+                configured={configured}
                 onEnrich={handleEnrich}
               />
             )}
@@ -392,8 +499,12 @@ export default function IndexRoute() {
                         size="sm"
                         variant="outline"
                         onClick={handleEnrich}
-                        disabled={isEnriching || !result.screenshotDataUrl}
-                        title="Enrich with Claude Opus 4.7 (~30-60s)"
+                        disabled={isEnriching || !result.screenshotDataUrl || !configured}
+                        title={
+                          !configured
+                            ? "Connect Builder.io to unlock AI enrichment"
+                            : "Enrich with Claude Opus 4.7 (~30-60s)"
+                        }
                       >
                         {isEnriching ? (
                           <Spinner className="size-3.5" />
@@ -430,6 +541,31 @@ export default function IndexRoute() {
                 </pre>
               </Pane>
             </div>
+
+            {enriched?.markdown && iterSession && (
+              <div className="flex flex-col gap-3">
+                <IteratePanel
+                  enrichedMarkdown={iterSession.current.markdown}
+                  onSubmit={handleIterate}
+                  isStreaming={iterStreaming}
+                  remaining={credits?.remaining ?? null}
+                />
+                {(iterStreaming || iterCandidate || iterSession.previous) && (
+                  <SideBySideMemo
+                    previous={
+                      iterStreaming || iterCandidate
+                        ? iterSession.current.markdown
+                        : iterSession.previous?.markdown ?? ""
+                    }
+                    next={iterCandidate || iterSession.current.markdown}
+                    isStreaming={iterStreaming}
+                    candidatePending={!!iterCandidate}
+                    onKeep={handleKeep}
+                    onDiscard={handleDiscard}
+                  />
+                )}
+              </div>
+            )}
 
             <Pane
               title="Preview from tokens"
@@ -491,10 +627,16 @@ export default function IndexRoute() {
 interface EnrichBannerProps {
   isEnriching: boolean;
   hasScreenshot: boolean;
+  configured: boolean;
   onEnrich: () => void;
 }
 
-function EnrichBanner({ isEnriching, hasScreenshot, onEnrich }: EnrichBannerProps) {
+function EnrichBanner({
+  isEnriching,
+  hasScreenshot,
+  configured,
+  onEnrich,
+}: EnrichBannerProps) {
   return (
     <div
       className="relative overflow-hidden rounded-lg border px-5 py-3"
@@ -528,9 +670,10 @@ function EnrichBanner({ isEnriching, hasScreenshot, onEnrich }: EnrichBannerProp
               size="lg"
               variant="default"
               onClick={onEnrich}
-              disabled={isEnriching || !hasScreenshot}
+              disabled={isEnriching || !hasScreenshot || !configured}
               className="gap-2 border-0 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: "var(--intuit-primary)" }}
+              title={!configured ? "Connect Builder.io to unlock AI enrichment" : undefined}
             >
               <IconSparkles size={18} />
               {isEnriching ? "Enriching…" : "Enrich with AI"}

@@ -188,6 +188,35 @@ export default runMigrations(
     verified_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
     },
+    // v24: per-extraction iteration history for the AI-enriched memo.
+    // Each row is one user-prompted revision of a prior memo.
+    {
+      version: 24,
+      sql: `CREATE TABLE IF NOT EXISTS fdmd_iterations (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    parent_id TEXT,
+    url TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    user_prompt TEXT NOT NULL,
+    section_target TEXT,
+    markdown TEXT NOT NULL,
+    model TEXT NOT NULL,
+    usage_json TEXT,
+    stop_reason TEXT,
+    rejected_reason TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS fdmd_iter_session_created_idx ON fdmd_iterations (session_id, created_at);
+  CREATE INDEX IF NOT EXISTS fdmd_iter_owner_created_idx ON fdmd_iterations (owner, created_at)`,
+    },
+    // v25: seed default iteration credits for existing fdmd_quota rows where
+    // bonus_credits is still 0 (the Builder-key unlock path's default). New
+    // rows are seeded with the default at insert time via getCredits().
+    {
+      version: 25,
+      sql: `UPDATE fdmd_quota SET bonus_credits = 3 WHERE bonus_credits = 0`,
+    },
   ],
   { table: "slides_migrations" },
 );
