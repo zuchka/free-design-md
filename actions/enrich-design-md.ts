@@ -67,6 +67,7 @@ export interface EnrichInput {
   deterministicMarkdown: string;
   signals: unknown;
   screenshotDataUrl: string;
+  anthropicApiKey?: string;
 }
 
 /**
@@ -182,9 +183,10 @@ export async function* enrichStream(
     }
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const apiKey = input.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
     throw new Error(
-      "ANTHROPIC_API_KEY is not set. Add it to .env.local to enable AI enrichment.",
+      "ANTHROPIC_API_KEY is not set. Add it to .env.local or pass anthropicApiKey on the call.",
     );
   }
 
@@ -199,7 +201,7 @@ export async function* enrichStream(
 
   const { mediaType, data: imageData } = parseDataUrl(input.screenshotDataUrl);
 
-  const client = new Anthropic();
+  const client = new Anthropic({ apiKey });
   const startedAt = Date.now();
 
   let stream: ReturnType<typeof client.messages.stream>;

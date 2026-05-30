@@ -8,6 +8,9 @@ import {
   enrichStream,
   type EnrichInput,
 } from "../../../actions/enrich-design-md.js";
+import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
+import { resolveOwner } from "../../lib/owner.js";
+import { decrementCredits, refundCredit } from "../../lib/quota.js";
 
 /**
  * POST /api/enrich-design-md (SSE)
@@ -56,12 +59,32 @@ export default defineEventHandler(async (event) => {
     return "missing one of: url, designSystemData, signals, screenshotDataUrl, deterministicMarkdown/markdown";
   }
 
-  const input: EnrichInput = {
+  const owner = await resolveOwner(event);
+
+  let resolvedKey: { apiKey: string; source: string; consumesQuota: boolean };
+  try {
+    resolvedKey = await resolveAnthropicKey(event);
+  } catch {
+    setResponseStatus(event, 402);
+    return { error: "no_api_key_available", reason: "byo-key-required" };
+  }
+
+  let dec: { ok: boolean; remaining: number } | null = null;
+  if (resolvedKey.consumesQuota) {
+    dec = await decrementCredits(owner);
+    if (!dec.ok) {
+      setResponseStatus(event, 402);
+      return { error: "out_of_credits", reason: "signed-in-and-out-of-credits" };
+    }
+  }
+
+  const inputWithKey: EnrichInput = {
     url,
     designSystemData,
     signals,
     screenshotDataUrl,
     deterministicMarkdown: md,
+    anthropicApiKey: resolvedKey.apiKey,
   };
 
   setResponseHeader(event, "Content-Type", "text/event-stream; charset=utf-8");
@@ -81,7 +104,7 @@ export default defineEventHandler(async (event) => {
       };
 
       try {
-        for await (const ev of enrichStream(input)) {
+        for await (const ev of enrichStream(inputWithKey)) {
           if (ev.type === "delta") {
             send("delta", { text: ev.text });
           } else {
@@ -91,6 +114,9 @@ export default defineEventHandler(async (event) => {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        if (resolvedKey.consumesQuota && dec?.ok) {
+          await refundCredit(owner).catch(() => {});
+        }
         send("error", { message });
       } finally {
         controller.close();
