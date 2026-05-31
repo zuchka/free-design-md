@@ -14,15 +14,11 @@ import {
 } from "@tabler/icons-react";
 import BuilderConnectCta from "@/components/auth/BuilderConnectCta";
 import { readCache, writeCache } from "@/lib/extraction-cache";
-import IteratePanel from "@/components/IteratePanel";
 import SideBySideMemo from "@/components/SideBySideMemo";
 import {
-  advanceSession,
   getOrCreateSession,
-  iterate,
   type IterationSession,
 } from "@/lib/iteration-client";
-import { useCredits } from "@/lib/use-credits";
 
 export function meta() {
   return [
@@ -97,10 +93,6 @@ export default function IndexRoute() {
     trackingSource: "free_design_md_index",
   });
   const [iterSession, setIterSession] = useState<IterationSession | null>(null);
-  const [iterCandidate, setIterCandidate] = useState<string>("");
-  const [iterCandidateId, setIterCandidateId] = useState<string | null>(null);
-  const [iterStreaming, setIterStreaming] = useState(false);
-  const { credits, setRemaining: setCreditsRemaining } = useCredits();
 
   useEffect(() => {
     if (enriched?.markdown && result?.url) {
@@ -326,83 +318,14 @@ export default function IndexRoute() {
     setTimeout(() => setCopied(false), 1500);
   }
 
-  async function handleIterate({
-    userPrompt,
-    sectionTarget,
-  }: {
-    userPrompt: string;
-    sectionTarget?: string;
-  }) {
-    if (!iterSession) return;
-    setIterStreaming(true);
-    setIterCandidate("");
-    setIterCandidateId(null);
-    let resolvedDone: { id: string; markdown: string; remaining: number } | null =
-      null;
-    let errorMsg: string | null = null;
-    await iterate(
-      {
-        sessionId: iterSession.sessionId,
-        url: iterSession.url,
-        previousMarkdown: iterSession.current.markdown,
-        userPrompt,
-        sectionTarget,
-        parentId: iterSession.current.id,
-      },
-      {
-        onDelta: (t) => setIterCandidate((cur) => cur + t),
-        onDone: (d) => {
-          resolvedDone = d;
-          setIterCandidate(d.markdown);
-          setIterCandidateId(d.id);
-        },
-        onError: (m) => {
-          errorMsg = m;
-        },
-      },
-    );
-    setIterStreaming(false);
-    if (errorMsg) {
-      setIterCandidate("");
-      setIterCandidateId(null);
-      window.alert(`Iteration failed: ${errorMsg}`);
-      return;
-    }
-    if (resolvedDone) {
-      const done = resolvedDone as { id: string; markdown: string; remaining: number };
-      setCreditsRemaining(done.remaining);
-    }
-  }
-
+  // Keep/Discard are wired to SideBySideMemo for historical diffs.
+  // candidatePending is always false now (chat sidebar drives iteration),
+  // so these buttons never render — but the prop contract still requires them.
   function handleKeep() {
-    if (!iterSession || !iterCandidate || !iterCandidateId) return;
-    const newMarkdown = iterCandidate;
-    const s = advanceSession(iterSession.url, {
-      id: iterCandidateId,
-      markdown: newMarkdown,
-    });
-    setIterSession(s);
-    // Promote the kept iteration into the main enriched view + extraction
-    // cache so it survives a reload. The original enrichment is still
-    // recoverable via iterSession.previous.markdown for the side-by-side.
-    setEnriched((prev) => (prev ? { ...prev, markdown: newMarkdown } : prev));
-    if (result) {
-      writeCache({
-        url: result.url,
-        markdown: result.markdown,
-        designSystemData: result.designSystemData,
-        signals: result.signals,
-        screenshotDataUrl: result.screenshotDataUrl,
-        enrichedMarkdown: newMarkdown,
-        enrichedModel: enriched?.model,
-      });
-    }
-    setIterCandidate("");
-    setIterCandidateId(null);
+    // no-op: candidatePending=false means buttons are hidden
   }
   function handleDiscard() {
-    setIterCandidate("");
-    setIterCandidateId(null);
+    // no-op: candidatePending=false means buttons are hidden
   }
 
   const activePreviewHtml =
@@ -558,29 +481,15 @@ export default function IndexRoute() {
               </Pane>
             </div>
 
-            {enriched?.markdown && iterSession && (
-              <div className="flex flex-col gap-3">
-                <IteratePanel
-                  enrichedMarkdown={iterSession.current.markdown}
-                  onSubmit={handleIterate}
-                  isStreaming={iterStreaming}
-                  remaining={credits?.remaining ?? null}
-                />
-                {(iterStreaming || iterCandidate || iterSession.previous) && (
-                  <SideBySideMemo
-                    previous={
-                      iterStreaming || iterCandidate
-                        ? iterSession.current.markdown
-                        : iterSession.previous?.markdown ?? ""
-                    }
-                    next={iterCandidate || iterSession.current.markdown}
-                    isStreaming={iterStreaming}
-                    candidatePending={!!iterCandidate}
-                    onKeep={handleKeep}
-                    onDiscard={handleDiscard}
-                  />
-                )}
-              </div>
+            {enriched?.markdown && iterSession && iterSession.previous && (
+              <SideBySideMemo
+                previous={iterSession.previous.markdown}
+                next={iterSession.current.markdown}
+                isStreaming={false}
+                candidatePending={false}
+                onKeep={handleKeep}
+                onDiscard={handleDiscard}
+              />
             )}
 
             <Pane
