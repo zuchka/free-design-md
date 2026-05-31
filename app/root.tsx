@@ -81,11 +81,12 @@ export default function Root() {
               <AgentSidebar
                 position="right"
                 defaultOpen
-                emptyStateText="Tell me how to refine this design.md"
+                emptyStateText="Paste a URL above and click Enrich with AI — then ask me to iterate on the design.md. I can adjust colors, typography, spacing, components, and brand voice."
                 suggestions={[
+                  "Make this dark mode",
+                  "Make the brand voice more playful and confident",
                   "Tighten the spacing scale",
-                  "Make the brand voice more energetic",
-                  "Soften the radii on cards",
+                  "Soften the card radii and add more depth to the shadows",
                 ]}
               >
                 <Outlet />

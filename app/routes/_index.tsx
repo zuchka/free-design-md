@@ -85,6 +85,7 @@ export default function IndexRoute() {
   // renders into one, that render shows the full text through delta N, not
   // just delta N's fragment.
   const streamAccumRef = useRef("");
+  const markdownPreRef = useRef<HTMLPreElement>(null);
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
 
@@ -127,6 +128,14 @@ export default function IndexRoute() {
     }, 2200);
     return () => clearInterval(id);
   }, [isLoading]);
+
+  // Auto-scroll the markdown pane to the bottom while streaming so the
+  // user sees new content as it arrives rather than staying at the top.
+  useEffect(() => {
+    if (!isEnriching || !markdownPreRef.current) return;
+    const el = markdownPreRef.current;
+    el.scrollTop = el.scrollHeight;
+  }, [streamingMarkdown, isEnriching]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -490,7 +499,7 @@ export default function IndexRoute() {
                   </div>
                 )}
                 <div className="relative">
-                  <pre className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap" style={{ maxHeight: screenshotHeight ? `${screenshotHeight}px` : "600px" }}>
+                  <pre ref={markdownPreRef} className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap" style={{ maxHeight: screenshotHeight ? `${screenshotHeight}px` : "600px" }}>
                     {currentMarkdown}
                   </pre>
                   {agentGenerating && (
