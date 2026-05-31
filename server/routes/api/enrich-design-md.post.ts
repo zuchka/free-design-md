@@ -9,14 +9,15 @@ import {
   type EnrichInput,
 } from "../../../actions/enrich-design-md.js";
 import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
-import { resolveOwner } from "../../lib/owner.js";
+import { resolveOwner, ANONYMOUS_OWNER } from "../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../lib/quota.js";
 
 /**
  * POST /api/enrich-design-md (SSE)
  *
- * Public endpoint — no auth, no quota. Server reads ANTHROPIC_API_KEY (or a
- * future Builder-connected credential) and streams the enriched design.md.
+ * Gated: anonymous callers must have a BYO Anthropic key (stored via the
+ * fdmd_anon cookie). Signed-in users (Builder SSO) may use the server key
+ * against their quota. Returns 401 otherwise.
  *
  * Body: JSON payload from a prior /api/extract?format=json call.
  * Response: text/event-stream with delta/done/error events.
@@ -67,6 +68,13 @@ export default defineEventHandler(async (event) => {
   } catch {
     setResponseStatus(event, 402);
     return { error: "no_api_key_available", reason: "byo-key-required" };
+  }
+
+  // Anonymous callers may only enrich if they have a BYO key stored.
+  // Signed-in users (Builder SSO) may use the server key against their quota.
+  if (owner === ANONYMOUS_OWNER && resolvedKey.source !== "byo") {
+    setResponseStatus(event, 401);
+    return { error: "sign_in_required", reason: "add a BYO key or sign in with Builder" };
   }
 
   let dec: { ok: boolean; remaining: number } | null = null;
