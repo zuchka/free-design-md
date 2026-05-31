@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { appBasePath, sendToAgentChat, updateMcpAppModelContext, useAgentChatGenerating, useBuilderConnectFlow } from "@agent-native/core/client";
+import { appBasePath, updateMcpAppModelContext, useBuilderConnectFlow } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
@@ -70,7 +70,6 @@ export default function IndexRoute() {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const agentGenerating = useAgentChatGenerating();
   const [result, setResult] = useState<ExtractResult | null>(null);
   const [labelIndex, setLabelIndex] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -218,10 +217,6 @@ export default function IndexRoute() {
     setStreamingMarkdown("");
     streamAccumRef.current = "";
     setView("enriched");
-    sendToAgentChat({
-      message: `Starting AI enrichment for **${result.url}** — this usually takes 20–40 seconds. I'll let you know when it's ready.`,
-      submit: false,
-    });
     try {
       const endpoint = `${appBasePath()}/api/enrich-design-md`;
       const res = await fetch(endpoint, {
@@ -262,14 +257,6 @@ export default function IndexRoute() {
             sawDone = true;
             const enrichResult = parsed.data as EnrichResult;
             setEnriched(enrichResult);
-            sendToAgentChat({
-              message:
-                `Design enriched for **${result.url}**. ` +
-                `The AI-enhanced design.md is now loaded in the preview. ` +
-                `What would you like to refine? For example: "tighten the spacing scale", ` +
-                `"make the brand voice more confident", or "soften the card radii".`,
-              submit: true,
-            });
             if (result) {
               writeCache({
                 url: result.url,
@@ -502,12 +489,6 @@ export default function IndexRoute() {
                   <pre ref={markdownPreRef} className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap" style={{ maxHeight: screenshotHeight ? `${screenshotHeight}px` : "600px" }}>
                     {currentMarkdown}
                   </pre>
-                  {agentGenerating && !isEnriching && !!enriched && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md bg-background/70 backdrop-blur-sm">
-                      <Spinner className="size-5 text-foreground" />
-                      <p className="text-xs text-muted-foreground">Agent iterating…</p>
-                    </div>
-                  )}
                 </div>
               </Pane>
             </div>
