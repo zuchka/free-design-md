@@ -502,7 +502,7 @@ export default function IndexRoute() {
                   <pre ref={markdownPreRef} className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap" style={{ maxHeight: screenshotHeight ? `${screenshotHeight}px` : "600px" }}>
                     {currentMarkdown}
                   </pre>
-                  {agentGenerating && (
+                  {agentGenerating && !isEnriching && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md bg-background/70 backdrop-blur-sm">
                       <Spinner className="size-5 text-foreground" />
                       <p className="text-xs text-muted-foreground">Agent iterating…</p>
