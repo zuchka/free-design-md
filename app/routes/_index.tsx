@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { appBasePath, sendToAgentChat, updateMcpAppModelContext, useBuilderConnectFlow } from "@agent-native/core/client";
+import { appBasePath, sendToAgentChat, updateMcpAppModelContext, useAgentChatGenerating, useBuilderConnectFlow } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
@@ -70,6 +70,7 @@ export default function IndexRoute() {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const agentGenerating = useAgentChatGenerating();
   const [result, setResult] = useState<ExtractResult | null>(null);
   const [labelIndex, setLabelIndex] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -108,14 +109,15 @@ export default function IndexRoute() {
         {
           type: "text",
           text:
-            "The user has loaded this AI-enriched design.md. Treat it as the " +
-            "current document. When the user asks to revise it, call the " +
-            "iterate-design-md action.\n\n" +
+            `IMPORTANT: The user already has an AI-enriched design.md loaded for ${result?.url ?? "this page"}. ` +
+            "DO NOT call extract-design-md — the content is already available below. " +
+            "To revise or iterate on it, call iterate-design-md with this markdown as previousMarkdown. " +
+            "Do not re-extract, do not re-enrich. Use the markdown below directly.\n\n" +
             enriched.markdown,
         },
       ],
     });
-  }, [enriched?.markdown]);
+  }, [enriched?.markdown, result?.url]);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -207,6 +209,10 @@ export default function IndexRoute() {
     setStreamingMarkdown("");
     streamAccumRef.current = "";
     setView("enriched");
+    sendToAgentChat({
+      message: `Starting AI enrichment for **${result.url}** — this usually takes 20–40 seconds. I'll let you know when it's ready.`,
+      submit: false,
+    });
     try {
       const endpoint = `${appBasePath()}/api/enrich-design-md`;
       const res = await fetch(endpoint, {
@@ -483,9 +489,17 @@ export default function IndexRoute() {
                     {enrichError}
                   </div>
                 )}
-                <pre className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap" style={{ maxHeight: screenshotHeight ? `${screenshotHeight}px` : "600px" }}>
-                  {currentMarkdown}
-                </pre>
+                <div className="relative">
+                  <pre className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap" style={{ maxHeight: screenshotHeight ? `${screenshotHeight}px` : "600px" }}>
+                    {currentMarkdown}
+                  </pre>
+                  {agentGenerating && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md bg-background/70 backdrop-blur-sm">
+                      <Spinner className="size-5 text-foreground" />
+                      <p className="text-xs text-muted-foreground">Agent iterating…</p>
+                    </div>
+                  )}
+                </div>
               </Pane>
             </div>
 
