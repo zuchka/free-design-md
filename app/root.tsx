@@ -1,4 +1,6 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+import { useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   AgentSidebar,
@@ -63,6 +65,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function Root() {
+  const [queryClient] = useState(() => new QueryClient());
   return (
     <ClientOnly fallback={<DefaultSpinner />}>
       <ThemeProvider
@@ -71,23 +74,25 @@ export default function Root() {
         enableSystem={false}
         disableTransitionOnChange
       >
-        <TooltipProvider>
-          <CreditsProvider>
-            <NavBar />
-            <AgentSidebar
-              position="right"
-              defaultOpen
-              emptyStateText="Tell me how to refine this design.md"
-              suggestions={[
-                "Tighten the spacing scale",
-                "Make the brand voice more energetic",
-                "Soften the radii on cards",
-              ]}
-            >
-              <Outlet />
-            </AgentSidebar>
-          </CreditsProvider>
-        </TooltipProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <CreditsProvider>
+              <NavBar />
+              <AgentSidebar
+                position="right"
+                defaultOpen
+                emptyStateText="Tell me how to refine this design.md"
+                suggestions={[
+                  "Tighten the spacing scale",
+                  "Make the brand voice more energetic",
+                  "Soften the radii on cards",
+                ]}
+              >
+                <Outlet />
+              </AgentSidebar>
+            </CreditsProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
       </ThemeProvider>
     </ClientOnly>
   );
