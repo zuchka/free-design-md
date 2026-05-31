@@ -1,6 +1,7 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
+  AgentSidebar,
   ClientOnly,
   DefaultSpinner,
   appPath,
@@ -73,7 +74,18 @@ export default function Root() {
         <TooltipProvider>
           <CreditsProvider>
             <NavBar />
-            <Outlet />
+            <AgentSidebar
+              position="right"
+              defaultOpen
+              emptyStateText="Tell me how to refine this design.md"
+              suggestions={[
+                "Tighten the spacing scale",
+                "Make the brand voice more energetic",
+                "Soften the radii on cards",
+              ]}
+            >
+              <Outlet />
+            </AgentSidebar>
           </CreditsProvider>
         </TooltipProvider>
       </ThemeProvider>
