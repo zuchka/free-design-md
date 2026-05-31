@@ -1,6 +1,9 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+import { useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
+  AgentSidebar,
   ClientOnly,
   DefaultSpinner,
   appPath,
@@ -62,6 +65,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function Root() {
+  const [queryClient] = useState(() => new QueryClient());
   return (
     <ClientOnly fallback={<DefaultSpinner />}>
       <ThemeProvider
@@ -70,12 +74,26 @@ export default function Root() {
         enableSystem={false}
         disableTransitionOnChange
       >
-        <TooltipProvider>
-          <CreditsProvider>
-            <NavBar />
-            <Outlet />
-          </CreditsProvider>
-        </TooltipProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <CreditsProvider>
+              <NavBar />
+              <AgentSidebar
+                position="right"
+                defaultOpen
+                emptyStateText="Paste a URL above and click Enrich with AI — then ask me to iterate on the design.md. I can adjust colors, typography, spacing, components, and brand voice."
+                suggestions={[
+                  "Make this dark mode",
+                  "Make the brand voice more playful and confident",
+                  "Tighten the spacing scale",
+                  "Soften the card radii and add more depth to the shadows",
+                ]}
+              >
+                <Outlet />
+              </AgentSidebar>
+            </CreditsProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
       </ThemeProvider>
     </ClientOnly>
   );

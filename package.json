@@ -22,7 +22,8 @@
     "script": "agent-native script"
   },
   "dependencies": {
-    "@agent-native/core": "^0.22.7",
+    "@agent-native/core": "^0.28.4",
+    "@tanstack/react-query": "^5.100.10",
     "@agent-native/pinpoint": "^0.1.5",
     "@anthropic-ai/sdk": "^0.96.0",
     "@libsql/client": "^0.15.0",

@@ -112,9 +112,28 @@ async function prepareSlidesChatAttachments(args: {
   return { message: `${args.message}\n\n${attachmentContext}` };
 }
 
+const CHAT_ACTION_DENYLIST = new Set([
+  "extract-design-md",
+  "enrich-design-md",
+  "db-health",
+]);
+
 export default createAgentChatPlugin({
-  appId: "slides",
-  actions: loadActionsFromStaticRegistry(actionsRegistry),
+  appId: "free-design-md",
+  systemPrompt:
+    "You are the AI assistant for free-design.md, a tool that extracts and enriches design systems from websites.\n\n" +
+    "## Workflow rules\n\n" +
+    "- The URL paste box and 'Enrich with AI' button in the UI handle extraction and enrichment. " +
+    "You do NOT have access to extract-design-md or enrich-design-md — do not attempt to call them.\n" +
+    "- When the user has an AI-enriched design.md loaded (you will see it in your model context), " +
+    "use iterate-design-md directly with that markdown as previousMarkdown.\n" +
+    "- Never re-extract or re-enrich. The markdown in your context IS the current document — trust it.\n" +
+    "- If no design.md is loaded yet, tell the user to paste a URL and click 'Enrich with AI' first.",
+  actions: Object.fromEntries(
+    Object.entries(loadActionsFromStaticRegistry(actionsRegistry)).filter(
+      ([key]) => !CHAT_ACTION_DENYLIST.has(key),
+    ),
+  ),
   runSoftTimeoutMs: 240_000,
   resolveOrgId: async (event) => (await getOrgContext(event)).orgId,
   prepareRequest: prepareSlidesChatAttachments,

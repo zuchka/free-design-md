@@ -62,9 +62,11 @@ Use `pnpm action <name> [args]` to invoke any of them. Output is JSON on stdout.
 | Method | Path                                  | What it does                                                          |
 | ------ | ------------------------------------- | --------------------------------------------------------------------- |
 | GET    | `/api/extract?url=<url>&format=json`  | Thin wrapper over `extract-design-md`. Public.                        |
-| POST   | `/api/enrich-design-md`               | Thin wrapper over `enrich-design-md`. Public at the route level; UI gates the button behind Builder Connect (`useBuilderConnectFlow().configured`). |
-| POST   | `/api/iterate-design-md`              | SSE wrapper over `iterate-design-md`. Decrements `fdmd_quota` for the resolved owner (the framework's `anonymousOwner` — `anonymous@free-design-md.local` for this single-tenant app). Returns 402 when out of credits, 422 on blocklist hit (no credit charged), 400 on input-cap violations. UI gates the panel on Builder Connect. |
+| POST   | `/api/enrich-design-md`               | Thin wrapper over `enrich-design-md`. Public at the route level; UI gates the button behind Builder Connect (`useBuilderConnectFlow().configured`). Now also uses BYO key resolution — see `/api/iterate-design-md`. |
+| POST   | `/api/iterate-design-md`              | SSE wrapper over `iterate-design-md`. Resolves Anthropic key via `server/lib/anthropic-key.ts`: BYO key (from `fdmd_anon` cookie → `fdmd_byo_keys` table) is preferred; server key with quota decrement is the fallback. Returns 402 when no key is available, 422 on blocklist hit, 400 on input-cap violation. |
 | GET    | `/api/me/credits`                     | Returns `{ allowed, remaining }` for the resolved owner. Used by the UI to render the "X credits left" counter on the iteration panel. |
+| POST   | `/api/me/anthropic-key`               | Stores the user's BYO Anthropic API key against their `fdmd_anon` session token. Body: `{ apiKey: string }`. Returns 400 if key doesn't start with "sk-". |
+| GET    | `/api/me/key-status`                  | Returns `{ byoKeyConfigured: boolean }` for the current visitor. Used by the UI to render the API key entry in the NavBar. |
 
 ## Dev
 
@@ -129,7 +131,7 @@ flip the client seam to the real impl.
 
 The spike verdict at `docs/spike-ai-enrichment-verdict.md` lays out the productization roadmap:
 
-- Builder.io SSO sign-in gate (anonymous = deterministic only; signed-in = enrichment unlocked)
+- Builder.io SSO sign-in gate: **partially implemented** via BYO key flow (anonymous visitors can enrich with their own API key; signed-in users get 3 free server-key enrichments, then must BYO)
 - 3-free-enrichments quota per signed-in user
 - Streaming with `max_tokens: 32-64K` (current spike caps at 16K and truncates rich brands)
 - Prompt caching on the 40 KB VoltAgent reference (significant input-token savings)
@@ -139,3 +141,15 @@ The spike verdict at `docs/spike-ai-enrichment-verdict.md` lays out the producti
 - `design.md` as a live agent-iterable resource inside a Builder.io Space
 
 Phase 2 is the much larger push. This codebase is the clean base it lands on.
+
+## Chat Sidebar (feat/chat-sidebar-port)
+
+Landed on branch `feat/chat-sidebar-port`:
+
+- **Agent chat sidebar** mounted on `/` via `<AgentSidebar position="right" defaultOpen>` in `app/root.tsx`. The chat is the new surface for design.md iteration — the old `IteratePanel` component has been removed.
+- **BYO Anthropic key flow:** every visitor receives an `fdmd_anon` session cookie (set by `server/plugins/anon-session.ts`). Keys are stored in the `fdmd_byo_keys` table via `POST /api/me/anthropic-key`. The NavBar shows an "API key" toggle that opens `BYOKeyForm`.
+- **Key resolution:** `server/lib/anthropic-key.ts` — BYO key takes priority over the server `ANTHROPIC_API_KEY`. When neither is available, iterate/enrich return 402.
+- **Auth matrix:** anonymous visitors must BYO; Builder-SSO users get 3 free server-key enrichments (`fdmd_quota`), then must BYO.
+- **Per-user quota:** `server/lib/owner.ts` now calls `getSession()` and returns the authenticated user's email; the quota table is per-user, not single-tenant.
+- **Known limitation:** when the chat agent calls `iterate-design-md` as a tool, the result appears in the chat only — the left pane preview does not auto-update. This is a framework limitation (no hook for agent tool-call results). A future iteration can add a `POST`-backed iterate route with `http:` config on `defineAction` and a client-side SSE subscription.
+- **Design.md model context:** `app/routes/_index.tsx` pushes the enriched design.md into the chat's model context via `updateMcpAppModelContext` whenever a new design is loaded.

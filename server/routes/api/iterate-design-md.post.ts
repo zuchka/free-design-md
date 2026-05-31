@@ -12,6 +12,7 @@ import {
 } from "../../../actions/iterate-design-md.js";
 import { resolveOwner } from "../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../lib/quota.js";
+import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
 import {
   INPUT_CAPS,
   checkBlocklist,
@@ -80,6 +81,14 @@ export default defineEventHandler(async (event) => {
 
   const owner = await resolveOwner(event);
 
+  let resolvedKey: { apiKey: string; source: string; consumesQuota: boolean };
+  try {
+    resolvedKey = await resolveAnthropicKey(event);
+  } catch {
+    setResponseStatus(event, 402);
+    return { error: "no_api_key_available", reason: "byo-key-required" };
+  }
+
   // Pre-flight blocklist BEFORE any quota spend — jailbreaks are free to attempt
   // and free to record, but never cost a credit.
   const blockHit = checkBlocklist(userPrompt);
@@ -97,11 +106,14 @@ export default defineEventHandler(async (event) => {
     return { error: "blocked", reason: blockHit };
   }
 
-  // Atomic quota decrement before streaming.
-  const dec = await decrementCredits(owner);
-  if (!dec.ok) {
-    setResponseStatus(event, 402);
-    return { error: "out_of_credits" };
+  // Atomic quota decrement before streaming (only when consuming quota).
+  let dec: { ok: boolean; remaining: number } | null = null;
+  if (resolvedKey.consumesQuota) {
+    dec = await decrementCredits(owner);
+    if (!dec.ok) {
+      setResponseStatus(event, 402);
+      return { error: "out_of_credits", reason: "signed-in-and-out-of-credits" };
+    }
   }
 
   setResponseHeader(event, "Content-Type", "text/event-stream; charset=utf-8");
@@ -114,6 +126,7 @@ export default defineEventHandler(async (event) => {
     previousMarkdown,
     userPrompt,
     sectionTarget: sectionTarget ?? undefined,
+    anthropicApiKey: resolvedKey.apiKey,
   };
 
   return new ReadableStream({
@@ -142,12 +155,14 @@ export default defineEventHandler(async (event) => {
               sectionTarget,
               result,
             });
-            send("done", { id, ...result, remaining: dec.remaining });
+            send("done", { id, ...result, remaining: dec?.remaining ?? null });
           }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await refundCredit(owner).catch(() => {});
+        if (resolvedKey.consumesQuota && dec?.ok) {
+          await refundCredit(owner).catch(() => {});
+        }
         await insertRejected({
           sessionId,
           parentId,

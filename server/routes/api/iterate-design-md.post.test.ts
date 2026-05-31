@@ -7,6 +7,11 @@ vi.mock("../../../actions/iterate-design-md", () => ({
   iterateStream: mockIterateStream,
 }));
 
+const mockResolveAnthropicKey = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/anthropic-key", () => ({
+  resolveAnthropicKey: mockResolveAnthropicKey,
+}));
+
 import { getDbExec } from "@agent-native/core/db";
 import { ANONYMOUS_OWNER } from "../../lib/owner.js";
 
@@ -27,6 +32,11 @@ async function resetDb() {
 
 beforeEach(async () => {
   mockIterateStream.mockReset();
+  mockResolveAnthropicKey.mockResolvedValue({
+    apiKey: "sk-server-test",
+    source: "server",
+    consumesQuota: true,
+  });
   await resetDb();
 });
 afterEach(resetDb);
@@ -288,5 +298,102 @@ describe("POST /api/iterate-design-md", () => {
     });
     const after = Number((afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0);
     expect(after).toBe(before); // refunded
+  });
+});
+
+describe("POST /api/iterate-design-md — auth matrix", () => {
+  const validMd = ["---", "name: X", "---", "", "## A", "B"].join("\n");
+  const happyDone = {
+    type: "done" as const,
+    markdown: validMd,
+    model: "claude-sonnet-4-6",
+    latencyMs: 1,
+    usage: { inputTokens: 1, outputTokens: 1, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
+    stopReason: "end_turn" as const,
+  };
+
+  function happyBody(sessionId: string) {
+    return {
+      _body: {
+        sessionId,
+        previousMarkdown: "---\nname:x\n---\n",
+        userPrompt: "Make it pop.",
+        url: "https://example.com",
+      },
+    } as unknown as Record<string, unknown>;
+  }
+
+  async function quotaCount(): Promise<number> {
+    const exec = getDbExec();
+    const r = await exec.execute({
+      sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
+      args: [ANONYMOUS_OWNER],
+    });
+    return Number(
+      (r.rows[0] as { enrich_count: number | bigint } | undefined)
+        ?.enrich_count ?? 0,
+    );
+  }
+
+  it("no_api_key_available → 402", async () => {
+    mockResolveAnthropicKey.mockRejectedValueOnce(new Error("no_api_key_available"));
+    const event = happyBody("test-iter-matrix-1");
+    const result = await routeHandler(event as never);
+    expect(statusOf(event as { _statusCode?: number })).toBe(402);
+    expect(result).toMatchObject({ error: "no_api_key_available" });
+    expect(mockIterateStream).not.toHaveBeenCalled();
+  });
+
+  it("BYO key → streams, no quota touched", async () => {
+    mockResolveAnthropicKey.mockResolvedValueOnce({ apiKey: "sk-byo", source: "byo", consumesQuota: false });
+    mockIterateStream.mockImplementation(async function* () { yield happyDone; });
+    const before = await quotaCount();
+    const event = happyBody("test-iter-matrix-2");
+    const result = await routeHandler(event as never);
+    await readSse(result as ReadableStream<Uint8Array>);
+    expect(await quotaCount()).toBe(before);
+    expect(mockIterateStream).toHaveBeenCalledWith(expect.objectContaining({ anthropicApiKey: "sk-byo" }));
+  });
+
+  it("server key + quota > 0 → streams, decrements quota", async () => {
+    mockResolveAnthropicKey.mockResolvedValueOnce({ apiKey: "sk-server", source: "server", consumesQuota: true });
+    mockIterateStream.mockImplementation(async function* () { yield happyDone; });
+    const before = await quotaCount();
+    const event = happyBody("test-iter-matrix-3");
+    const result = await routeHandler(event as never);
+    await readSse(result as ReadableStream<Uint8Array>);
+    expect(await quotaCount()).toBe(before + 1);
+  });
+
+  it("BYO key + quota > 0 → BYO preferred, quota untouched", async () => {
+    mockResolveAnthropicKey.mockResolvedValueOnce({ apiKey: "sk-byo", source: "byo", consumesQuota: false });
+    mockIterateStream.mockImplementation(async function* () { yield happyDone; });
+    const before = await quotaCount();
+    const event = happyBody("test-iter-matrix-4");
+    const result = await routeHandler(event as never);
+    await readSse(result as ReadableStream<Uint8Array>);
+    expect(await quotaCount()).toBe(before);
+  });
+
+  it("server key + quota = 0 → 402 out_of_credits", async () => {
+    mockResolveAnthropicKey.mockResolvedValueOnce({ apiKey: "sk-server", source: "server", consumesQuota: true });
+    const exec = getDbExec();
+    await exec.execute({ sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`, args: [ANONYMOUS_OWNER] });
+    const event = happyBody("test-iter-matrix-5");
+    const result = await routeHandler(event as never);
+    expect(statusOf(event as { _statusCode?: number })).toBe(402);
+    expect(result).toMatchObject({ error: "out_of_credits" });
+    expect(mockIterateStream).not.toHaveBeenCalled();
+  });
+
+  it("BYO key + quota = 0 → BYO used, no 402", async () => {
+    mockResolveAnthropicKey.mockResolvedValueOnce({ apiKey: "sk-byo", source: "byo", consumesQuota: false });
+    mockIterateStream.mockImplementation(async function* () { yield happyDone; });
+    const exec = getDbExec();
+    await exec.execute({ sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`, args: [ANONYMOUS_OWNER] });
+    const event = happyBody("test-iter-matrix-6");
+    const result = await routeHandler(event as never);
+    expect(result).toBeInstanceOf(ReadableStream);
+    await readSse(result as ReadableStream<Uint8Array>);
   });
 });
