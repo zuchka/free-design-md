@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { appBasePath, useBuilderConnectFlow } from "@agent-native/core/client";
+import { appBasePath, updateMcpAppModelContext, useBuilderConnectFlow } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
@@ -108,6 +108,22 @@ export default function IndexRoute() {
       setIterSession(s);
     }
   }, [enriched?.markdown, result?.url]);
+
+  useEffect(() => {
+    if (!enriched?.markdown) return;
+    updateMcpAppModelContext({
+      content: [
+        {
+          type: "text",
+          text:
+            "The user has loaded this AI-enriched design.md. Treat it as the " +
+            "current document. When the user asks to revise it, call the " +
+            "iterate-design-md action.\n\n" +
+            enriched.markdown,
+        },
+      ],
+    });
+  }, [enriched?.markdown]);
 
   useEffect(() => {
     if (!isLoading) return;
