@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { appBasePath, updateMcpAppModelContext, useBuilderConnectFlow } from "@agent-native/core/client";
+import { appBasePath, sendToAgentChat, updateMcpAppModelContext, useBuilderConnectFlow } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
@@ -247,6 +247,14 @@ export default function IndexRoute() {
             sawDone = true;
             const enrichResult = parsed.data as EnrichResult;
             setEnriched(enrichResult);
+            sendToAgentChat({
+              message:
+                `Design enriched for **${result.url}**. ` +
+                `The AI-enhanced design.md is now loaded in the preview. ` +
+                `What would you like to refine? For example: "tighten the spacing scale", ` +
+                `"make the brand voice more confident", or "soften the card radii".`,
+              submit: true,
+            });
             if (result) {
               writeCache({
                 url: result.url,
