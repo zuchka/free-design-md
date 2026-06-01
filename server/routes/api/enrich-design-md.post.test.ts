@@ -12,9 +12,14 @@ vi.mock("../../lib/anthropic-key", () => ({
   resolveAnthropicKey: mockResolveAnthropicKey,
 }));
 
-const mockResolveConnectedBuilderQuotaOwner = vi.hoisted(() => vi.fn());
+const mockResolveConnectedBuilderOwner = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/builder-connection", () => ({
-  resolveConnectedBuilderQuotaOwner: mockResolveConnectedBuilderQuotaOwner,
+  resolveConnectedBuilderOwner: mockResolveConnectedBuilderOwner,
+}));
+
+const mockSaveEnrichmentSnapshot = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/saved-enrichments", () => ({
+  saveEnrichmentSnapshot: mockSaveEnrichmentSnapshot,
 }));
 
 vi.mock("h3", async () => {
@@ -39,6 +44,12 @@ vi.mock("h3", async () => {
 const { default: routeHandler } = await import("./enrich-design-md.post.js");
 
 const BUILDER_OWNER = "builder:user-123";
+const BUILDER_CONNECTION = {
+  ownerId: BUILDER_OWNER,
+  builderUserId: "user-123",
+  orgName: "Builder",
+  orgKind: "team",
+};
 
 function validEvent() {
   return {
@@ -91,7 +102,8 @@ async function quotaCount(owner: string): Promise<number> {
 beforeEach(async () => {
   mockEnrichStream.mockReset();
   mockResolveAnthropicKey.mockReset();
-  mockResolveConnectedBuilderQuotaOwner.mockReset();
+  mockResolveConnectedBuilderOwner.mockReset();
+  mockSaveEnrichmentSnapshot.mockReset();
   await resetQuota(ANONYMOUS_OWNER);
   await resetQuota(BUILDER_OWNER);
 });
@@ -103,7 +115,7 @@ describe("POST /api/enrich-design-md", () => {
       source: "server",
       consumesQuota: true,
     });
-    mockResolveConnectedBuilderQuotaOwner.mockResolvedValueOnce(null);
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(null);
 
     const event = validEvent();
     const result = await routeHandler(event as never);
@@ -119,7 +131,11 @@ describe("POST /api/enrich-design-md", () => {
       source: "server",
       consumesQuota: true,
     });
-    mockResolveConnectedBuilderQuotaOwner.mockResolvedValueOnce(BUILDER_OWNER);
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(BUILDER_CONNECTION);
+    mockSaveEnrichmentSnapshot.mockResolvedValueOnce({
+      id: "saved-123",
+      url: "/d/saved-123",
+    });
     mockEnrichStream.mockImplementation(async function* () {
       yield {
         type: "done",
@@ -134,10 +150,19 @@ describe("POST /api/enrich-design-md", () => {
     const before = await quotaCount(BUILDER_OWNER);
     const event = validEvent();
     const result = await routeHandler(event as never);
-    await readSse(result as ReadableStream<Uint8Array>);
+    const sse = await readSse(result as ReadableStream<Uint8Array>);
 
     expect(statusOf(event as { _statusCode?: number })).toBe(200);
     expect(await quotaCount(BUILDER_OWNER)).toBe(before + 1);
+    expect(sse).toContain('"savedDesignId":"saved-123"');
+    expect(sse).toContain('"savedDesignUrl":"/d/saved-123"');
+    expect(mockSaveEnrichmentSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: BUILDER_CONNECTION,
+        sourceUrl: "https://example.com",
+        enrichedMarkdown: "---\nname: Example\n---\n",
+      }),
+    );
     expect(mockEnrichStream).toHaveBeenCalledWith(
       expect.objectContaining({ anthropicApiKey: "sk-server" }),
     );
@@ -167,6 +192,6 @@ describe("POST /api/enrich-design-md", () => {
 
     expect(statusOf(event as { _statusCode?: number })).toBe(200);
     expect(await quotaCount(ANONYMOUS_OWNER)).toBe(before);
-    expect(mockResolveConnectedBuilderQuotaOwner).not.toHaveBeenCalled();
+    expect(mockSaveEnrichmentSnapshot).not.toHaveBeenCalled();
   });
 });

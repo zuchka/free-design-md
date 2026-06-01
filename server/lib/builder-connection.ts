@@ -3,15 +3,22 @@ import {
   runWithRequestContext,
 } from "@agent-native/core/server";
 
+export interface ConnectedBuilderOwner {
+  ownerId: string;
+  builderUserId: string;
+  orgName: string | null;
+  orgKind: string | null;
+}
+
 /**
  * Builder Connect is not the same thing as app auth: anonymous visitors can
  * connect Builder credentials that are stored under the anonymous owner used by
  * the framework routes. This helper checks that request-scoped credential
- * bucket and returns a stable quota owner when the connection is complete.
+ * bucket and returns the app-local owner for user-scoped saved artifacts.
  */
-export async function resolveConnectedBuilderQuotaOwner(
+export async function resolveConnectedBuilderOwner(
   owner: string,
-): Promise<string | null> {
+): Promise<ConnectedBuilderOwner | null> {
   try {
     return await runWithRequestContext({ userEmail: owner }, async () => {
       const credentials = await resolveBuilderCredentials();
@@ -23,12 +30,28 @@ export async function resolveConnectedBuilderQuotaOwner(
         orgName: credentials.orgName ?? null,
         orgKind: credentials.orgKind ?? null,
       });
-      if (!credentials.privateKey || !credentials.publicKey) {
+      if (
+        !credentials.privateKey ||
+        !credentials.publicKey ||
+        !credentials.userId
+      ) {
         return null;
       }
-      return credentials.userId ? `builder:${credentials.userId}` : owner;
+      return {
+        ownerId: `builder:${credentials.userId}`,
+        builderUserId: credentials.userId,
+        orgName: credentials.orgName ?? null,
+        orgKind: credentials.orgKind ?? null,
+      };
     });
   } catch {
     return null;
   }
+}
+
+export async function resolveConnectedBuilderQuotaOwner(
+  owner: string,
+): Promise<string | null> {
+  const connected = await resolveConnectedBuilderOwner(owner);
+  return connected?.ownerId ?? null;
 }
