@@ -2,13 +2,23 @@ import { getDbExec } from "@agent-native/core/db";
 import { nanoid } from "nanoid";
 import type { ConnectedBuilderOwner } from "./builder-connection.js";
 
+export interface SavedEnrichmentOwner {
+  ownerId: string;
+  builderUserId?: string | null;
+  orgName?: string | null;
+  orgKind?: string | null;
+}
+
 export interface SaveEnrichmentInput {
-  owner: ConnectedBuilderOwner;
+  owner: ConnectedBuilderOwner | SavedEnrichmentOwner;
   sourceUrl: string;
   deterministicMarkdown: string;
   enrichedMarkdown: string;
   designSystemData: unknown;
   signals: unknown;
+  parentId?: string | null;
+  rootId?: string | null;
+  iterationPrompt?: string | null;
   screenshotDataUrl?: string | null;
   model: string;
   usage: unknown;
@@ -19,6 +29,9 @@ export interface PublicSavedEnrichment {
   id: string;
   sourceUrl: string;
   title: string;
+  parentId: string | null;
+  rootId: string | null;
+  iterationPrompt: string | null;
   deterministicMarkdown: string;
   enrichedMarkdown: string;
   designSystemData: unknown;
@@ -35,6 +48,9 @@ export interface SavedEnrichmentListItem {
   id: string;
   sourceUrl: string;
   title: string;
+  parentId: string | null;
+  rootId: string | null;
+  iterationPrompt: string | null;
   model: string;
   stopReason: string | null;
   createdAt: string;
@@ -45,6 +61,9 @@ interface SavedEnrichmentRow {
   id: string;
   source_url: string;
   title: string;
+  parent_id: string | null;
+  root_id: string | null;
+  iteration_prompt: string | null;
   deterministic_markdown: string;
   enriched_markdown: string;
   design_system_data_json: string;
@@ -78,6 +97,9 @@ export async function saveEnrichmentSnapshot(
             builder_org_kind,
             source_url,
             title,
+            parent_id,
+            root_id,
+            iteration_prompt,
             deterministic_markdown,
             enriched_markdown,
             design_system_data_json,
@@ -88,15 +110,18 @@ export async function saveEnrichmentSnapshot(
             stop_reason,
             created_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       input.owner.ownerId,
-      input.owner.builderUserId,
-      input.owner.orgName,
-      input.owner.orgKind,
+      input.owner.builderUserId ?? "",
+      input.owner.orgName ?? null,
+      input.owner.orgKind ?? null,
       input.sourceUrl,
       title,
+      input.parentId ?? null,
+      input.rootId ?? input.parentId ?? id,
+      input.iterationPrompt ?? null,
       input.deterministicMarkdown,
       input.enrichedMarkdown,
       JSON.stringify(input.designSystemData),
@@ -118,7 +143,7 @@ export async function listSavedEnrichmentsForOwner(
 ): Promise<SavedEnrichmentListItem[]> {
   const exec = getDbExec();
   const result = await exec.execute({
-    sql: `SELECT id, source_url, title, model, stop_reason, created_at, updated_at
+    sql: `SELECT id, source_url, title, parent_id, root_id, iteration_prompt, model, stop_reason, created_at, updated_at
           FROM fdmd_saved_enrichments
           WHERE owner_id = ?
           ORDER BY created_at DESC`,
@@ -131,6 +156,9 @@ export async function listSavedEnrichmentsForOwner(
       | "id"
       | "source_url"
       | "title"
+      | "parent_id"
+      | "root_id"
+      | "iteration_prompt"
       | "model"
       | "stop_reason"
       | "created_at"
@@ -140,6 +168,9 @@ export async function listSavedEnrichmentsForOwner(
       id: r.id,
       sourceUrl: r.source_url,
       title: r.title,
+      parentId: r.parent_id,
+      rootId: r.root_id,
+      iterationPrompt: r.iteration_prompt,
       model: r.model,
       stopReason: r.stop_reason,
       createdAt: r.created_at,
@@ -156,6 +187,9 @@ export async function getPublicSavedEnrichment(
     sql: `SELECT id,
                  source_url,
                  title,
+                 parent_id,
+                 root_id,
+                 iteration_prompt,
                  deterministic_markdown,
                  enriched_markdown,
                  design_system_data_json,
@@ -195,6 +229,9 @@ function toPublicSavedEnrichment(
     id: row.id,
     sourceUrl: row.source_url,
     title: row.title,
+    parentId: row.parent_id,
+    rootId: row.root_id,
+    iterationPrompt: row.iteration_prompt,
     deterministicMarkdown: row.deterministic_markdown,
     enrichedMarkdown: row.enriched_markdown,
     designSystemData: parseJson(row.design_system_data_json, null),

@@ -129,6 +129,9 @@ export default createAgentChatPlugin({
     "You do NOT have access to extract-design-md or enrich-design-md — do not attempt to call them.\n" +
     "- When the user has an AI-enriched design.md loaded (you will see it in your model context), " +
     "use iterate-design-md directly with that markdown as previousMarkdown.\n" +
+    "- Public /d/:id design links are immutable snapshots, but they are not dead ends. " +
+    "If the user wants to change one, tell them to use the page's 'Ask for a change' box to create a new public version, or use iterate-design-md to draft the revised markdown from the loaded context. " +
+    "Do not say shared pages cannot be iterated on or that sign-in is required just to make a fork.\n" +
     "- Never re-extract or re-enrich. The markdown in your context IS the current document — trust it.\n" +
     "- If no design.md is loaded yet, tell the user to paste a URL and click 'Enrich with AI' first.",
   actions: Object.fromEntries(

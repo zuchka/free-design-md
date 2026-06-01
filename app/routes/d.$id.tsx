@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { appBasePath, updateMcpAppModelContext } from "@agent-native/core/client";
-import { IconCheck, IconCopy, IconExternalLink } from "@tabler/icons-react";
+import {
+  IconCheck,
+  IconCopy,
+  IconExternalLink,
+  IconGitBranch,
+  IconSparkles,
+  IconX,
+} from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import SideBySideMemo from "@/components/SideBySideMemo";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
@@ -13,6 +21,9 @@ interface PublicSavedEnrichment {
   id: string;
   sourceUrl: string;
   title: string;
+  parentId: string | null;
+  rootId: string | null;
+  iterationPrompt: string | null;
   deterministicMarkdown: string;
   enrichedMarkdown: string;
   designSystemData: DesignSystemData;
@@ -45,7 +56,13 @@ export default function SavedDesignRoute() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
+  const [iterationPrompt, setIterationPrompt] = useState("");
+  const [isIterating, setIsIterating] = useState(false);
+  const [iterationError, setIterationError] = useState<string | null>(null);
+  const [candidateMarkdown, setCandidateMarkdown] = useState("");
+  const [candidateSavedUrl, setCandidateSavedUrl] = useState<string | null>(null);
   const markdownPreRef = useRef<HTMLPreElement>(null);
+  const streamAccumRef = useRef("");
 
   useEffect(() => {
     if (!id) return;
@@ -78,7 +95,9 @@ export default function SavedDesignRoute() {
           type: "text",
           text:
             `The user is viewing a public AI-enriched design.md for ${saved.sourceUrl}. ` +
-            "Use this markdown as the current design context.\n\n" +
+            "This public page supports creating a new public fork from an iteration. " +
+            "Do not tell the user the page is read-only or that they must sign in just to iterate; " +
+            "they can use the Ask for a change box on this page. Use this markdown as the current design context.\n\n" +
             saved.enrichedMarkdown,
         },
       ],
@@ -129,6 +148,108 @@ export default function SavedDesignRoute() {
     await navigator.clipboard.writeText(window.location.href);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 1500);
+  }
+
+  async function iterateSavedDesign(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!saved || !iterationPrompt.trim() || isIterating) return;
+
+    setIsIterating(true);
+    setIterationError(null);
+    setCandidateMarkdown("");
+    setCandidateSavedUrl(null);
+    streamAccumRef.current = "";
+
+    try {
+      const res = await fetch(
+        `${appBasePath()}/api/saved-enrichments/${encodeURIComponent(saved.id)}/iterate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userPrompt: iterationPrompt.trim() }),
+        },
+      );
+      if (!res.ok || !res.body) {
+        let message = `Iteration failed with ${res.status}`;
+        try {
+          const payload = (await res.json()) as { error?: string; reason?: string };
+          if (payload.error) {
+            message = payload.reason
+              ? `${payload.error}: ${payload.reason}`
+              : payload.error;
+          }
+        } catch {
+          const text = await res.text().catch(() => "");
+          if (text) message = text;
+        }
+        throw new Error(message);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let sawDone = false;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const parsed = parseSSE(part);
+          if (!parsed) continue;
+          if (parsed.event === "delta") {
+            const { text } = parsed.data as { text: string };
+            streamAccumRef.current += text;
+            setCandidateMarkdown(streamAccumRef.current);
+          } else if (parsed.event === "done") {
+            sawDone = true;
+            const doneData = parsed.data as {
+              markdown: string;
+              savedDesignUrl: string;
+            };
+            setCandidateMarkdown(doneData.markdown);
+            setCandidateSavedUrl(doneData.savedDesignUrl);
+          } else if (parsed.event === "error") {
+            const { message } = parsed.data as { message: string };
+            throw new Error(message);
+          }
+        }
+      }
+      if (!sawDone) throw new Error("Stream ended without a done event");
+    } catch (err) {
+      setIterationError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsIterating(false);
+    }
+  }
+
+  function keepCandidate() {
+    if (!candidateSavedUrl) return;
+    window.location.href = `${appBasePath()}${candidateSavedUrl}`;
+  }
+
+  function discardCandidate() {
+    setCandidateMarkdown("");
+    setCandidateSavedUrl(null);
+    setIterationError(null);
+  }
+
+  function parseSSE(block: string): { event: string; data: unknown } | null {
+    let eventName = "";
+    let dataLine = "";
+    for (const line of block.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      if (trimmed.startsWith("event:")) eventName = trimmed.slice(6).trim();
+      else if (trimmed.startsWith("data:")) dataLine = trimmed.slice(5).trim();
+    }
+    if (!eventName || !dataLine) return null;
+    try {
+      return { event: eventName, data: JSON.parse(dataLine) };
+    } catch {
+      return null;
+    }
   }
 
   if (isLoading) {
@@ -186,6 +307,88 @@ export default function SavedDesignRoute() {
         </header>
 
         <div className="flex flex-col gap-6">
+          <section className="rounded-md border bg-background p-4">
+            <form onSubmit={iterateSavedDesign} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div className="min-w-0 flex-1">
+                  <label
+                    htmlFor="iteration-prompt"
+                    className="text-sm font-semibold tracking-tight"
+                  >
+                    Ask for a change
+                  </label>
+                  <textarea
+                    id="iteration-prompt"
+                    value={iterationPrompt}
+                    onChange={(e) => setIterationPrompt(e.target.value)}
+                    placeholder="Make this a polished dark mode, keeping the brand voice intact."
+                    rows={3}
+                    className="mt-2 min-h-24 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+                    disabled={isIterating}
+                  />
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {(candidateMarkdown || iterationError) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={discardCandidate}
+                      disabled={isIterating}
+                    >
+                      <IconX size={14} />
+                      <span className="ml-1">Clear</span>
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={isIterating || !iterationPrompt.trim()}
+                  >
+                    {isIterating ? (
+                      <Spinner className="size-4" />
+                    ) : (
+                      <IconSparkles size={16} />
+                    )}
+                    <span className="ml-1">
+                      {isIterating ? "Iterating..." : "Create version"}
+                    </span>
+                  </Button>
+                </div>
+              </div>
+              {iterationError && (
+                <div
+                  className="rounded-md border px-3 py-2 text-xs"
+                  style={{ borderColor: "rgba(239,68,68,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
+                >
+                  {iterationError}
+                </div>
+              )}
+              {candidateSavedUrl && (
+                <div className="flex flex-col gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm md:flex-row md:items-center md:justify-between">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <IconGitBranch size={16} className="shrink-0 text-muted-foreground" />
+                    <span className="truncate text-muted-foreground">
+                      New public version saved at {candidateSavedUrl}
+                    </span>
+                  </div>
+                  <Button size="sm" onClick={keepCandidate}>
+                    Open new version
+                  </Button>
+                </div>
+              )}
+            </form>
+          </section>
+
+          {candidateMarkdown && (
+            <SideBySideMemo
+              previous={saved.enrichedMarkdown}
+              next={candidateMarkdown}
+              isStreaming={isIterating}
+              candidatePending={!isIterating && !!candidateSavedUrl}
+              onKeep={keepCandidate}
+              onDiscard={discardCandidate}
+            />
+          )}
+
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
             <Pane title="Real site" className="lg:flex-1 lg:min-w-0">
               {saved.screenshotDataUrl ? (

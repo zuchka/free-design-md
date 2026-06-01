@@ -251,6 +251,14 @@ export default runMigrations(
   CREATE INDEX IF NOT EXISTS fdmd_saved_enrichments_owner_created_idx ON fdmd_saved_enrichments (owner_id, created_at);
   CREATE INDEX IF NOT EXISTS fdmd_saved_enrichments_source_url_idx ON fdmd_saved_enrichments (source_url)`,
     },
+    {
+      version: 28,
+      sql: `ALTER TABLE fdmd_saved_enrichments ADD COLUMN IF NOT EXISTS parent_id TEXT;
+  ALTER TABLE fdmd_saved_enrichments ADD COLUMN IF NOT EXISTS root_id TEXT;
+  ALTER TABLE fdmd_saved_enrichments ADD COLUMN IF NOT EXISTS iteration_prompt TEXT;
+  CREATE INDEX IF NOT EXISTS fdmd_saved_enrichments_parent_idx ON fdmd_saved_enrichments (parent_id);
+  CREATE INDEX IF NOT EXISTS fdmd_saved_enrichments_root_created_idx ON fdmd_saved_enrichments (root_id, created_at)`,
+    },
   ],
   { table: "slides_migrations" },
 );
