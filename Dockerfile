@@ -1,7 +1,8 @@
-FROM node:22-bookworm
+FROM node:22.12.0-bookworm
 
-# pnpm via corepack (matches packageManager field in package.json)
-RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
+# Pinned package manager (matches packageManager field in package.json).
+# Node 22.12.0's bundled Corepack cannot verify newer pnpm signatures.
+RUN npm install -g pnpm@10.14.0
 
 WORKDIR /app
 

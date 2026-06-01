@@ -34,11 +34,23 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
       fetch("/api/me/credits"),
       fetch("/api/me/key-status"),
     ]);
-    if (creditsR.status === "fulfilled" && creditsR.value.ok) {
-      try { setCredits((await creditsR.value.json()) as Credits); } catch { /* swallow */ }
+    if (creditsR.status === "fulfilled") {
+      if (creditsR.value.ok) {
+        try {
+          setCredits((await creditsR.value.json()) as Credits);
+        } catch {
+          /* swallow */
+        }
+      } else {
+        setCredits(null);
+      }
     }
     if (keyR.status === "fulfilled" && keyR.value.ok) {
-      try { setKeyStatus((await keyR.value.json()) as KeyStatus); } catch { /* swallow */ }
+      try {
+        setKeyStatus((await keyR.value.json()) as KeyStatus);
+      } catch {
+        /* swallow */
+      }
     }
   };
 
