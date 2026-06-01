@@ -9,6 +9,7 @@ import {
   type EnrichInput,
 } from "../../../actions/enrich-design-md.js";
 import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
+import { resolveConnectedBuilderQuotaOwner } from "../../lib/builder-connection.js";
 import { resolveOwner, ANONYMOUS_OWNER } from "../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../lib/quota.js";
 
@@ -70,19 +71,32 @@ export default defineEventHandler(async (event) => {
     return { error: "no_api_key_available", reason: "byo-key-required" };
   }
 
-  // Anonymous callers may only enrich if they have a BYO key stored.
-  // Signed-in users (Builder SSO) may use the server key against their quota.
+  let quotaOwner = owner;
+
+  // Anonymous callers may use the server key only after Builder Connect has
+  // stored a complete credential bundle. Builder Connect does not create an app
+  // session, so resolveOwner() still returns ANONYMOUS_OWNER in production.
   if (owner === ANONYMOUS_OWNER && resolvedKey.source !== "byo") {
-    setResponseStatus(event, 401);
-    return { error: "sign_in_required", reason: "add a BYO key or sign in with Builder" };
+    const builderQuotaOwner = await resolveConnectedBuilderQuotaOwner(owner);
+    if (!builderQuotaOwner) {
+      setResponseStatus(event, 401);
+      return {
+        error: "sign_in_required",
+        reason: "add a BYO key or sign in with Builder",
+      };
+    }
+    quotaOwner = builderQuotaOwner;
   }
 
   let dec: { ok: boolean; remaining: number } | null = null;
   if (resolvedKey.consumesQuota) {
-    dec = await decrementCredits(owner);
+    dec = await decrementCredits(quotaOwner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
-      return { error: "out_of_credits", reason: "signed-in-and-out-of-credits" };
+      return {
+        error: "out_of_credits",
+        reason: "signed-in-and-out-of-credits",
+      };
     }
   }
 
@@ -123,7 +137,7 @@ export default defineEventHandler(async (event) => {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
-          await refundCredit(owner).catch(() => {});
+          await refundCredit(quotaOwner).catch(() => {});
         }
         send("error", { message });
       } finally {
