@@ -227,6 +227,30 @@ export default runMigrations(
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
     },
+    {
+      version: 27,
+      sql: `CREATE TABLE IF NOT EXISTS fdmd_saved_enrichments (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL,
+    builder_user_id TEXT NOT NULL,
+    builder_org_name TEXT,
+    builder_org_kind TEXT,
+    source_url TEXT NOT NULL,
+    title TEXT NOT NULL,
+    deterministic_markdown TEXT NOT NULL,
+    enriched_markdown TEXT NOT NULL,
+    design_system_data_json TEXT NOT NULL,
+    signals_json TEXT NOT NULL,
+    screenshot_data_url TEXT,
+    model TEXT NOT NULL,
+    usage_json TEXT NOT NULL,
+    stop_reason TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS fdmd_saved_enrichments_owner_created_idx ON fdmd_saved_enrichments (owner_id, created_at);
+  CREATE INDEX IF NOT EXISTS fdmd_saved_enrichments_source_url_idx ON fdmd_saved_enrichments (source_url)`,
+    },
   ],
   { table: "slides_migrations" },
 );

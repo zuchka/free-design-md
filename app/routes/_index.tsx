@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import {
   IconCheck,
   IconCopy,
+  IconExternalLink,
   IconSparkles,
+  IconTrash,
 } from "@tabler/icons-react";
 import BuilderConnectCta from "@/components/auth/BuilderConnectCta";
 import { readCache, writeCache } from "@/lib/extraction-cache";
@@ -58,6 +60,19 @@ interface EnrichResult {
     cacheCreationInputTokens: number;
   };
   stopReason: string | null;
+  savedDesignId?: string;
+  savedDesignUrl?: string;
+  saveError?: string;
+}
+
+interface SavedDesignItem {
+  id: string;
+  sourceUrl: string;
+  title: string;
+  model: string;
+  stopReason: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const LOADING_LABELS = [
@@ -87,6 +102,9 @@ export default function IndexRoute() {
   const markdownPreRef = useRef<HTMLPreElement>(null);
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
+  const [savedDesigns, setSavedDesigns] = useState<SavedDesignItem[]>([]);
+  const [savedDesignsError, setSavedDesignsError] = useState<string | null>(null);
+  const [copiedShareUrl, setCopiedShareUrl] = useState(false);
 
   // Iteration state: separate from the enrichment SSE flow. A session
   // represents one extract→enrich→iterate chain keyed on the URL.
@@ -94,6 +112,29 @@ export default function IndexRoute() {
     trackingSource: "free_design_md_index",
   });
   const [iterSession, setIterSession] = useState<IterationSession | null>(null);
+
+  useEffect(() => {
+    if (!configured) {
+      setSavedDesigns([]);
+      return;
+    }
+    void refreshSavedDesigns();
+  }, [configured]);
+
+  async function refreshSavedDesigns() {
+    try {
+      const res = await fetch(`${appBasePath()}/api/saved-enrichments`);
+      if (!res.ok) {
+        setSavedDesigns([]);
+        return;
+      }
+      const data = (await res.json()) as { items: SavedDesignItem[] };
+      setSavedDesigns(data.items);
+      setSavedDesignsError(null);
+    } catch (err) {
+      setSavedDesignsError(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   useEffect(() => {
     if (enriched?.markdown && result?.url) {
@@ -259,6 +300,14 @@ export default function IndexRoute() {
             sawDone = true;
             const enrichResult = parsed.data as EnrichResult;
             setEnriched(enrichResult);
+            if (enrichResult.savedDesignUrl) {
+              history.replaceState(
+                null,
+                "",
+                `${appBasePath()}${enrichResult.savedDesignUrl}`,
+              );
+              void refreshSavedDesigns();
+            }
             if (result) {
               writeCache({
                 url: result.url,
@@ -330,6 +379,23 @@ export default function IndexRoute() {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  async function handleCopyShareUrl() {
+    if (!enriched?.savedDesignUrl) return;
+    const shareUrl = `${window.location.origin}${appBasePath()}${enriched.savedDesignUrl}`;
+    await navigator.clipboard.writeText(shareUrl);
+    setCopiedShareUrl(true);
+    setTimeout(() => setCopiedShareUrl(false), 1500);
+  }
+
+  async function handleDeleteSavedDesign(id: string) {
+    const res = await fetch(`${appBasePath()}/api/saved-enrichments/${id}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      setSavedDesigns((items) => items.filter((item) => item.id !== id));
+    }
+  }
+
   // Keep/Discard are wired to SideBySideMemo for historical diffs.
   // candidatePending is always false now (chat sidebar drives iteration),
   // so these buttons never render — but the prop contract still requires them.
@@ -383,6 +449,19 @@ export default function IndexRoute() {
               configured={configured}
               onEnrich={handleEnrich}
             />
+          </div>
+        )}
+
+        {configured && savedDesigns.length > 0 && (
+          <SavedDesignsList
+            items={savedDesigns}
+            onDelete={handleDeleteSavedDesign}
+          />
+        )}
+
+        {savedDesignsError && (
+          <div className="mb-4 text-xs text-muted-foreground">
+            Saved designs unavailable: {savedDesignsError}
           </div>
         )}
 
@@ -480,6 +559,22 @@ export default function IndexRoute() {
                       {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
                       <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
                     </Button>
+                    {enriched?.savedDesignUrl && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCopyShareUrl}
+                      >
+                        {copiedShareUrl ? (
+                          <IconCheck size={14} />
+                        ) : (
+                          <IconExternalLink size={14} />
+                        )}
+                        <span className="ml-1">
+                          {copiedShareUrl ? "Link copied" : "Share"}
+                        </span>
+                      </Button>
+                    )}
                   </div>
                 }
               >
@@ -489,6 +584,14 @@ export default function IndexRoute() {
                     style={{ borderColor: "rgba(239,68,68,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
                   >
                     {enrichError}
+                  </div>
+                )}
+                {enriched?.saveError && (
+                  <div
+                    className="mb-2 rounded-md border px-3 py-2 text-xs"
+                    style={{ borderColor: "rgba(245,158,11,0.35)", backgroundColor: "rgba(245,158,11,0.08)", color: "rgb(146,64,14)" }}
+                  >
+                    Enriched successfully, but saving the public link failed: {enriched.saveError}
                   </div>
                 )}
                 <div className="relative">
@@ -650,6 +753,70 @@ function EnrichBanner({
         {hasResult && <BuilderConnectCta />}
       </div>
     </div>
+  );
+}
+
+function SavedDesignsList({
+  items,
+  onDelete,
+}: {
+  items: SavedDesignItem[];
+  onDelete: (id: string) => void;
+}) {
+  const visible = items.slice(0, 4);
+  return (
+    <section className="mb-8">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Saved designs
+        </h2>
+        <span className="text-xs text-muted-foreground">
+          Public links
+        </span>
+      </div>
+      <div className="grid gap-2 md:grid-cols-2">
+        {visible.map((item) => (
+          <div
+            key={item.id}
+            className="flex min-w-0 items-center gap-3 rounded-md border bg-background px-3 py-2"
+          >
+            <a
+              href={`${appBasePath()}/d/${item.id}`}
+              className="min-w-0 flex-1 no-underline"
+            >
+              <div className="truncate text-sm font-medium text-foreground">
+                {item.title}
+              </div>
+              <div className="truncate text-xs text-muted-foreground">
+                {item.sourceUrl}
+              </div>
+            </a>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                void navigator.clipboard.writeText(
+                  `${window.location.origin}${appBasePath()}/d/${item.id}`,
+                );
+              }}
+              title="Copy public link"
+              aria-label="Copy public link"
+            >
+              <IconCopy size={14} />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onDelete(item.id)}
+              title="Delete saved design"
+              aria-label="Delete saved design"
+            >
+              <IconTrash size={14} />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

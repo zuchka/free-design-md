@@ -9,9 +9,10 @@ import {
   type EnrichInput,
 } from "../../../actions/enrich-design-md.js";
 import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
-import { resolveConnectedBuilderQuotaOwner } from "../../lib/builder-connection.js";
+import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
 import { resolveOwner, ANONYMOUS_OWNER } from "../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../lib/quota.js";
+import { saveEnrichmentSnapshot } from "../../lib/saved-enrichments.js";
 
 /**
  * POST /api/enrich-design-md (SSE)
@@ -72,20 +73,23 @@ export default defineEventHandler(async (event) => {
   }
 
   let quotaOwner = owner;
+  let connectedBuilderOwner:
+    | Awaited<ReturnType<typeof resolveConnectedBuilderOwner>>
+    | null = null;
 
   // Anonymous callers may use the server key only after Builder Connect has
   // stored a complete credential bundle. Builder Connect does not create an app
   // session, so resolveOwner() still returns ANONYMOUS_OWNER in production.
   if (owner === ANONYMOUS_OWNER && resolvedKey.source !== "byo") {
-    const builderQuotaOwner = await resolveConnectedBuilderQuotaOwner(owner);
-    if (!builderQuotaOwner) {
+    connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
+    if (!connectedBuilderOwner) {
       setResponseStatus(event, 401);
       return {
         error: "sign_in_required",
         reason: "add a BYO key or sign in with Builder",
       };
     }
-    quotaOwner = builderQuotaOwner;
+    quotaOwner = connectedBuilderOwner.ownerId;
   }
 
   let dec: { ok: boolean; remaining: number } | null = null;
@@ -131,7 +135,39 @@ export default defineEventHandler(async (event) => {
             send("delta", { text: ev.text });
           } else {
             const { type: _drop, ...result } = ev;
-            send("done", result);
+            let saveResult:
+              | { savedDesignId: string; savedDesignUrl: string }
+              | { saveError: string }
+              | null = null;
+            try {
+              const connected =
+                connectedBuilderOwner ??
+                (await resolveConnectedBuilderOwner(owner));
+              if (connected) {
+                const saved = await saveEnrichmentSnapshot({
+                  owner: connected,
+                  sourceUrl: url,
+                  deterministicMarkdown: md,
+                  enrichedMarkdown: result.markdown,
+                  designSystemData,
+                  signals,
+                  screenshotDataUrl,
+                  model: result.model,
+                  usage: result.usage,
+                  stopReason: result.stopReason,
+                });
+                saveResult = {
+                  savedDesignId: saved.id,
+                  savedDesignUrl: saved.url,
+                };
+              }
+            } catch (saveErr) {
+              saveResult = {
+                saveError:
+                  saveErr instanceof Error ? saveErr.message : String(saveErr),
+              };
+            }
+            send("done", { ...result, ...(saveResult ?? {}) });
           }
         }
       } catch (err) {

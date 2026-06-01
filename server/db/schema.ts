@@ -109,3 +109,22 @@ export const fdmdBYOKeys = table("fdmd_byo_keys", {
   createdAt: text("created_at").notNull().default(now()),
 });
 
+export const fdmdSavedEnrichments = table("fdmd_saved_enrichments", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  builderUserId: text("builder_user_id").notNull(),
+  builderOrgName: text("builder_org_name"),
+  builderOrgKind: text("builder_org_kind"),
+  sourceUrl: text("source_url").notNull(),
+  title: text("title").notNull(),
+  deterministicMarkdown: text("deterministic_markdown").notNull(),
+  enrichedMarkdown: text("enriched_markdown").notNull(),
+  designSystemDataJson: text("design_system_data_json").notNull(),
+  signalsJson: text("signals_json").notNull(),
+  screenshotDataUrl: text("screenshot_data_url"),
+  model: text("model").notNull(),
+  usageJson: text("usage_json").notNull(),
+  stopReason: text("stop_reason"),
+  createdAt: text("created_at").notNull().default(now()),
+  updatedAt: text("updated_at").notNull().default(now()),
+});
