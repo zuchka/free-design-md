@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { AgentToggleButton } from "@agent-native/core/client";
 import CreditsChip from "@/components/CreditsChip";
 
 export default function NavBar() {
@@ -22,6 +23,7 @@ export default function NavBar() {
         </div>
         <nav aria-label="Main" className="flex items-center gap-4">
           <CreditsChip />
+          <AgentToggleButton />
           <Link
             to="/quality"
             className="text-sm text-muted-foreground transition-colors hover:text-foreground"

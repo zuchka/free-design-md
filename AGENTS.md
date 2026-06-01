@@ -2,7 +2,7 @@
 
 A free, agent-native tool that turns any URL into a portable `design.md` spec.
 
-Paste a URL → headless Chromium loads the page → we extract colors, typography, components, spacing, and radii → render a `design.md` (Google Stitch / VoltAgent schema). Optional one-click **Enrich with AI** sends the deterministic output + a screenshot to Claude Opus 4.7 and gets back a richer, brand-voice-aware version.
+Paste a URL → headless Chromium loads the page → we extract colors, typography, components, spacing, and radii → render a `design.md` (Google Stitch / VoltAgent schema). Optional one-click **Enrich with AI** sends the deterministic output + a screenshot to Claude Sonnet 4.6 and gets back a richer, brand-voice-aware version.
 
 The product surface is one URL: `/`. The agent surface is `pnpm action <name>`. This file is symlinked as `CLAUDE.md` — both names point at the same content.
 
@@ -16,7 +16,7 @@ Three concrete claims (not vibes):
 
 3. **We kept the load-bearing framework primitives.** `@agent-native/core` runtime, `defineAction()`, `appBasePath()`, the auth plugin, the A2A agent card (`server/agent-card.test.ts` asserts it advertises the right skills). Discoverability + invocation + authorization are the parts of agent-native that earn their complexity; we kept them.
 
-What we deliberately did **not** do: ship a chat sidebar. The extract → enrich pipeline is a one-shot structured transformation. A chat sidebar adds tool-loop overhead, message persistence, and multi-turn scaffolding for nothing here. The direct Anthropic SDK call inside `actions/enrich-design-md.ts` is measurably faster end-to-end with the same API key + model than the equivalent chat-sidebar path would be.
+The app now ships an agent chat sidebar via `<AgentSidebar>` in `app/root.tsx`. The direct extract → enrich path remains the primary one-shot workflow, and the sidebar is used for follow-up iteration on an already-loaded design.md.
 
 ## For external agents
 
@@ -43,15 +43,15 @@ pnpm action enrich-design-md \
 
 Returns the AI-enriched design.md plus latency and token usage.
 
-**A2A discovery:** the agent card is served by the framework; see `server/agent-card.test.ts` for the canonical skill list (currently `extract-design-md`, `enrich-design-md`, `export-design-md`).
+**A2A discovery:** the agent card is served by the framework; see `server/agent-card.test.ts` for the canonical skill list (currently `extract-design-md`, `enrich-design-md`, `iterate-design-md`, `export-design-md`).
 
 ## Actions reference
 
 | Action               | Args                                                                                                                   | Purpose                                                                                                |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `extract-design-md`  | `--url <url>`                                                                                                          | Headless visit + computed-CSS extraction → `{ url, markdown, designSystemData, signals, screenshotDataUrl }`. Deterministic; no LLM. |
-| `enrich-design-md`   | `--url <url> --designSystemData '<json>' --signals '<json>' --screenshotDataUrl <data-url> --deterministicMarkdown '<md>'` | Sends the deterministic extraction + screenshot to Claude Opus 4.7. Returns a richer design.md plus usage and latency. Requires `ANTHROPIC_API_KEY`. |
-| `iterate-design-md`  | `--previousMarkdown '<md>' --userPrompt '<text>' [--sectionTarget <slug>]` | One-shot revision of an AI-enriched design.md per a user instruction. User input is treated as untrusted data — wrapped in nonce-delimited tags, run through a blocklist, and the output is shape-validated before return. Consumes 1 credit from `fdmd_quota`. Requires `ANTHROPIC_API_KEY`. |
+| `enrich-design-md`   | `--url <url> --designSystemData '<json>' --signals '<json>' --screenshotDataUrl <data-url> --deterministicMarkdown '<md>'` | Sends the deterministic extraction + screenshot to Claude Sonnet 4.6. Returns a richer design.md plus usage and latency. Requires `ANTHROPIC_API_KEY` unless `anthropicApiKey` is passed by an HTTP wrapper. |
+| `iterate-design-md`  | `--previousMarkdown '<md>' --userPrompt '<text>' [--sectionTarget <slug>]` | One-shot revision of an AI-enriched design.md per a user instruction. User input is treated as untrusted data — wrapped in nonce-delimited tags, run through a blocklist, and the output is shape-validated before return. The action itself does not touch quota; the HTTP route decrements quota when it uses the server key. Requires `ANTHROPIC_API_KEY` unless `anthropicApiKey` is passed by an HTTP wrapper. |
 | `export-design-md`   | `--id <designSystemId>`                                                                                                | Re-render a stored design system as design.md.                                                         |
 | `db-health` / `db-status` / `db-connect` | —                                                                                          | Framework DB health checks (kept for diagnostics).                                                     |
 
@@ -62,11 +62,11 @@ Use `pnpm action <name> [args]` to invoke any of them. Output is JSON on stdout.
 | Method | Path                                  | What it does                                                          |
 | ------ | ------------------------------------- | --------------------------------------------------------------------- |
 | GET    | `/api/extract?url=<url>&format=json`  | Thin wrapper over `extract-design-md`. Public.                        |
-| POST   | `/api/enrich-design-md`               | Thin wrapper over `enrich-design-md`. Public at the route level; UI gates the button behind Builder Connect (`useBuilderConnectFlow().configured`). Now also uses BYO key resolution — see `/api/iterate-design-md`. |
-| POST   | `/api/iterate-design-md`              | SSE wrapper over `iterate-design-md`. Resolves Anthropic key via `server/lib/anthropic-key.ts`: BYO key (from `fdmd_anon` cookie → `fdmd_byo_keys` table) is preferred; server key with quota decrement is the fallback. Returns 402 when no key is available, 422 on blocklist hit, 400 on input-cap violation. |
-| GET    | `/api/me/credits`                     | Returns `{ allowed, remaining }` for the resolved owner. Used by the UI to render the "X credits left" counter on the iteration panel. |
+| POST   | `/api/enrich-design-md`               | SSE wrapper over `enrich-design-md`. Resolves Anthropic key via `server/lib/anthropic-key.ts`: BYO key is preferred and does not spend quota; the server key spends quota. Anonymous server-key calls require Builder Connect credentials, because Builder Connect does not create an app session. |
+| POST   | `/api/iterate-design-md`              | SSE wrapper over `iterate-design-md`. Uses the same Anthropic key resolution and quota behavior. Returns 402 when no key is available or credits are exhausted, 422 on blocklist hit, 400 on input-cap violation. |
+| GET    | `/api/me/credits`                     | Returns `{ allowed, remaining }` for the resolved owner. Used by the UI to render the credits chip. |
 | POST   | `/api/me/anthropic-key`               | Stores the user's BYO Anthropic API key against their `fdmd_anon` session token. Body: `{ apiKey: string }`. Returns 400 if key doesn't start with "sk-". |
-| GET    | `/api/me/key-status`                  | Returns `{ byoKeyConfigured: boolean }` for the current visitor. Used by the UI to render the API key entry in the NavBar. |
+| GET    | `/api/me/key-status`                  | Returns `{ byoKeyConfigured: boolean }` for the current visitor. Used by the UI to decide whether a BYO key is already stored. |
 
 ## Dev
 
@@ -83,73 +83,30 @@ pnpm action <name> # invoke any action from the CLI
 Env vars (`.env.local`):
 
 - `DATABASE_URL` — auto-loaded by the framework
-- `ANTHROPIC_API_KEY` — required for the `Enrich with AI` button (and `enrich-design-md` action)
+- `ANTHROPIC_API_KEY` — server fallback key for enrich/iterate. If absent, visitors need a stored BYO Anthropic key.
 
-Slide-related secrets, ports, and config from the original slides template are gone — the only LLM the app talks to is Anthropic, and only for enrichment.
+Slide-related secrets, ports, and config from the original slides template are gone — the only LLM the app talks to directly is Anthropic, for enrichment and iteration.
 
-## Auth — Builder.io SSO via `/cli-auth`
+## Identity, Keys, and Credits
 
-`free-design-md` uses Builder.io's existing `/cli-auth` partner redirect
-flow to sign users in. There is no OAuth 2.0 endpoint on builder.io — auth
-is Firebase under the hood — so we lean on the same redirect-with-BPK flow
-that the Builder CLI and Figma plugin use.
+There is no first-party Builder SSO implementation in this app right now. The stale `/api/auth/builder/start`, `/api/auth/builder/callback`, `fdmd_users`, and `fdmd_sessions` flow described in older docs is not the current product path.
 
-**Client seam** (`app/lib/auth/`): contract is fixed across mock + real.
-Set `VITE_FREE_DESIGN_MD_REAL_AUTH=1` to switch the seam to the real impl.
+The current model is:
 
-**Server flow:**
+- **Anonymous visitor identity:** `server/plugins/anon-session.ts` sets an `fdmd_anon` cookie for every browser. This is only a stable browser token for BYO key storage.
+- **BYO Anthropic key:** `POST /api/me/anthropic-key` stores a visitor's key in `fdmd_byo_keys`, keyed by `fdmd_anon`. BYO keys always win and do not spend credits.
+- **Server Anthropic key:** when no BYO key exists, `server/lib/anthropic-key.ts` falls back to `process.env.ANTHROPIC_API_KEY`. Server-key calls spend credits from `fdmd_quota`.
+- **Builder Connect:** `BuilderConnectCta` uses `useBuilderConnectFlow()` and the framework route `/_agent-native/builder/connect`. This is not app login. It stores Builder credential material in the framework's request-scoped credential store.
+- **Builder callback data:** the framework callback currently receives `p-key`, `api-key`, `user-id`, `org-name`, and `kind`. The app only uses the resolved credential metadata exposed by `resolveBuilderCredentials()`: `userId`, `orgName`, and `orgKind`; it must never log key values.
+- **Quota owner:** anonymous server-key enrich calls are allowed only after Builder Connect resolves a complete Builder credential bundle. In that path, `server/lib/builder-connection.ts` returns `builder:<userId>` when `userId` exists; otherwise it falls back to the anonymous owner.
+- **Credits:** `fdmd_quota` stores `enrich_count` and `bonus_credits`. New rows default to `DEFAULT_ALLOWED_CREDITS = 3` in `server/lib/quota.ts`.
 
-1. User clicks "Sign in with Builder.io" → `GET /api/auth/builder/start` sets
-   a state cookie and 302s to `https://builder.io/cli-auth` with
-   `redirect_url=…/api/auth/builder/callback?state=<nonce>` and attribution
-   params (`signupSource=agent-native`, `agentNativeFlow=design_extraction`).
-2. Builder forwards unauthenticated users to `/login` or `/signup`
-   (preserving our attribution params), then back to `/cli-auth`.
-3. User clicks Authorize. Builder redirects to our callback with
-   `?p-key=bpk-…&user-id=…&api-key=…`.
-4. Callback validates the state cookie, calls
-   `GET https://builder.io/api/v1/users/<user-id>?apiKey=…` with the BPK
-   as a bearer token. On 200, identity is verified.
-5. We upsert into `fdmd_users`, seed `fdmd_quota` (default 3), mint an
-   opaque token, store in `fdmd_sessions`, set `fdmd_session` cookie,
-   discard the BPK, and 302 back to the original page.
-6. The framework's `AuthOptions.getSession` is wired to read our cookie,
-   so `getSession(event)` in any handler returns
-   `{ email, userId, name }` for the Builder-verified user.
+Important consequence: Builder Connect does not currently prove an app user session or expose a billing plan like free/pro. For credit decisions by Builder account level, first inspect real `orgKind`/`orgName`/`userId` values from the sanitized connect logs, then add an explicit Builder account lookup if the callback metadata is insufficient.
 
-**Production prerequisite:** the deployed hostname must be in
-`isAllowedRedirectUrl()` at
-`~/code/builder-internal/packages/app/components/CLIAuthPage.tsx:28`.
-Today: `localhost`, `*.agent-native.com`, `*.builder.io`. Either deploy
-under one of those, or land a one-line PR adding the prod host.
+## Current Follow-Up Work
 
-**Env vars:** `PUBLIC_ORIGIN` (required in prod), `BUILDER_CLIENT_ID`
-(defaults to `free-design-md`), `VITE_FREE_DESIGN_MD_REAL_AUTH=1` to
-flip the client seam to the real impl.
-
-## Phase 2 (deferred, not in this codebase yet)
-
-The spike verdict at `docs/spike-ai-enrichment-verdict.md` lays out the productization roadmap:
-
-- Builder.io SSO sign-in gate: **partially implemented** via BYO key flow (anonymous visitors can enrich with their own API key; signed-in users get 3 free server-key enrichments, then must BYO)
-- 3-free-enrichments quota per signed-in user
-- Streaming with `max_tokens: 32-64K` (current spike caps at 16K and truncates rich brands)
-- Prompt caching on the 40 KB VoltAgent reference (significant input-token savings)
-- URL-keyed result cache
-- Multi-provider abstraction (Claude default, Gemini/GPT fallback for cost A/B)
-- Eval harness vs. VoltAgent's 73 reference files
-- `design.md` as a live agent-iterable resource inside a Builder.io Space
-
-Phase 2 is the much larger push. This codebase is the clean base it lands on.
-
-## Chat Sidebar (feat/chat-sidebar-port)
-
-Landed on branch `feat/chat-sidebar-port`:
-
-- **Agent chat sidebar** mounted on `/` via `<AgentSidebar position="right" defaultOpen>` in `app/root.tsx`. The chat is the new surface for design.md iteration — the old `IteratePanel` component has been removed.
-- **BYO Anthropic key flow:** every visitor receives an `fdmd_anon` session cookie (set by `server/plugins/anon-session.ts`). Keys are stored in the `fdmd_byo_keys` table via `POST /api/me/anthropic-key`. The NavBar shows an "API key" toggle that opens `BYOKeyForm`.
-- **Key resolution:** `server/lib/anthropic-key.ts` — BYO key takes priority over the server `ANTHROPIC_API_KEY`. When neither is available, iterate/enrich return 402.
-- **Auth matrix:** anonymous visitors must BYO; Builder-SSO users get 3 free server-key enrichments (`fdmd_quota`), then must BYO.
-- **Per-user quota:** `server/lib/owner.ts` now calls `getSession()` and returns the authenticated user's email; the quota table is per-user, not single-tenant.
-- **Known limitation:** when the chat agent calls `iterate-design-md` as a tool, the result appears in the chat only — the left pane preview does not auto-update. This is a framework limitation (no hook for agent tool-call results). A future iteration can add a `POST`-backed iterate route with `http:` config on `defineAction` and a client-side SSE subscription.
-- **Design.md model context:** `app/routes/_index.tsx` pushes the enriched design.md into the chat's model context via `updateMcpAppModelContext` whenever a new design is loaded.
+- Decide whether credit grants should be based on Builder Connect metadata (`orgKind`) or a separate Builder API/account lookup.
+- Streaming with larger `max_tokens` and prompt caching are still productization work.
+- URL-keyed result caching exists in `enrichment_cache`; keep using it for demos and repeated enrichments.
+- Eval harness work against VoltAgent references is still deferred.
+- The chat sidebar can iterate on loaded design.md context, but agent tool-call results still do not automatically update the left pane preview.

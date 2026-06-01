@@ -15,6 +15,14 @@ export async function resolveConnectedBuilderQuotaOwner(
   try {
     return await runWithRequestContext({ userEmail: owner }, async () => {
       const credentials = await resolveBuilderCredentials();
+      console.log("[builder-connect] resolved credentials", {
+        owner,
+        hasPrivateKey: Boolean(credentials.privateKey),
+        hasPublicKey: Boolean(credentials.publicKey),
+        userId: credentials.userId ?? null,
+        orgName: credentials.orgName ?? null,
+        orgKind: credentials.orgKind ?? null,
+      });
       if (!credentials.privateKey || !credentials.publicKey) {
         return null;
       }

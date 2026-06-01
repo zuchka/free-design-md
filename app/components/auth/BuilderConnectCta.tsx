@@ -21,9 +21,27 @@ export default function BuilderConnectCta({
   variant?: "primary" | "compact";
   onConnected?: (state: { orgName: string | null }) => void;
 }) {
+  const logConnectedStatus = async (state: { orgName: string | null }) => {
+    onConnected?.(state);
+    try {
+      const res = await fetch("/_agent-native/builder/status");
+      const status = res.ok ? await res.json() : null;
+      console.log("[builder-connect] connected status", {
+        orgName: status?.orgName ?? state.orgName ?? null,
+        orgKind: status?.orgKind ?? null,
+        userId: status?.userId ?? null,
+        credentialSource: status?.credentialSource ?? null,
+        configured: Boolean(status?.configured),
+        envManaged: Boolean(status?.envManaged),
+      });
+    } catch (err) {
+      console.warn("[builder-connect] failed to read connected status", err);
+    }
+  };
+
   const { configured, orgName, connecting, error, start } = useBuilderConnectFlow({
     trackingSource: "free_design_md_navbar",
-    onConnected,
+    onConnected: logConnectedStatus,
   });
 
   const containerClass =

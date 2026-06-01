@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { appBasePath, updateMcpAppModelContext, useBuilderConnectFlow } from "@agent-native/core/client";
+import { appBasePath, focusAgentChat, updateMcpAppModelContext, useBuilderConnectFlow } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
@@ -26,7 +26,7 @@ export function meta() {
     {
       name: "description",
       content:
-        "Paste a URL. We headlessly load the page, capture its colors, fonts, and shapes, and render a portable design.md spec. Sign in to enrich it with Claude Opus 4.7.",
+        "Paste a URL. We headlessly load the page, capture its colors, fonts, and shapes, and render a portable design.md spec. Sign in to enrich it with Claude.",
     },
   ];
 }
@@ -104,6 +104,7 @@ export default function IndexRoute() {
 
   useEffect(() => {
     if (!enriched?.markdown) return;
+    focusAgentChat();
     updateMcpAppModelContext({
       content: [
         {
@@ -197,6 +198,7 @@ export default function IndexRoute() {
       setResult(data);
       writeCache({ url: data.url, markdown: data.markdown, designSystemData: data.designSystemData, signals: data.signals, screenshotDataUrl: data.screenshotDataUrl });
       history.replaceState(null, '', `?url=${encodeURIComponent(data.url)}`);
+      focusAgentChat();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -357,7 +359,7 @@ export default function IndexRoute() {
 
         <form
           onSubmit={handleSubmit}
-          className="mb-10 flex flex-col gap-3 sm:flex-row"
+          className="mb-6 flex flex-col gap-3 sm:flex-row"
         >
           <Input
             value={url}
@@ -371,6 +373,18 @@ export default function IndexRoute() {
             {isLoading ? "Extracting…" : "Extract"}
           </Button>
         </form>
+
+        {!isLoading && !hasEnrichedContent && (
+          <div className="mb-8">
+            <EnrichBanner
+              isEnriching={isEnriching}
+              hasScreenshot={!!result?.screenshotDataUrl}
+              hasResult={!!result}
+              configured={configured}
+              onEnrich={handleEnrich}
+            />
+          </div>
+        )}
 
         {error && (
           <div
@@ -392,14 +406,6 @@ export default function IndexRoute() {
 
         {result && !isLoading && (
           <div className="flex flex-col gap-6">
-            {!hasEnrichedContent && (
-              <EnrichBanner
-                isEnriching={isEnriching}
-                hasScreenshot={!!result.screenshotDataUrl}
-                configured={configured}
-                onEnrich={handleEnrich}
-              />
-            )}
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <Pane title="Real site" className="lg:flex-1 lg:min-w-0">
                 {result.screenshotDataUrl ? (
@@ -452,7 +458,7 @@ export default function IndexRoute() {
                         title={
                           !configured
                             ? "Connect Builder.io to unlock AI enrichment"
-                            : "Enrich with Claude Opus 4.7 (~30-60s)"
+                            : "Enrich with Claude (~30-60s)"
                         }
                       >
                         {isEnriching ? (
@@ -564,6 +570,7 @@ export default function IndexRoute() {
 interface EnrichBannerProps {
   isEnriching: boolean;
   hasScreenshot: boolean;
+  hasResult: boolean;
   configured: boolean;
   onEnrich: () => void;
 }
@@ -571,6 +578,7 @@ interface EnrichBannerProps {
 function EnrichBanner({
   isEnriching,
   hasScreenshot,
+  hasResult,
   configured,
   onEnrich,
 }: EnrichBannerProps) {
@@ -586,21 +594,37 @@ function EnrichBanner({
       <div className="relative flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1.5 max-w-2xl">
-            <p className="text-base font-semibold tracking-tight">
-              Your design.md is a skeleton. AI enrichment makes it{" "}
-              <span style={{ color: "var(--intuit-primary)" }}>
-                10–15× more detailed.
-              </span>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              The deterministic pass captures raw tokens — colors, fonts, radii.
-              AI enrichment adds brand voice, component intent, spacing
-              rationale, and accessibility notes. Powered by{" "}
-              <span className="font-medium text-foreground">
-                Claude Opus 4.7
-              </span>
-              .
-            </p>
+            {hasResult ? (
+              <>
+                <p className="text-base font-semibold tracking-tight">
+                  Your design.md is a skeleton. AI enrichment makes it{" "}
+                  <span style={{ color: "var(--intuit-primary)" }}>
+                    10–15× more detailed.
+                  </span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  The deterministic pass captures raw tokens — colors, fonts, radii.
+                  AI enrichment adds brand voice, component intent, spacing
+                  rationale, and accessibility notes. Powered by{" "}
+                  <span className="font-medium text-foreground">Claude</span>.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-semibold tracking-tight">
+                  Step 1 is free.{" "}
+                  <span style={{ color: "var(--intuit-primary)" }}>
+                    No sign-in required.
+                  </span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Paste any URL and click Extract — we headlessly load the page
+                  and pull colors, fonts, radii, and spacing into a portable
+                  design.md. Then optionally enrich it with Claude for
+                  brand voice, component intent, and accessibility notes.
+                </p>
+              </>
+            )}
           </div>
           <div className="shrink-0">
             <Button
@@ -610,14 +634,20 @@ function EnrichBanner({
               disabled={isEnriching || !hasScreenshot || !configured}
               className="gap-2 border-0 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: "var(--intuit-primary)" }}
-              title={!configured ? "Connect Builder.io to unlock AI enrichment" : undefined}
+              title={
+                !hasResult
+                  ? "Extract a URL first"
+                  : !configured
+                  ? "Connect Builder.io to unlock AI enrichment"
+                  : undefined
+              }
             >
               <IconSparkles size={18} />
               {isEnriching ? "Enriching…" : "Enrich with AI"}
             </Button>
           </div>
         </div>
-        <BuilderConnectCta />
+        {hasResult && <BuilderConnectCta />}
       </div>
     </div>
   );
