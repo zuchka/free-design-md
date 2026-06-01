@@ -1,3 +1,5 @@
 import { createAuthPlugin } from "@agent-native/core/server";
 
-export default createAuthPlugin({ publicPaths: ["/", "/api"] });
+export default createAuthPlugin({
+  publicPaths: ["/", "/api", "/_agent-native"],
+});
