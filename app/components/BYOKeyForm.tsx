@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useCredits } from "@/lib/use-credits";
 
-export default function BYOKeyForm() {
+export default function BYOKeyForm({ onSaved }: { onSaved?: () => void }) {
   const [value, setValue] = useState("");
-  const [status, setStatus] = useState<"idle" | "saving" | "ok" | "err">("idle");
+  const [status, setStatus] = useState<"idle" | "saving" | "ok" | "err">(
+    "idle",
+  );
+  const { refresh } = useCredits();
 
   async function save() {
     setStatus("saving");
@@ -14,7 +18,11 @@ export default function BYOKeyForm() {
         body: JSON.stringify({ apiKey: value }),
       });
       setStatus(r.ok ? "ok" : "err");
-      if (r.ok) setValue("");
+      if (r.ok) {
+        setValue("");
+        await refresh();
+        onSaved?.();
+      }
     } catch {
       setStatus("err");
     }
@@ -30,6 +38,7 @@ export default function BYOKeyForm() {
         className="flex-1 rounded-md border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
       />
       <Button
+        type="button"
         size="sm"
         variant="outline"
         onClick={save}

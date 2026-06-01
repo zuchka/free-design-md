@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
-import { appBasePath, updateMcpAppModelContext } from "@agent-native/core/client";
+import {
+  appBasePath,
+  updateMcpAppModelContext,
+} from "@agent-native/core/client";
 import {
   IconCheck,
   IconCopy,
@@ -11,7 +14,13 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import CreditsRecoveryBanner from "@/components/CreditsRecoveryBanner";
 import SideBySideMemo from "@/components/SideBySideMemo";
+import {
+  classifyAiAccessErrorMessage,
+  readAiAccessErrorResponse,
+  type AiAccessRecoveryReason,
+} from "@/lib/ai-access-errors";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
@@ -59,8 +68,12 @@ export default function SavedDesignRoute() {
   const [iterationPrompt, setIterationPrompt] = useState("");
   const [isIterating, setIsIterating] = useState(false);
   const [iterationError, setIterationError] = useState<string | null>(null);
+  const [iterationRecoveryReason, setIterationRecoveryReason] =
+    useState<AiAccessRecoveryReason | null>(null);
   const [candidateMarkdown, setCandidateMarkdown] = useState("");
-  const [candidateSavedUrl, setCandidateSavedUrl] = useState<string | null>(null);
+  const [candidateSavedUrl, setCandidateSavedUrl] = useState<string | null>(
+    null,
+  );
   const markdownPreRef = useRef<HTMLPreElement>(null);
   const streamAccumRef = useRef("");
 
@@ -129,8 +142,8 @@ export default function SavedDesignRoute() {
 
   const currentMarkdown =
     view === "enriched"
-      ? saved?.enrichedMarkdown ?? ""
-      : saved?.deterministicMarkdown ?? "";
+      ? (saved?.enrichedMarkdown ?? "")
+      : (saved?.deterministicMarkdown ?? "");
   const activePreviewHtml =
     view === "enriched" && enrichedPreviewHtml
       ? enrichedPreviewHtml
@@ -156,6 +169,7 @@ export default function SavedDesignRoute() {
 
     setIsIterating(true);
     setIterationError(null);
+    setIterationRecoveryReason(null);
     setCandidateMarkdown("");
     setCandidateSavedUrl(null);
     streamAccumRef.current = "";
@@ -170,19 +184,12 @@ export default function SavedDesignRoute() {
         },
       );
       if (!res.ok || !res.body) {
-        let message = `Iteration failed with ${res.status}`;
-        try {
-          const payload = (await res.json()) as { error?: string; reason?: string };
-          if (payload.error) {
-            message = payload.reason
-              ? `${payload.error}: ${payload.reason}`
-              : payload.error;
-          }
-        } catch {
-          const text = await res.text().catch(() => "");
-          if (text) message = text;
-        }
-        throw new Error(message);
+        const details = await readAiAccessErrorResponse(
+          res,
+          `Iteration failed with ${res.status}`,
+        );
+        setIterationRecoveryReason(details.recoveryReason);
+        throw new Error(details.message);
       }
 
       const reader = res.body.getReader();
@@ -218,7 +225,11 @@ export default function SavedDesignRoute() {
       }
       if (!sawDone) throw new Error("Stream ended without a done event");
     } catch (err) {
-      setIterationError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      setIterationError(message);
+      setIterationRecoveryReason(
+        (current) => current ?? classifyAiAccessErrorMessage(message),
+      );
     } finally {
       setIsIterating(false);
     }
@@ -233,6 +244,7 @@ export default function SavedDesignRoute() {
     setCandidateMarkdown("");
     setCandidateSavedUrl(null);
     setIterationError(null);
+    setIterationRecoveryReason(null);
   }
 
   function parseSSE(block: string): { event: string; data: unknown } | null {
@@ -294,11 +306,19 @@ export default function SavedDesignRoute() {
           </div>
           <div className="flex shrink-0 gap-2">
             <Button variant="outline" onClick={copyLink}>
-              {copiedLink ? <IconCheck size={14} /> : <IconExternalLink size={14} />}
+              {copiedLink ? (
+                <IconCheck size={14} />
+              ) : (
+                <IconExternalLink size={14} />
+              )}
               <span className="ml-1">{copiedLink ? "Copied" : "Share"}</span>
             </Button>
             <Button variant="outline" onClick={copyMarkdown}>
-              {copiedMarkdown ? <IconCheck size={14} /> : <IconCopy size={14} />}
+              {copiedMarkdown ? (
+                <IconCheck size={14} />
+              ) : (
+                <IconCopy size={14} />
+              )}
               <span className="ml-1">
                 {copiedMarkdown ? "Copied" : "Copy design.md"}
               </span>
@@ -354,10 +374,23 @@ export default function SavedDesignRoute() {
                   </Button>
                 </div>
               </div>
-              {iterationError && (
+              {iterationRecoveryReason && (
+                <CreditsRecoveryBanner
+                  reason={iterationRecoveryReason}
+                  onResolved={() => {
+                    setIterationError(null);
+                    setIterationRecoveryReason(null);
+                  }}
+                />
+              )}
+              {iterationError && !iterationRecoveryReason && (
                 <div
                   className="rounded-md border px-3 py-2 text-xs"
-                  style={{ borderColor: "rgba(239,68,68,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
+                  style={{
+                    borderColor: "rgba(239,68,68,0.25)",
+                    backgroundColor: "var(--intuit-error-bg)",
+                    color: "var(--intuit-error)",
+                  }}
                 >
                   {iterationError}
                 </div>
@@ -365,7 +398,10 @@ export default function SavedDesignRoute() {
               {candidateSavedUrl && (
                 <div className="flex flex-col gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm md:flex-row md:items-center md:justify-between">
                   <div className="flex min-w-0 items-center gap-2">
-                    <IconGitBranch size={16} className="shrink-0 text-muted-foreground" />
+                    <IconGitBranch
+                      size={16}
+                      className="shrink-0 text-muted-foreground"
+                    />
                     <span className="truncate text-muted-foreground">
                       New public version saved at {candidateSavedUrl}
                     </span>
@@ -392,12 +428,17 @@ export default function SavedDesignRoute() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
             <Pane title="Real site" className="lg:flex-1 lg:min-w-0">
               {saved.screenshotDataUrl ? (
-                <div className="overflow-hidden rounded-md border bg-muted/20" style={{ boxShadow: "var(--intuit-card-shadow)" }}>
+                <div
+                  className="overflow-hidden rounded-md border bg-muted/20"
+                  style={{ boxShadow: "var(--intuit-card-shadow)" }}
+                >
                   <img
                     src={saved.screenshotDataUrl}
                     alt={`Screenshot of ${saved.sourceUrl}`}
                     className="block h-auto w-full"
-                    onLoad={(e) => setScreenshotHeight(e.currentTarget.offsetHeight)}
+                    onLoad={(e) =>
+                      setScreenshotHeight(e.currentTarget.offsetHeight)
+                    }
                   />
                 </div>
               ) : (
@@ -416,7 +457,11 @@ export default function SavedDesignRoute() {
                     type="button"
                     onClick={() => setView("deterministic")}
                     className={`whitespace-nowrap px-2 py-1 transition-colors ${view === "deterministic" ? "text-white" : "bg-transparent text-muted-foreground"}`}
-                    style={view === "deterministic" ? { backgroundColor: "var(--intuit-primary)" } : undefined}
+                    style={
+                      view === "deterministic"
+                        ? { backgroundColor: "var(--intuit-primary)" }
+                        : undefined
+                    }
                   >
                     Deterministic
                   </button>
@@ -424,14 +469,26 @@ export default function SavedDesignRoute() {
                     type="button"
                     onClick={() => setView("enriched")}
                     className={`whitespace-nowrap px-2 py-1 transition-colors ${view === "enriched" ? "text-white" : "bg-transparent text-muted-foreground"}`}
-                    style={view === "enriched" ? { backgroundColor: "var(--intuit-primary)" } : undefined}
+                    style={
+                      view === "enriched"
+                        ? { backgroundColor: "var(--intuit-primary)" }
+                        : undefined
+                    }
                   >
                     AI-enriched
                   </button>
                 </div>
               }
             >
-              <pre ref={markdownPreRef} className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap" style={{ maxHeight: screenshotHeight ? `${screenshotHeight}px` : "600px" }}>
+              <pre
+                ref={markdownPreRef}
+                className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap"
+                style={{
+                  maxHeight: screenshotHeight
+                    ? `${screenshotHeight}px`
+                    : "600px",
+                }}
+              >
                 {currentMarkdown}
               </pre>
             </Pane>
@@ -441,14 +498,22 @@ export default function SavedDesignRoute() {
             title="Preview from tokens"
             action={
               view === "enriched" && enrichedPreviewHtml ? (
-                <span className="text-xs text-muted-foreground">AI-enriched</span>
+                <span className="text-xs text-muted-foreground">
+                  AI-enriched
+                </span>
               ) : undefined
             }
           >
-            <div className="rounded-md border overflow-hidden" style={{ boxShadow: "var(--intuit-card-shadow)" }}>
+            <div
+              className="rounded-md border overflow-hidden"
+              style={{ boxShadow: "var(--intuit-card-shadow)" }}
+            >
               <div
                 className="relative overflow-hidden"
-                style={{ height: previewExpanded ? "900px" : "260px", transition: "height 0.3s ease" }}
+                style={{
+                  height: previewExpanded ? "900px" : "260px",
+                  transition: "height 0.3s ease",
+                }}
               >
                 {previewAvailable ? (
                   <div style={{ height: "900px" }}>
@@ -474,7 +539,9 @@ export default function SavedDesignRoute() {
                   onClick={() => setPreviewExpanded((v) => !v)}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
                 >
-                  {previewExpanded ? "Collapse preview ↑" : "Expand full preview ↓"}
+                  {previewExpanded
+                    ? "Collapse preview ↑"
+                    : "Expand full preview ↓"}
                 </button>
               </div>
             </div>
@@ -494,7 +561,9 @@ interface PaneProps {
 
 function Pane({ title, action, children, className }: PaneProps) {
   return (
-    <section className={`flex flex-col gap-2${className ? ` ${className}` : ""}`}>
+    <section
+      className={`flex flex-col gap-2${className ? ` ${className}` : ""}`}
+    >
       <div className="flex h-9 items-center justify-between">
         <div className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
