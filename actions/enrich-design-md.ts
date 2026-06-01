@@ -1,7 +1,7 @@
 /**
  * AI-enrichment: take the deterministic DesignSystemData + screenshot
  * + deterministic markdown produced by `extract-design-md`, send them to
- * Claude Opus 4.7 with a schema reference (VoltAgent's MIT-licensed
+ * Claude with a schema reference (VoltAgent's MIT-licensed
  * Vercel DESIGN.md), and return a richer DESIGN.md following the Google
  * Stitch schema.
  *
@@ -21,7 +21,7 @@
 import { defineAction } from "@agent-native/core";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { eq } from "drizzle-orm";
@@ -79,9 +79,7 @@ function parseDataUrl(dataUrl: string): {
   mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
   data: string;
 } {
-  const m = dataUrl.match(
-    /^data:(image\/(?:jpeg|png|gif|webp));base64,(.+)$/,
-  );
+  const m = dataUrl.match(/^data:(image\/(?:jpeg|png|gif|webp));base64,(.+)$/);
   if (!m || !m[1] || !m[2]) {
     throw new Error(
       "screenshotDataUrl must be a base64 data URL of a supported image type",
@@ -94,9 +92,18 @@ function parseDataUrl(dataUrl: string): {
 }
 
 function loadVoltAgentReference(): string {
+  const sourcePath = join(
+    process.cwd(),
+    "actions",
+    "voltagent-vercel-reference.md",
+  );
+  if (existsSync(sourcePath)) {
+    return readFileSync(sourcePath, "utf8");
+  }
+
   const here = dirname(fileURLToPath(import.meta.url));
-  const path = join(here, "voltagent-vercel-reference.md");
-  return readFileSync(path, "utf8");
+  const bundledSiblingPath = join(here, "voltagent-vercel-reference.md");
+  return readFileSync(bundledSiblingPath, "utf8");
 }
 
 function cacheKey(url: string): string {
@@ -217,7 +224,11 @@ export async function* enrichStream(
           content: [
             {
               type: "image",
-              source: { type: "base64", media_type: mediaType, data: imageData },
+              source: {
+                type: "base64",
+                media_type: mediaType,
+                data: imageData,
+              },
             },
             { type: "text", text: userText },
           ],
@@ -297,7 +308,7 @@ export async function* enrichStream(
 
 export default defineAction({
   description:
-    "AI-enrich a deterministic design.md extraction using Claude Opus 4.7. " +
+    "AI-enrich a deterministic design.md extraction using Claude. " +
     "Takes the output of extract-design-md (signals + markdown + screenshot) " +
     "and returns a richer DESIGN.md following the Google Stitch / VoltAgent " +
     "schema. Streams internally; the CLI/JSON path returns the final result " +

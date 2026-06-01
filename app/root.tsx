@@ -80,7 +80,6 @@ export default function Root() {
               <NavBar />
               <AgentSidebar
                 position="right"
-                defaultOpen
                 emptyStateText="Paste a URL above and click Enrich with AI — then ask me to iterate on the design.md. I can adjust colors, typography, spacing, components, and brand voice."
                 suggestions={[
                   "Make this dark mode",
