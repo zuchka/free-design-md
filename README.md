@@ -16,6 +16,7 @@ No sign-in is required for the deterministic pass. The AI-enriched pass needs an
 ## How to run
 
 ```bash
+nvm use
 pnpm install
 pnpm dev     # opens at http://localhost:8080
 ```

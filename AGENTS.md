@@ -64,7 +64,7 @@ Use `pnpm action <name> [args]` to invoke any of them. Output is JSON on stdout.
 | GET    | `/api/extract?url=<url>&format=json`  | Thin wrapper over `extract-design-md`. Public.                        |
 | POST   | `/api/enrich-design-md`               | SSE wrapper over `enrich-design-md`. Resolves Anthropic key via `server/lib/anthropic-key.ts`: BYO key is preferred and does not spend quota; the server key spends quota. Anonymous server-key calls require Builder Connect credentials, because Builder Connect does not create an app session. |
 | POST   | `/api/iterate-design-md`              | SSE wrapper over `iterate-design-md`. Uses the same Anthropic key resolution and quota behavior. Returns 402 when no key is available or credits are exhausted, 422 on blocklist hit, 400 on input-cap violation. |
-| GET    | `/api/me/credits`                     | Returns `{ allowed, remaining }` for the resolved owner. Used by the UI to render the credits chip. |
+| GET    | `/api/me/credits`                     | Returns `{ allowed, remaining }` for authenticated or Builder-connected quota owners; returns 401 for anonymous visitors without Builder Connect. Used by the UI to render the credits chip. |
 | POST   | `/api/me/anthropic-key`               | Stores the user's BYO Anthropic API key against their `fdmd_anon` session token. Body: `{ apiKey: string }`. Returns 400 if key doesn't start with "sk-". |
 | GET    | `/api/me/key-status`                  | Returns `{ byoKeyConfigured: boolean }` for the current visitor. Used by the UI to decide whether a BYO key is already stored. |
 
@@ -73,6 +73,7 @@ Use `pnpm action <name> [args]` to invoke any of them. Output is JSON on stdout.
 Dev server runs on port **8080** (not 5173).
 
 ```bash
+nvm use
 pnpm install
 pnpm dev           # http://localhost:8080
 pnpm typecheck     # agent-native typecheck — silent on success
