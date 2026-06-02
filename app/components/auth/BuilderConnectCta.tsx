@@ -10,9 +10,8 @@ import { IconCheck, IconExternalLink, IconLoader2 } from "@tabler/icons-react";
  * focus-refresh. On success the framework persists credentials to `app_secrets`
  * and the card flips to "Connected".
  *
- * This is NOT user sign-in — the app is fully public. Connecting Builder just
- * attaches LLM credentials (free credits, no API key needed) so server-side
- * enrichment can route through Builder instead of the env ANTHROPIC_API_KEY.
+ * This is NOT user sign-in — the app is fully public. Connecting Builder gives
+ * the visitor a stable Builder identity for the local MVP trial quota.
  */
 export default function BuilderConnectCta({
   variant = "primary",
@@ -39,10 +38,11 @@ export default function BuilderConnectCta({
     }
   };
 
-  const { configured, orgName, connecting, error, start } = useBuilderConnectFlow({
-    trackingSource: "free_design_md_navbar",
-    onConnected: logConnectedStatus,
-  });
+  const { configured, orgName, connecting, error, start } =
+    useBuilderConnectFlow({
+      trackingSource: "free_design_md_navbar",
+      onConnected: logConnectedStatus,
+    });
 
   const containerClass =
     variant === "compact"
@@ -55,7 +55,8 @@ export default function BuilderConnectCta({
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium text-foreground">Builder.io</div>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            {orgName ? `Connected — ${orgName}` : "Connected"}
+            {orgName ? `Connected — ${orgName}` : "Connected"} · 3-credit MVP
+            trial
           </p>
         </div>
         <span className="ml-auto inline-flex items-center gap-1 shrink-0 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500">
@@ -69,13 +70,14 @@ export default function BuilderConnectCta({
   return (
     <div className={containerClass}>
       <div className="min-w-0 flex-1">
-        <div className="text-xs font-medium text-foreground">Connect Builder.io</div>
+        <div className="text-xs font-medium text-foreground">
+          Connect Builder.io
+        </div>
         <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[220px]">
-          Free credits for LLM, hosting, and more — no API key needed
+          Unlock 3 AI enrichment credits for this MVP. BYO Anthropic keeps going
+          after that.
         </p>
-        {error && (
-          <p className="mt-1 text-[10px] text-destructive">{error}</p>
-        )}
+        {error && <p className="mt-1 text-[10px] text-destructive">{error}</p>}
       </div>
       <button
         type="button"

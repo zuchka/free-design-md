@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { appBasePath, focusAgentChat, updateMcpAppModelContext, useBuilderConnectFlow } from "@agent-native/core/client";
+import {
+  appBasePath,
+  focusAgentChat,
+  updateMcpAppModelContext,
+  useBuilderConnectFlow,
+} from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
@@ -15,6 +20,12 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import BuilderConnectCta from "@/components/auth/BuilderConnectCta";
+import CreditsRecoveryBanner from "@/components/CreditsRecoveryBanner";
+import {
+  classifyAiAccessErrorMessage,
+  readAiAccessErrorResponse,
+  type AiAccessRecoveryReason,
+} from "@/lib/ai-access-errors";
 import { readCache, writeCache } from "@/lib/extraction-cache";
 import SideBySideMemo from "@/components/SideBySideMemo";
 import {
@@ -91,7 +102,11 @@ export default function IndexRoute() {
   const [enriched, setEnriched] = useState<EnrichResult | null>(null);
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
-  const [view, setView] = useState<"deterministic" | "enriched">("deterministic");
+  const [enrichRecoveryReason, setEnrichRecoveryReason] =
+    useState<AiAccessRecoveryReason | null>(null);
+  const [view, setView] = useState<"deterministic" | "enriched">(
+    "deterministic",
+  );
   const [streamingMarkdown, setStreamingMarkdown] = useState("");
   // Accumulates the full text of an in-progress enrichment so each state
   // update sets the COMPLETE text seen so far. This prevents the "catching
@@ -103,7 +118,9 @@ export default function IndexRoute() {
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
   const [savedDesigns, setSavedDesigns] = useState<SavedDesignItem[]>([]);
-  const [savedDesignsError, setSavedDesignsError] = useState<string | null>(null);
+  const [savedDesignsError, setSavedDesignsError] = useState<string | null>(
+    null,
+  );
   const [copiedShareUrl, setCopiedShareUrl] = useState(false);
 
   // Iteration state: separate from the enrichment SSE flow. A session
@@ -180,7 +197,7 @@ export default function IndexRoute() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const urlParam = params.get('url');
+    const urlParam = params.get("url");
     if (!urlParam) return;
     const cached = readCache(urlParam);
     if (cached) {
@@ -189,12 +206,17 @@ export default function IndexRoute() {
       if (cached.enrichedMarkdown) {
         setEnriched({
           markdown: cached.enrichedMarkdown,
-          model: cached.enrichedModel ?? 'cached',
+          model: cached.enrichedModel ?? "cached",
           latencyMs: 0,
-          usage: { inputTokens: 0, outputTokens: 0, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
-          stopReason: 'end_turn',
+          usage: {
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
+          },
+          stopReason: "end_turn",
         });
-        setView('enriched');
+        setView("enriched");
       }
     } else {
       setUrl(urlParam);
@@ -214,10 +236,15 @@ export default function IndexRoute() {
     if (!enriched?.markdown) return null;
     const parsed = parseEnrichedFrontmatter(enriched.markdown);
     if (!parsed) return null;
-    return renderEnrichedPreview(parsed, enriched.markdown, result?.signals?.title);
+    return renderEnrichedPreview(
+      parsed,
+      enriched.markdown,
+      result?.signals?.title,
+    );
   }, [enriched?.markdown, result?.signals?.title]);
 
-  const enrichedPreviewFailed = enriched !== null && enrichedPreviewHtml === null;
+  const enrichedPreviewFailed =
+    enriched !== null && enrichedPreviewHtml === null;
 
   async function extractUrl(trimmed: string) {
     setIsLoading(true);
@@ -225,6 +252,7 @@ export default function IndexRoute() {
     setResult(null);
     setEnriched(null);
     setEnrichError(null);
+    setEnrichRecoveryReason(null);
     setView("deterministic");
     setPreviewExpanded(false);
     setScreenshotHeight(null);
@@ -237,8 +265,14 @@ export default function IndexRoute() {
       }
       const data = (await res.json()) as ExtractResult;
       setResult(data);
-      writeCache({ url: data.url, markdown: data.markdown, designSystemData: data.designSystemData, signals: data.signals, screenshotDataUrl: data.screenshotDataUrl });
-      history.replaceState(null, '', `?url=${encodeURIComponent(data.url)}`);
+      writeCache({
+        url: data.url,
+        markdown: data.markdown,
+        designSystemData: data.designSystemData,
+        signals: data.signals,
+        screenshotDataUrl: data.screenshotDataUrl,
+      });
+      history.replaceState(null, "", `?url=${encodeURIComponent(data.url)}`);
       focusAgentChat();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -257,6 +291,7 @@ export default function IndexRoute() {
     if (!result) return;
     setIsEnriching(true);
     setEnrichError(null);
+    setEnrichRecoveryReason(null);
     setStreamingMarkdown("");
     streamAccumRef.current = "";
     setView("enriched");
@@ -274,8 +309,12 @@ export default function IndexRoute() {
         }),
       });
       if (!res.ok || !res.body) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || `Enrich failed with ${res.status}`);
+        const details = await readAiAccessErrorResponse(
+          res,
+          `Enrich failed with ${res.status}`,
+        );
+        setEnrichRecoveryReason(details.recoveryReason);
+        throw new Error(details.message);
       }
 
       const reader = res.body.getReader();
@@ -329,7 +368,11 @@ export default function IndexRoute() {
         throw new Error("Stream ended without a done event");
       }
     } catch (err) {
-      setEnrichError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      setEnrichError(message);
+      setEnrichRecoveryReason(
+        (current) => current ?? classifyAiAccessErrorMessage(message),
+      );
       // Fall back to the deterministic view if the stream blew up before
       // any content arrived. If we already have partial streaming text,
       // leave it visible so the user can see what they got.
@@ -345,9 +388,7 @@ export default function IndexRoute() {
    *   data: <json>
    * Whitespace-tolerant. Returns null when the block is malformed.
    */
-  function parseSSE(
-    block: string,
-  ): { event: string; data: unknown } | null {
+  function parseSSE(block: string): { event: string; data: unknown } | null {
     let eventName = "";
     let dataLine = "";
     for (const line of block.split("\n")) {
@@ -370,7 +411,7 @@ export default function IndexRoute() {
       ? enriched
         ? enriched.markdown
         : streamingMarkdown
-      : result?.markdown ?? "";
+      : (result?.markdown ?? "");
 
   async function handleCopy() {
     if (!currentMarkdown) return;
@@ -407,7 +448,9 @@ export default function IndexRoute() {
   }
 
   const activePreviewHtml =
-    view === "enriched" && enrichedPreviewHtml ? enrichedPreviewHtml : previewHtml;
+    view === "enriched" && enrichedPreviewHtml
+      ? enrichedPreviewHtml
+      : previewHtml;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -417,9 +460,9 @@ export default function IndexRoute() {
             Extract a design system from any URL
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Type a URL. We headlessly load the page, capture its colors,
-            fonts, and shapes, and render a portable design.md spec. No
-            sign-in required for the deterministic pass.
+            Type a URL. We headlessly load the page, capture its colors, fonts,
+            and shapes, and render a portable design.md spec. No sign-in
+            required for the deterministic pass.
           </p>
         </header>
 
@@ -468,7 +511,11 @@ export default function IndexRoute() {
         {error && (
           <div
             className="mb-8 rounded-md border px-4 py-3 text-sm"
-            style={{ borderColor: "rgba(239,68,68,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
+            style={{
+              borderColor: "rgba(239,68,68,0.25)",
+              backgroundColor: "var(--intuit-error-bg)",
+              color: "var(--intuit-error)",
+            }}
           >
             {error}
           </div>
@@ -488,12 +535,17 @@ export default function IndexRoute() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <Pane title="Real site" className="lg:flex-1 lg:min-w-0">
                 {result.screenshotDataUrl ? (
-                  <div className="overflow-hidden rounded-md border bg-muted/20" style={{ boxShadow: "var(--intuit-card-shadow)" }}>
+                  <div
+                    className="overflow-hidden rounded-md border bg-muted/20"
+                    style={{ boxShadow: "var(--intuit-card-shadow)" }}
+                  >
                     <img
                       src={result.screenshotDataUrl}
                       alt={`Screenshot of ${result.url}`}
                       className="block w-full h-auto"
-                      onLoad={(e) => setScreenshotHeight(e.currentTarget.offsetHeight)}
+                      onLoad={(e) =>
+                        setScreenshotHeight(e.currentTarget.offsetHeight)
+                      }
                     />
                   </div>
                 ) : (
@@ -514,7 +566,11 @@ export default function IndexRoute() {
                           type="button"
                           onClick={() => setView("deterministic")}
                           className={`whitespace-nowrap px-2 py-1 transition-colors ${view === "deterministic" ? "text-white" : "bg-transparent text-muted-foreground"}`}
-                          style={view === "deterministic" ? { backgroundColor: "var(--intuit-primary)" } : undefined}
+                          style={
+                            view === "deterministic"
+                              ? { backgroundColor: "var(--intuit-primary)" }
+                              : undefined
+                          }
                         >
                           Deterministic
                         </button>
@@ -522,7 +578,11 @@ export default function IndexRoute() {
                           type="button"
                           onClick={() => setView("enriched")}
                           className={`whitespace-nowrap px-2 py-1 transition-colors ${view === "enriched" ? "text-white" : "bg-transparent text-muted-foreground"}`}
-                          style={view === "enriched" ? { backgroundColor: "var(--intuit-primary)" } : undefined}
+                          style={
+                            view === "enriched"
+                              ? { backgroundColor: "var(--intuit-primary)" }
+                              : undefined
+                          }
                         >
                           AI-enriched{isEnriching && !enriched ? "…" : ""}
                         </button>
@@ -533,7 +593,11 @@ export default function IndexRoute() {
                         size="sm"
                         variant="outline"
                         onClick={handleEnrich}
-                        disabled={isEnriching || !result.screenshotDataUrl || !configured}
+                        disabled={
+                          isEnriching ||
+                          !result.screenshotDataUrl ||
+                          !configured
+                        }
                         title={
                           !configured
                             ? "Connect Builder.io to unlock AI enrichment"
@@ -556,7 +620,11 @@ export default function IndexRoute() {
                       onClick={handleCopy}
                       disabled={!currentMarkdown}
                     >
-                      {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                      {copied ? (
+                        <IconCheck size={14} />
+                      ) : (
+                        <IconCopy size={14} />
+                      )}
                       <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
                     </Button>
                     {enriched?.savedDesignUrl && (
@@ -578,10 +646,23 @@ export default function IndexRoute() {
                   </div>
                 }
               >
-                {enrichError && (
+                {enrichRecoveryReason && (
+                  <CreditsRecoveryBanner
+                    reason={enrichRecoveryReason}
+                    onResolved={() => {
+                      setEnrichError(null);
+                      setEnrichRecoveryReason(null);
+                    }}
+                  />
+                )}
+                {enrichError && !enrichRecoveryReason && (
                   <div
                     className="mb-2 rounded-md border px-3 py-2 text-xs"
-                    style={{ borderColor: "rgba(239,68,68,0.25)", backgroundColor: "var(--intuit-error-bg)", color: "var(--intuit-error)" }}
+                    style={{
+                      borderColor: "rgba(239,68,68,0.25)",
+                      backgroundColor: "var(--intuit-error-bg)",
+                      color: "var(--intuit-error)",
+                    }}
                   >
                     {enrichError}
                   </div>
@@ -589,13 +670,26 @@ export default function IndexRoute() {
                 {enriched?.saveError && (
                   <div
                     className="mb-2 rounded-md border px-3 py-2 text-xs"
-                    style={{ borderColor: "rgba(245,158,11,0.35)", backgroundColor: "rgba(245,158,11,0.08)", color: "rgb(146,64,14)" }}
+                    style={{
+                      borderColor: "rgba(245,158,11,0.35)",
+                      backgroundColor: "rgba(245,158,11,0.08)",
+                      color: "rgb(146,64,14)",
+                    }}
                   >
-                    Enriched successfully, but saving the public link failed: {enriched.saveError}
+                    Enriched successfully, but saving the public link failed:{" "}
+                    {enriched.saveError}
                   </div>
                 )}
                 <div className="relative">
-                  <pre ref={markdownPreRef} className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap" style={{ maxHeight: screenshotHeight ? `${screenshotHeight}px` : "600px" }}>
+                  <pre
+                    ref={markdownPreRef}
+                    className="overflow-auto rounded-md border bg-muted/40 p-4 text-xs leading-relaxed font-mono whitespace-pre-wrap"
+                    style={{
+                      maxHeight: screenshotHeight
+                        ? `${screenshotHeight}px`
+                        : "600px",
+                    }}
+                  >
                     {currentMarkdown}
                   </pre>
                 </div>
@@ -617,14 +711,22 @@ export default function IndexRoute() {
               title="Preview from tokens"
               action={
                 view === "enriched" && enrichedPreviewHtml ? (
-                  <span className="text-xs text-muted-foreground">AI-enriched</span>
+                  <span className="text-xs text-muted-foreground">
+                    AI-enriched
+                  </span>
                 ) : undefined
               }
             >
-              <div className="rounded-md border overflow-hidden" style={{ boxShadow: "var(--intuit-card-shadow)" }}>
+              <div
+                className="rounded-md border overflow-hidden"
+                style={{ boxShadow: "var(--intuit-card-shadow)" }}
+              >
                 <div
                   className="relative overflow-hidden"
-                  style={{ height: previewExpanded ? "900px" : "260px", transition: "height 0.3s ease" }}
+                  style={{
+                    height: previewExpanded ? "900px" : "260px",
+                    transition: "height 0.3s ease",
+                  }}
                 >
                   <div style={{ height: "900px" }}>
                     <iframe
@@ -640,17 +742,25 @@ export default function IndexRoute() {
                   {isEnriching && view === "enriched" && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
                       <Spinner className="size-6 text-foreground" />
-                      <p className="text-sm text-muted-foreground">Enriching with AI…</p>
-                    </div>
-                  )}
-                  {enrichedPreviewFailed && view === "enriched" && !isEnriching && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 backdrop-blur-sm">
-                      <p className="text-sm font-medium">Enriched preview unavailable</p>
-                      <p className="text-xs text-muted-foreground max-w-xs text-center">
-                        The AI output didn't match the expected design token schema. The text view above has the full enriched content.
+                      <p className="text-sm text-muted-foreground">
+                        Enriching with AI…
                       </p>
                     </div>
                   )}
+                  {enrichedPreviewFailed &&
+                    view === "enriched" &&
+                    !isEnriching && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 backdrop-blur-sm">
+                        <p className="text-sm font-medium">
+                          Enriched preview unavailable
+                        </p>
+                        <p className="text-xs text-muted-foreground max-w-xs text-center">
+                          The AI output didn't match the expected design token
+                          schema. The text view above has the full enriched
+                          content.
+                        </p>
+                      </div>
+                    )}
                 </div>
                 <div className="flex justify-center border-t py-2">
                   <button
@@ -658,7 +768,9 @@ export default function IndexRoute() {
                     onClick={() => setPreviewExpanded((v) => !v)}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
                   >
-                    {previewExpanded ? "Collapse preview ↑" : "Expand full preview ↓"}
+                    {previewExpanded
+                      ? "Collapse preview ↑"
+                      : "Expand full preview ↓"}
                   </button>
                 </div>
               </div>
@@ -706,9 +818,9 @@ function EnrichBanner({
                   </span>
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  The deterministic pass captures raw tokens — colors, fonts, radii.
-                  AI enrichment adds brand voice, component intent, spacing
-                  rationale, and accessibility notes. Powered by{" "}
+                  The deterministic pass captures raw tokens — colors, fonts,
+                  radii. AI enrichment adds brand voice, component intent,
+                  spacing rationale, and accessibility notes. Powered by{" "}
                   <span className="font-medium text-foreground">Claude</span>.
                 </p>
               </>
@@ -723,8 +835,8 @@ function EnrichBanner({
                 <p className="text-sm text-muted-foreground">
                   Paste any URL and click Extract — we headlessly load the page
                   and pull colors, fonts, radii, and spacing into a portable
-                  design.md. Then optionally enrich it with Claude for
-                  brand voice, component intent, and accessibility notes.
+                  design.md. Then optionally enrich it with Claude for brand
+                  voice, component intent, and accessibility notes.
                 </p>
               </>
             )}
@@ -741,8 +853,8 @@ function EnrichBanner({
                 !hasResult
                   ? "Extract a URL first"
                   : !configured
-                  ? "Connect Builder.io to unlock AI enrichment"
-                  : undefined
+                    ? "Connect Builder.io to unlock AI enrichment"
+                    : undefined
               }
             >
               <IconSparkles size={18} />
@@ -770,9 +882,7 @@ function SavedDesignsList({
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Saved designs
         </h2>
-        <span className="text-xs text-muted-foreground">
-          Public links
-        </span>
+        <span className="text-xs text-muted-foreground">Public links</span>
       </div>
       <div className="grid gap-2 md:grid-cols-2">
         {visible.map((item) => (
@@ -829,7 +939,9 @@ interface PaneProps {
 
 function Pane({ title, action, children, className }: PaneProps) {
   return (
-    <section className={`flex flex-col gap-2${className ? ` ${className}` : ""}`}>
+    <section
+      className={`flex flex-col gap-2${className ? ` ${className}` : ""}`}
+    >
       <div className="flex h-9 items-center justify-between">
         <div className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
