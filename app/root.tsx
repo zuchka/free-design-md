@@ -80,12 +80,12 @@ export default function Root() {
               <NavBar />
               <AgentSidebar
                 position="right"
-                emptyStateText="Paste a URL above and click Enrich with AI — then ask me to iterate on the design.md. I can adjust colors, typography, spacing, components, and brand voice."
+                emptyStateText="Paste a URL above and click Enrich with AI — then use the page's Ask for a change box to iterate. I can answer questions about the loaded design.md."
                 suggestions={[
-                  "Make this dark mode",
-                  "Make the brand voice more playful and confident",
-                  "Tighten the spacing scale",
-                  "Soften the card radii and add more depth to the shadows",
+                  "What are the dominant colors?",
+                  "Summarize the typography system",
+                  "Which components did we capture?",
+                  "What should I change in the iteration box?",
                 ]}
               >
                 <Outlet />
