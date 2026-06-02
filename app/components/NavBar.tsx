@@ -33,10 +33,10 @@ export default function NavBar() {
           <Link
             to="/"
             aria-current={onWorkspace ? "page" : undefined}
-            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-md px-1 py-1.5 text-sm font-medium transition-colors ${
               onWorkspace
-                ? "border-transparent bg-muted text-foreground"
-                : "border-border text-foreground hover:bg-muted"
+                ? "text-foreground underline decoration-primary decoration-2 underline-offset-8"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <IconHome size={14} />
