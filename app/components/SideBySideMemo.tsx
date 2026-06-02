@@ -1,7 +1,4 @@
-import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
-import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
 
 export interface SideBySideMemoProps {
   previous: string;
@@ -12,8 +9,6 @@ export interface SideBySideMemoProps {
   onDiscard: () => void;
 }
 
-type ViewMode = "markdown" | "preview";
-
 export default function SideBySideMemo({
   previous,
   next,
@@ -22,19 +17,12 @@ export default function SideBySideMemo({
   onKeep,
   onDiscard,
 }: SideBySideMemoProps) {
-  const [view, setView] = useState<ViewMode>("markdown");
-
-  const previousHtml = useMemo(
-    () => renderPreviewSafely(previous),
-    [previous],
-  );
-  const nextHtml = useMemo(() => renderPreviewSafely(next), [next]);
-
-  const heading = candidatePending && !isStreaming
-    ? "Candidate iteration — accept or discard"
-    : isStreaming
-      ? "Iteration streaming…"
-      : "Most recent change";
+  const heading =
+    candidatePending && !isStreaming
+      ? "Candidate iteration — accept or discard"
+      : isStreaming
+        ? "Iteration streaming…"
+        : "Most recent change";
 
   return (
     <div className="flex flex-col gap-2">
@@ -42,59 +30,17 @@ export default function SideBySideMemo({
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {heading}
         </div>
-        <div className="flex overflow-hidden rounded-md border text-xs">
-          <button
-            type="button"
-            onClick={() => setView("markdown")}
-            className={`whitespace-nowrap px-2 py-1 transition-colors ${
-              view === "markdown"
-                ? "text-white"
-                : "bg-transparent text-muted-foreground"
-            }`}
-            style={
-              view === "markdown"
-                ? { backgroundColor: "var(--intuit-primary)" }
-                : undefined
-            }
-          >
-            Markdown
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("preview")}
-            className={`whitespace-nowrap px-2 py-1 transition-colors ${
-              view === "preview"
-                ? "text-white"
-                : "bg-transparent text-muted-foreground"
-            }`}
-            style={
-              view === "preview"
-                ? { backgroundColor: "var(--intuit-primary)" }
-                : undefined
-            }
-          >
-            Preview
-          </button>
-        </div>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Pane title="Previous">
-          {view === "markdown" ? (
-            <pre className="overflow-auto whitespace-pre-wrap text-xs leading-relaxed">
-              {previous}
-            </pre>
-          ) : (
-            <PreviewFrame html={previousHtml} />
-          )}
+          <pre className="overflow-auto whitespace-pre-wrap text-xs leading-relaxed">
+            {previous}
+          </pre>
         </Pane>
         <Pane title={isStreaming ? "New (streaming…)" : "New"}>
-          {view === "markdown" ? (
-            <pre className="overflow-auto whitespace-pre-wrap text-xs leading-relaxed">
-              {next}
-            </pre>
-          ) : (
-            <PreviewFrame html={nextHtml} />
-          )}
+          <pre className="overflow-auto whitespace-pre-wrap text-xs leading-relaxed">
+            {next}
+          </pre>
         </Pane>
       </div>
       {candidatePending && !isStreaming && (
@@ -108,35 +54,6 @@ export default function SideBySideMemo({
         </div>
       )}
     </div>
-  );
-}
-
-function renderPreviewSafely(markdown: string): string | null {
-  if (!markdown || markdown.trim().length === 0) return null;
-  try {
-    const parsed = parseEnrichedFrontmatter(markdown);
-    if (!parsed) return null;
-    return renderEnrichedPreview(parsed, markdown);
-  } catch {
-    return null;
-  }
-}
-
-function PreviewFrame({ html }: { html: string | null }) {
-  if (!html) {
-    return (
-      <div className="flex flex-1 items-center justify-center rounded-md border bg-muted/30 p-4 text-xs text-muted-foreground">
-        Preview unavailable — memo doesn't parse as enriched design.md (yet).
-      </div>
-    );
-  }
-  return (
-    <iframe
-      srcDoc={html}
-      title="Memo preview"
-      sandbox="allow-same-origin"
-      className="block h-[440px] w-full rounded-md border"
-    />
   );
 }
 
