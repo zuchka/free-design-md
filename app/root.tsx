@@ -13,6 +13,7 @@ import {
 import { ThemeProvider } from "next-themes";
 import NavBar from "@/components/NavBar";
 import { CreditsProvider } from "@/lib/use-credits";
+import AgentActivityRail from "@/components/AgentActivityRail";
 import type { LinksFunction } from "react-router";
 import stylesheet from "./global.css?url";
 
@@ -90,6 +91,7 @@ export default function Root() {
               >
                 <Outlet />
               </AgentSidebar>
+              <AgentActivityRail />
             </CreditsProvider>
           </TooltipProvider>
         </QueryClientProvider>

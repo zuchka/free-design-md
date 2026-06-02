@@ -36,6 +36,10 @@ import {
   iterate,
   type IterationSession,
 } from "@/lib/iteration-client";
+import {
+  announceAgentActivity,
+  clearAgentActivity,
+} from "@/lib/agent-activity";
 
 export function meta() {
   return [
@@ -117,6 +121,7 @@ export default function IndexRoute() {
   // renders into one, that render shows the full text through delta N, not
   // just delta N's fragment.
   const streamAccumRef = useRef("");
+  const enrichDeltaAnnouncedRef = useRef(false);
   const markdownPreRef = useRef<HTMLPreElement>(null);
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
@@ -142,6 +147,7 @@ export default function IndexRoute() {
     "current",
   );
   const iterationAccumRef = useRef("");
+  const iterationDeltaAnnouncedRef = useRef(false);
 
   // Iteration state: separate from the enrichment SSE flow. A session
   // represents one extract→enrich→iterate chain keyed on the URL.
@@ -283,6 +289,12 @@ export default function IndexRoute() {
     candidatePreviewHtml === null;
 
   async function extractUrl(trimmed: string) {
+    clearAgentActivity();
+    announceAgentActivity({
+      title: "Loading page",
+      detail: trimmed,
+      tone: "running",
+    });
     setIsLoading(true);
     setError(null);
     setResult(null);
@@ -310,6 +322,11 @@ export default function IndexRoute() {
       }
       const data = (await res.json()) as ExtractResult;
       setResult(data);
+      announceAgentActivity({
+        title: "Extracted design tokens",
+        detail: data.signals?.title ?? data.url,
+        tone: "success",
+      });
       writeCache({
         url: data.url,
         markdown: data.markdown,
@@ -320,7 +337,13 @@ export default function IndexRoute() {
       history.replaceState(null, "", `?url=${encodeURIComponent(data.url)}`);
       focusAgentChat();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      announceAgentActivity({
+        title: "Extraction failed",
+        detail: message,
+        tone: "error",
+      });
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -339,7 +362,13 @@ export default function IndexRoute() {
     setEnrichRecoveryReason(null);
     setStreamingMarkdown("");
     streamAccumRef.current = "";
+    enrichDeltaAnnouncedRef.current = false;
     setView("enriched");
+    announceAgentActivity({
+      title: "Starting AI enrichment",
+      detail: result.signals?.title ?? result.url,
+      tone: "running",
+    });
     try {
       const endpoint = `${appBasePath()}/api/enrich-design-md`;
       const res = await fetch(endpoint, {
@@ -380,10 +409,26 @@ export default function IndexRoute() {
             const { text } = parsed.data as { text: string };
             streamAccumRef.current += text;
             setStreamingMarkdown(streamAccumRef.current);
+            if (!enrichDeltaAnnouncedRef.current) {
+              enrichDeltaAnnouncedRef.current = true;
+              announceAgentActivity({
+                title: "Claude is writing design.md",
+                detail: "Streaming the enriched memo into the preview.",
+                tone: "running",
+                openSidebar: false,
+              });
+            }
           } else if (parsed.event === "done") {
             sawDone = true;
             const enrichResult = parsed.data as EnrichResult;
             setEnriched(enrichResult);
+            announceAgentActivity({
+              title: "AI enrichment complete",
+              detail: enrichResult.savedDesignUrl
+                ? "Saved a public snapshot."
+                : "Ready for follow-up questions.",
+              tone: "success",
+            });
             if (enrichResult.savedDesignUrl) {
               history.replaceState(
                 null,
@@ -405,6 +450,11 @@ export default function IndexRoute() {
             }
           } else if (parsed.event === "error") {
             const { message } = parsed.data as { message: string };
+            announceAgentActivity({
+              title: "AI enrichment failed",
+              detail: message,
+              tone: "error",
+            });
             throw new Error(message);
           }
         }
@@ -414,6 +464,11 @@ export default function IndexRoute() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      announceAgentActivity({
+        title: "AI enrichment stopped",
+        detail: message,
+        tone: "error",
+      });
       setEnrichError(message);
       setEnrichRecoveryReason(
         (current) => current ?? classifyAiAccessErrorMessage(message),
@@ -421,7 +476,7 @@ export default function IndexRoute() {
       // Fall back to the deterministic view if the stream blew up before
       // any content arrived. If we already have partial streaming text,
       // leave it visible so the user can see what they got.
-      if (!streamingMarkdown) setView("deterministic");
+      if (!streamAccumRef.current) setView("deterministic");
     } finally {
       setIsEnriching(false);
     }
@@ -498,6 +553,12 @@ export default function IndexRoute() {
     setCandidateSavedDesignUrl(null);
     setPreviewSource("candidate");
     iterationAccumRef.current = "";
+    iterationDeltaAnnouncedRef.current = false;
+    announceAgentActivity({
+      title: "Starting iteration",
+      detail: iterationPrompt.trim(),
+      tone: "running",
+    });
 
     await iterate(
       {
@@ -515,17 +576,38 @@ export default function IndexRoute() {
         onDelta: (text) => {
           iterationAccumRef.current += text;
           setCandidateMarkdown(iterationAccumRef.current);
+          if (!iterationDeltaAnnouncedRef.current) {
+            iterationDeltaAnnouncedRef.current = true;
+            announceAgentActivity({
+              title: "Drafting candidate memo",
+              detail: "Streaming the revised design.md side by side.",
+              tone: "running",
+              openSidebar: false,
+            });
+          }
         },
         onDone: (done) => {
           setCandidateMarkdown(done.markdown);
           setCandidateId(done.id);
           setCandidateSavedDesignId(done.savedDesignId ?? null);
           setCandidateSavedDesignUrl(done.savedDesignUrl ?? null);
+          announceAgentActivity({
+            title: "Iteration ready",
+            detail: done.savedDesignUrl
+              ? "Review the candidate, then keep or discard it."
+              : "Review the candidate side by side.",
+            tone: "success",
+          });
           if (done.savedDesignUrl) {
             void refreshSavedDesigns();
           }
         },
         onError: (message) => {
+          announceAgentActivity({
+            title: "Iteration failed",
+            detail: message,
+            tone: "error",
+          });
           setIterationError(message);
           setIterationRecoveryReason(classifyAiAccessErrorMessage(message));
         },
