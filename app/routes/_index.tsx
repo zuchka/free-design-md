@@ -18,6 +18,7 @@ import {
   IconExternalLink,
   IconSparkles,
   IconTrash,
+  IconX,
 } from "@tabler/icons-react";
 import BuilderConnectCta from "@/components/auth/BuilderConnectCta";
 import CreditsRecoveryBanner from "@/components/CreditsRecoveryBanner";
@@ -30,7 +31,9 @@ import {
 import { readCache, writeCache } from "@/lib/extraction-cache";
 import SideBySideMemo from "@/components/SideBySideMemo";
 import {
+  advanceSession,
   getOrCreateSession,
+  iterate,
   type IterationSession,
 } from "@/lib/iteration-client";
 
@@ -122,6 +125,14 @@ export default function IndexRoute() {
     null,
   );
   const [copiedShareUrl, setCopiedShareUrl] = useState(false);
+  const [iterationPrompt, setIterationPrompt] = useState("");
+  const [isIterating, setIsIterating] = useState(false);
+  const [iterationError, setIterationError] = useState<string | null>(null);
+  const [iterationRecoveryReason, setIterationRecoveryReason] =
+    useState<AiAccessRecoveryReason | null>(null);
+  const [candidateMarkdown, setCandidateMarkdown] = useState("");
+  const [candidateId, setCandidateId] = useState<string | null>(null);
+  const iterationAccumRef = useRef("");
 
   // Iteration state: separate from the enrichment SSE flow. A session
   // represents one extract→enrich→iterate chain keyed on the URL.
@@ -170,8 +181,9 @@ export default function IndexRoute() {
           text:
             `IMPORTANT: The user already has an AI-enriched design.md loaded for ${result?.url ?? "this page"}. ` +
             "DO NOT call extract-design-md — the content is already available below. " +
-            "To revise or iterate on it, call iterate-design-md with this markdown as previousMarkdown. " +
-            "Do not re-extract, do not re-enrich. Use the markdown below directly.\n\n" +
+            "Do not revise or iterate from chat; the visible page has an 'Ask for a change' box that streams the candidate markdown and preview. " +
+            "Answer questions about the loaded design.md and direct requested edits to that page control. " +
+            "Do not re-extract, do not re-enrich.\n\n" +
             enriched.markdown,
         },
       ],
@@ -253,6 +265,12 @@ export default function IndexRoute() {
     setEnriched(null);
     setEnrichError(null);
     setEnrichRecoveryReason(null);
+    setIterationPrompt("");
+    setIterationError(null);
+    setIterationRecoveryReason(null);
+    setCandidateMarkdown("");
+    setCandidateId(null);
+    setIterSession(null);
     setView("deterministic");
     setPreviewExpanded(false);
     setScreenshotHeight(null);
@@ -430,14 +448,83 @@ export default function IndexRoute() {
     }
   }
 
-  // Keep/Discard are wired to SideBySideMemo for historical diffs.
-  // candidatePending is always false now (chat sidebar drives iteration),
-  // so these buttons never render — but the prop contract still requires them.
-  function handleKeep() {
-    // no-op: candidatePending=false means buttons are hidden
+  async function handleIterate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (
+      !result ||
+      !enriched?.markdown ||
+      !iterationPrompt.trim() ||
+      isIterating
+    ) {
+      return;
+    }
+
+    const session =
+      iterSession ?? getOrCreateSession(result.url, enriched.markdown);
+    setIterSession(session);
+    setIsIterating(true);
+    setIterationError(null);
+    setIterationRecoveryReason(null);
+    setCandidateMarkdown("");
+    setCandidateId(null);
+    iterationAccumRef.current = "";
+
+    await iterate(
+      {
+        sessionId: session.sessionId,
+        url: result.url,
+        previousMarkdown: session.current.markdown,
+        userPrompt: iterationPrompt.trim(),
+        parentId: session.current.id ?? enriched.savedDesignId ?? null,
+      },
+      {
+        onDelta: (text) => {
+          iterationAccumRef.current += text;
+          setCandidateMarkdown(iterationAccumRef.current);
+        },
+        onDone: (done) => {
+          setCandidateMarkdown(done.markdown);
+          setCandidateId(done.id);
+        },
+        onError: (message) => {
+          setIterationError(message);
+          setIterationRecoveryReason(classifyAiAccessErrorMessage(message));
+        },
+      },
+    );
+    setIsIterating(false);
   }
+
+  function handleKeep() {
+    if (!result || !enriched || !candidateMarkdown || !candidateId) return;
+    const nextSession = advanceSession(result.url, {
+      id: candidateId,
+      markdown: candidateMarkdown,
+    });
+    setIterSession(nextSession);
+    setEnriched({ ...enriched, markdown: candidateMarkdown });
+    writeCache({
+      url: result.url,
+      markdown: result.markdown,
+      designSystemData: result.designSystemData,
+      signals: result.signals,
+      screenshotDataUrl: result.screenshotDataUrl,
+      enrichedMarkdown: candidateMarkdown,
+      enrichedModel: enriched.model,
+    });
+    setIterationPrompt("");
+    setCandidateMarkdown("");
+    setCandidateId(null);
+    setIterationError(null);
+    setIterationRecoveryReason(null);
+    setView("enriched");
+  }
+
   function handleDiscard() {
-    // no-op: candidatePending=false means buttons are hidden
+    setCandidateMarkdown("");
+    setCandidateId(null);
+    setIterationError(null);
+    setIterationRecoveryReason(null);
   }
 
   const activePreviewHtml =
@@ -681,16 +768,103 @@ export default function IndexRoute() {
               </Pane>
             </div>
 
-            {enriched?.markdown && iterSession && iterSession.previous && (
+            {enriched?.markdown && (
+              <section className="rounded-md border bg-background p-4">
+                <form onSubmit={handleIterate} className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                    <div className="min-w-0 flex-1">
+                      <label
+                        htmlFor="iteration-prompt"
+                        className="text-sm font-semibold tracking-tight"
+                      >
+                        Ask for a change
+                      </label>
+                      <textarea
+                        id="iteration-prompt"
+                        value={iterationPrompt}
+                        onChange={(e) => setIterationPrompt(e.target.value)}
+                        placeholder="Make this a polished dark mode, keeping the brand voice intact."
+                        rows={3}
+                        className="mt-2 min-h-24 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+                        disabled={isIterating}
+                      />
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      {(candidateMarkdown || iterationError) && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleDiscard}
+                          disabled={isIterating}
+                        >
+                          <IconX size={14} />
+                          <span className="ml-1">Clear</span>
+                        </Button>
+                      )}
+                      <Button
+                        type="submit"
+                        disabled={isIterating || !iterationPrompt.trim()}
+                      >
+                        {isIterating ? (
+                          <Spinner className="size-4" />
+                        ) : (
+                          <IconSparkles size={16} />
+                        )}
+                        <span className="ml-1">
+                          {isIterating ? "Iterating..." : "Create version"}
+                        </span>
+                      </Button>
+                    </div>
+                  </div>
+                  {iterationRecoveryReason && (
+                    <CreditsRecoveryBanner
+                      reason={iterationRecoveryReason}
+                      onResolved={() => {
+                        setIterationError(null);
+                        setIterationRecoveryReason(null);
+                      }}
+                    />
+                  )}
+                  {iterationError && !iterationRecoveryReason && (
+                    <div
+                      className="rounded-md border px-3 py-2 text-xs"
+                      style={{
+                        borderColor: "rgba(239,68,68,0.25)",
+                        backgroundColor: "var(--intuit-error-bg)",
+                        color: "var(--intuit-error)",
+                      }}
+                    >
+                      {iterationError}
+                    </div>
+                  )}
+                </form>
+              </section>
+            )}
+
+            {candidateMarkdown && iterSession && (
               <SideBySideMemo
-                previous={iterSession.previous.markdown}
-                next={iterSession.current.markdown}
-                isStreaming={false}
-                candidatePending={false}
+                previous={iterSession.current.markdown}
+                next={candidateMarkdown}
+                isStreaming={isIterating}
+                candidatePending={!isIterating && !!candidateId}
                 onKeep={handleKeep}
                 onDiscard={handleDiscard}
               />
             )}
+
+            {!candidateMarkdown &&
+              enriched?.markdown &&
+              iterSession &&
+              iterSession.previous && (
+                <SideBySideMemo
+                  previous={iterSession.previous.markdown}
+                  next={iterSession.current.markdown}
+                  isStreaming={false}
+                  candidatePending={false}
+                  onKeep={handleKeep}
+                  onDiscard={handleDiscard}
+                />
+              )}
 
             <Pane
               title="Preview from tokens"

@@ -116,6 +116,7 @@ async function prepareSlidesChatAttachments(args: {
 const CHAT_ACTION_DENYLIST = new Set([
   "extract-design-md",
   "enrich-design-md",
+  "iterate-design-md",
   "db-health",
 ]);
 
@@ -128,9 +129,9 @@ export default createAgentChatPlugin({
     "- The URL paste box and 'Enrich with AI' button in the UI handle extraction and enrichment. " +
     "You do NOT have access to extract-design-md or enrich-design-md — do not attempt to call them.\n" +
     "- When the user has an AI-enriched design.md loaded (you will see it in your model context), " +
-    "use iterate-design-md directly with that markdown as previousMarkdown.\n" +
+    "do not iterate from chat. Tell the user to use the page's 'Ask for a change' box so the app can stream the candidate design.md and preview side-by-side.\n" +
     "- Public /d/:id design links are immutable snapshots, but they are not dead ends. " +
-    "If the user wants to change one, tell them to use the page's 'Ask for a change' box to create a new public version, or use iterate-design-md to draft the revised markdown from the loaded context. " +
+    "If the user wants to change one, tell them to use the page's 'Ask for a change' box to create a new public version. " +
     "Do not say shared pages cannot be iterated on or that sign-in is required just to make a fork.\n" +
     "- Never re-extract or re-enrich. The markdown in your context IS the current document — trust it.\n" +
     "- If no design.md is loaded yet, tell the user to paste a URL and click 'Enrich with AI' first.",
