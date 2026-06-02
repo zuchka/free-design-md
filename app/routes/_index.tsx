@@ -132,6 +132,12 @@ export default function IndexRoute() {
     useState<AiAccessRecoveryReason | null>(null);
   const [candidateMarkdown, setCandidateMarkdown] = useState("");
   const [candidateId, setCandidateId] = useState<string | null>(null);
+  const [candidateSavedDesignId, setCandidateSavedDesignId] = useState<
+    string | null
+  >(null);
+  const [candidateSavedDesignUrl, setCandidateSavedDesignUrl] = useState<
+    string | null
+  >(null);
   const [previewSource, setPreviewSource] = useState<"current" | "candidate">(
     "current",
   );
@@ -288,6 +294,8 @@ export default function IndexRoute() {
     setIterationRecoveryReason(null);
     setCandidateMarkdown("");
     setCandidateId(null);
+    setCandidateSavedDesignId(null);
+    setCandidateSavedDesignUrl(null);
     setIterSession(null);
     setPreviewSource("current");
     setView("deterministic");
@@ -486,6 +494,8 @@ export default function IndexRoute() {
     setIterationRecoveryReason(null);
     setCandidateMarkdown("");
     setCandidateId(null);
+    setCandidateSavedDesignId(null);
+    setCandidateSavedDesignUrl(null);
     setPreviewSource("candidate");
     iterationAccumRef.current = "";
 
@@ -496,6 +506,10 @@ export default function IndexRoute() {
         previousMarkdown: session.current.markdown,
         userPrompt: iterationPrompt.trim(),
         parentId: session.current.id ?? enriched.savedDesignId ?? null,
+        deterministicMarkdown: result.markdown,
+        designSystemData: result.designSystemData,
+        signals: result.signals,
+        screenshotDataUrl: result.screenshotDataUrl,
       },
       {
         onDelta: (text) => {
@@ -505,6 +519,11 @@ export default function IndexRoute() {
         onDone: (done) => {
           setCandidateMarkdown(done.markdown);
           setCandidateId(done.id);
+          setCandidateSavedDesignId(done.savedDesignId ?? null);
+          setCandidateSavedDesignUrl(done.savedDesignUrl ?? null);
+          if (done.savedDesignUrl) {
+            void refreshSavedDesigns();
+          }
         },
         onError: (message) => {
           setIterationError(message);
@@ -518,11 +537,23 @@ export default function IndexRoute() {
   function handleKeep() {
     if (!result || !enriched || !candidateMarkdown || !candidateId) return;
     const nextSession = advanceSession(result.url, {
-      id: candidateId,
+      id: candidateSavedDesignId ?? candidateId,
       markdown: candidateMarkdown,
     });
     setIterSession(nextSession);
-    setEnriched({ ...enriched, markdown: candidateMarkdown });
+    setEnriched({
+      ...enriched,
+      markdown: candidateMarkdown,
+      savedDesignId: candidateSavedDesignId ?? enriched.savedDesignId,
+      savedDesignUrl: candidateSavedDesignUrl ?? enriched.savedDesignUrl,
+    });
+    if (candidateSavedDesignUrl) {
+      history.replaceState(
+        null,
+        "",
+        `${appBasePath()}${candidateSavedDesignUrl}`,
+      );
+    }
     writeCache({
       url: result.url,
       markdown: result.markdown,
@@ -535,6 +566,8 @@ export default function IndexRoute() {
     setIterationPrompt("");
     setCandidateMarkdown("");
     setCandidateId(null);
+    setCandidateSavedDesignId(null);
+    setCandidateSavedDesignUrl(null);
     setIterationError(null);
     setIterationRecoveryReason(null);
     setView("enriched");
@@ -544,6 +577,8 @@ export default function IndexRoute() {
   function handleDiscard() {
     setCandidateMarkdown("");
     setCandidateId(null);
+    setCandidateSavedDesignId(null);
+    setCandidateSavedDesignUrl(null);
     setIterationError(null);
     setIterationRecoveryReason(null);
     setPreviewSource("current");

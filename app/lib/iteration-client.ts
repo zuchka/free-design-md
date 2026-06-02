@@ -19,7 +19,10 @@ export interface IterationSession {
 type SessionMap = Record<string, IterationSession>;
 
 function safeRandomUUID(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
   // Fallback for older browsers — non-crypto, but the value just needs to be
@@ -94,6 +97,10 @@ export interface IterateRequest {
   userPrompt: string;
   sectionTarget?: string;
   parentId?: string | null;
+  deterministicMarkdown?: string;
+  designSystemData?: unknown;
+  signals?: unknown;
+  screenshotDataUrl?: string | null;
 }
 
 export interface IterateDone {
@@ -102,6 +109,9 @@ export interface IterateDone {
   model: string;
   latencyMs: number;
   remaining: number;
+  savedDesignId?: string;
+  savedDesignUrl?: string;
+  saveError?: string;
 }
 
 export interface IterateHandlers {
