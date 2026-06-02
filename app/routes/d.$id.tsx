@@ -21,6 +21,7 @@ import {
   readAiAccessErrorResponse,
   type AiAccessRecoveryReason,
 } from "@/lib/ai-access-errors";
+import { announceAgentActivity } from "@/lib/agent-activity";
 import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
@@ -78,6 +79,7 @@ export default function SavedDesignRoute() {
   );
   const markdownPreRef = useRef<HTMLPreElement>(null);
   const streamAccumRef = useRef("");
+  const iterationDeltaAnnouncedRef = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -194,6 +196,12 @@ export default function SavedDesignRoute() {
     setCandidateSavedUrl(null);
     setPreviewSource("candidate");
     streamAccumRef.current = "";
+    iterationDeltaAnnouncedRef.current = false;
+    announceAgentActivity({
+      title: "Starting iteration",
+      detail: iterationPrompt.trim(),
+      tone: "running",
+    });
 
     try {
       const res = await fetch(
@@ -230,6 +238,15 @@ export default function SavedDesignRoute() {
             const { text } = parsed.data as { text: string };
             streamAccumRef.current += text;
             setCandidateMarkdown(streamAccumRef.current);
+            if (!iterationDeltaAnnouncedRef.current) {
+              iterationDeltaAnnouncedRef.current = true;
+              announceAgentActivity({
+                title: "Drafting public fork",
+                detail: "Streaming the revised design.md candidate.",
+                tone: "running",
+                openSidebar: false,
+              });
+            }
           } else if (parsed.event === "done") {
             sawDone = true;
             const doneData = parsed.data as {
@@ -238,8 +255,18 @@ export default function SavedDesignRoute() {
             };
             setCandidateMarkdown(doneData.markdown);
             setCandidateSavedUrl(doneData.savedDesignUrl);
+            announceAgentActivity({
+              title: "Public fork ready",
+              detail: doneData.savedDesignUrl,
+              tone: "success",
+            });
           } else if (parsed.event === "error") {
             const { message } = parsed.data as { message: string };
+            announceAgentActivity({
+              title: "Iteration failed",
+              detail: message,
+              tone: "error",
+            });
             throw new Error(message);
           }
         }
@@ -247,6 +274,11 @@ export default function SavedDesignRoute() {
       if (!sawDone) throw new Error("Stream ended without a done event");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      announceAgentActivity({
+        title: "Iteration stopped",
+        detail: message,
+        tone: "error",
+      });
       setIterationError(message);
       setIterationRecoveryReason(
         (current) => current ?? classifyAiAccessErrorMessage(message),
