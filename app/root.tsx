@@ -3,7 +3,6 @@ import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
-  AgentSidebar,
   ClientOnly,
   DefaultSpinner,
   appPath,
@@ -13,7 +12,7 @@ import {
 import { ThemeProvider } from "next-themes";
 import NavBar from "@/components/NavBar";
 import { CreditsProvider } from "@/lib/use-credits";
-import AgentActivityRail from "@/components/AgentActivityRail";
+import AppAgentSidebar from "@/components/AppAgentSidebar";
 import type { LinksFunction } from "react-router";
 import stylesheet from "./global.css?url";
 
@@ -79,8 +78,7 @@ export default function Root() {
           <TooltipProvider>
             <CreditsProvider>
               <NavBar />
-              <AgentSidebar
-                position="right"
+              <AppAgentSidebar
                 emptyStateText="Paste a URL above and click Enrich with AI — then use the page's Ask for a change box to iterate. I can answer questions about the loaded design.md."
                 suggestions={[
                   "What are the dominant colors?",
@@ -90,8 +88,7 @@ export default function Root() {
                 ]}
               >
                 <Outlet />
-              </AgentSidebar>
-              <AgentActivityRail />
+              </AppAgentSidebar>
             </CreditsProvider>
           </TooltipProvider>
         </QueryClientProvider>
