@@ -6,7 +6,6 @@ import {
 } from "@agent-native/core/client";
 import {
   IconCheck,
-  IconCopy,
   IconExternalLink,
   IconGitBranch,
   IconSparkles,
@@ -16,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import CreditsRecoveryBanner from "@/components/CreditsRecoveryBanner";
 import SideBySideMemo from "@/components/SideBySideMemo";
+import ArtifactActions from "@/components/ArtifactActions";
 import {
   classifyAiAccessErrorMessage,
   readAiAccessErrorResponse,
@@ -61,7 +61,6 @@ export default function SavedDesignRoute() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"enriched" | "deterministic">("enriched");
-  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
@@ -149,13 +148,6 @@ export default function SavedDesignRoute() {
       ? enrichedPreviewHtml
       : deterministicPreviewHtml;
   const previewAvailable = activePreviewHtml.length > 0;
-
-  async function copyMarkdown() {
-    if (!currentMarkdown) return;
-    await navigator.clipboard.writeText(currentMarkdown);
-    setCopiedMarkdown(true);
-    setTimeout(() => setCopiedMarkdown(false), 1500);
-  }
 
   async function copyLink() {
     await navigator.clipboard.writeText(window.location.href);
@@ -313,16 +305,6 @@ export default function SavedDesignRoute() {
               )}
               <span className="ml-1">{copiedLink ? "Copied" : "Share"}</span>
             </Button>
-            <Button variant="outline" onClick={copyMarkdown}>
-              {copiedMarkdown ? (
-                <IconCheck size={14} />
-              ) : (
-                <IconCopy size={14} />
-              )}
-              <span className="ml-1">
-                {copiedMarkdown ? "Copied" : "Copy design.md"}
-              </span>
-            </Button>
           </div>
         </header>
 
@@ -452,31 +434,38 @@ export default function SavedDesignRoute() {
               title="design.md"
               className="lg:flex-1 lg:min-w-0"
               action={
-                <div className="flex rounded-md border overflow-hidden text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setView("deterministic")}
-                    className={`whitespace-nowrap px-2 py-1 transition-colors ${view === "deterministic" ? "text-white" : "bg-transparent text-muted-foreground"}`}
-                    style={
-                      view === "deterministic"
-                        ? { backgroundColor: "var(--intuit-primary)" }
-                        : undefined
-                    }
-                  >
-                    Deterministic
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView("enriched")}
-                    className={`whitespace-nowrap px-2 py-1 transition-colors ${view === "enriched" ? "text-white" : "bg-transparent text-muted-foreground"}`}
-                    style={
-                      view === "enriched"
-                        ? { backgroundColor: "var(--intuit-primary)" }
-                        : undefined
-                    }
-                  >
-                    AI-enriched
-                  </button>
+                <div className="flex items-center gap-2">
+                  <div className="flex rounded-md border overflow-hidden text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setView("deterministic")}
+                      className={`whitespace-nowrap px-2 py-1 transition-colors ${view === "deterministic" ? "text-white" : "bg-transparent text-muted-foreground"}`}
+                      style={
+                        view === "deterministic"
+                          ? { backgroundColor: "var(--intuit-primary)" }
+                          : undefined
+                      }
+                    >
+                      Deterministic
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setView("enriched")}
+                      className={`whitespace-nowrap px-2 py-1 transition-colors ${view === "enriched" ? "text-white" : "bg-transparent text-muted-foreground"}`}
+                      style={
+                        view === "enriched"
+                          ? { backgroundColor: "var(--intuit-primary)" }
+                          : undefined
+                      }
+                    >
+                      AI-enriched
+                    </button>
+                  </div>
+                  <ArtifactActions
+                    markdown={currentMarkdown}
+                    html={activePreviewHtml}
+                    baseFilename={saved.title}
+                  />
                 </div>
               }
             >

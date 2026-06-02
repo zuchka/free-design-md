@@ -21,6 +21,7 @@ import {
 } from "@tabler/icons-react";
 import BuilderConnectCta from "@/components/auth/BuilderConnectCta";
 import CreditsRecoveryBanner from "@/components/CreditsRecoveryBanner";
+import ArtifactActions from "@/components/ArtifactActions";
 import {
   classifyAiAccessErrorMessage,
   readAiAccessErrorResponse,
@@ -98,7 +99,6 @@ export default function IndexRoute() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ExtractResult | null>(null);
   const [labelIndex, setLabelIndex] = useState(0);
-  const [copied, setCopied] = useState(false);
   const [enriched, setEnriched] = useState<EnrichResult | null>(null);
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
@@ -413,13 +413,6 @@ export default function IndexRoute() {
         : streamingMarkdown
       : (result?.markdown ?? "");
 
-  async function handleCopy() {
-    if (!currentMarkdown) return;
-    await navigator.clipboard.writeText(currentMarkdown);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
   async function handleCopyShareUrl() {
     if (!enriched?.savedDesignUrl) return;
     const shareUrl = `${window.location.origin}${appBasePath()}${enriched.savedDesignUrl}`;
@@ -614,19 +607,11 @@ export default function IndexRoute() {
                         </span>
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleCopy}
-                      disabled={!currentMarkdown}
-                    >
-                      {copied ? (
-                        <IconCheck size={14} />
-                      ) : (
-                        <IconCopy size={14} />
-                      )}
-                      <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
-                    </Button>
+                    <ArtifactActions
+                      markdown={currentMarkdown}
+                      html={activePreviewHtml}
+                      baseFilename={result.signals?.title ?? result.url}
+                    />
                     {enriched?.savedDesignUrl && (
                       <Button
                         size="sm"
