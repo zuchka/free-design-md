@@ -12,6 +12,18 @@ vi.mock("../../lib/anthropic-key", () => ({
   resolveAnthropicKey: mockResolveAnthropicKey,
 }));
 
+const mockResolveConnectedBuilderOwner = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/builder-connection", () => ({
+  resolveConnectedBuilderOwner: mockResolveConnectedBuilderOwner,
+}));
+
+const mockGetPublicSavedEnrichment = vi.hoisted(() => vi.fn());
+const mockSaveEnrichmentSnapshot = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/saved-enrichments", () => ({
+  getPublicSavedEnrichment: mockGetPublicSavedEnrichment,
+  saveEnrichmentSnapshot: mockSaveEnrichmentSnapshot,
+}));
+
 import { getDbExec } from "@agent-native/core/db";
 import { ANONYMOUS_OWNER } from "../../lib/owner.js";
 
@@ -32,11 +44,17 @@ async function resetDb() {
 
 beforeEach(async () => {
   mockIterateStream.mockReset();
+  mockResolveAnthropicKey.mockReset();
   mockResolveAnthropicKey.mockResolvedValue({
     apiKey: "sk-server-test",
     source: "server",
     consumesQuota: true,
   });
+  mockResolveConnectedBuilderOwner.mockReset();
+  mockResolveConnectedBuilderOwner.mockResolvedValue(null);
+  mockGetPublicSavedEnrichment.mockReset();
+  mockGetPublicSavedEnrichment.mockResolvedValue(null);
+  mockSaveEnrichmentSnapshot.mockReset();
   await resetDb();
 });
 afterEach(resetDb);
@@ -56,7 +74,11 @@ function fakeEvent(body: unknown): {
       req: {
         // We bypass readBody by mocking it via h3 stub below.
       },
-      res: { setHeader: (k: string, v: string) => { headers[k] = String(v); } },
+      res: {
+        setHeader: (k: string, v: string) => {
+          headers[k] = String(v);
+        },
+      },
     },
     _body: body,
     headers: new Map<string, string>(),
@@ -76,8 +98,14 @@ vi.mock("h3", async () => {
   return {
     ...actual,
     readBody: async (e: { _body: unknown }) => e._body,
-    setResponseStatus: (e: { _statusCode?: number }, s: number) => { e._statusCode = s; },
-    setResponseHeader: (e: { _headers?: Record<string, string> }, k: string, v: string) => {
+    setResponseStatus: (e: { _statusCode?: number }, s: number) => {
+      e._statusCode = s;
+    },
+    setResponseHeader: (
+      e: { _headers?: Record<string, string> },
+      k: string,
+      v: string,
+    ) => {
       e._headers = e._headers || {};
       e._headers[k] = v;
     },
@@ -114,7 +142,10 @@ describe("POST /api/iterate-design-md", () => {
   });
 
   it("400 on missing fields", async () => {
-    const event = { _body: { sessionId: "x" } } as unknown as Record<string, unknown>;
+    const event = { _body: { sessionId: "x" } } as unknown as Record<
+      string,
+      unknown
+    >;
     const result = await routeHandler(event as never);
     expect(statusOf(event as { _statusCode?: number })).toBe(400);
     expect(result).toMatchObject({ error: "missing_fields" });
@@ -166,7 +197,9 @@ describe("POST /api/iterate-design-md", () => {
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
       args: [ANONYMOUS_OWNER],
     });
-    const before = Number((beforeR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0);
+    const before = Number(
+      (beforeR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
+    );
 
     const event = {
       _body: {
@@ -184,7 +217,9 @@ describe("POST /api/iterate-design-md", () => {
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
       args: [ANONYMOUS_OWNER],
     });
-    const after = Number((afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0);
+    const after = Number(
+      (afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
+    );
     expect(after).toBe(before);
 
     const rows = await exec.execute({
@@ -192,7 +227,9 @@ describe("POST /api/iterate-design-md", () => {
       args: ["test-iter-block"],
     });
     expect(rows.rows.length).toBe(1);
-    expect(String((rows.rows[0] as { rejected_reason: string }).rejected_reason)).toMatch(/^blocklist:/);
+    expect(
+      String((rows.rows[0] as { rejected_reason: string }).rejected_reason),
+    ).toMatch(/^blocklist:/);
 
     expect(mockIterateStream).not.toHaveBeenCalled();
   });
@@ -225,7 +262,12 @@ describe("POST /api/iterate-design-md", () => {
         markdown: valid,
         model: "claude-sonnet-4-6",
         latencyMs: 123,
-        usage: { inputTokens: 10, outputTokens: 20, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
+        usage: {
+          inputTokens: 10,
+          outputTokens: 20,
+          cacheReadInputTokens: 0,
+          cacheCreationInputTokens: 0,
+        },
         stopReason: "end_turn",
       };
     });
@@ -235,7 +277,9 @@ describe("POST /api/iterate-design-md", () => {
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
       args: [ANONYMOUS_OWNER],
     });
-    const before = Number((beforeR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0);
+    const before = Number(
+      (beforeR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
+    );
 
     const event = {
       _body: {
@@ -255,7 +299,9 @@ describe("POST /api/iterate-design-md", () => {
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
       args: [ANONYMOUS_OWNER],
     });
-    const after = Number((afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0);
+    const after = Number(
+      (afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
+    );
     expect(after).toBe(before + 1);
 
     const rows = await exec.execute({
@@ -263,8 +309,80 @@ describe("POST /api/iterate-design-md", () => {
       args: ["test-iter-happy"],
     });
     expect(rows.rows.length).toBe(1);
-    expect(String((rows.rows[0] as { markdown: string }).markdown)).toContain("name: X");
-    expect((rows.rows[0] as { rejected_reason: string | null }).rejected_reason).toBeFalsy();
+    expect(String((rows.rows[0] as { markdown: string }).markdown)).toContain(
+      "name: X",
+    );
+    expect(
+      (rows.rows[0] as { rejected_reason: string | null }).rejected_reason,
+    ).toBeFalsy();
+  });
+
+  it("saves a public snapshot when connected Builder ownership and snapshot inputs are present", async () => {
+    const valid = ["---", "name: X", "---", "", "## A", "B"].join("\n");
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce({
+      ownerId: "builder:user-123",
+      builderUserId: "user-123",
+      orgName: "Builder",
+      orgKind: "team",
+    });
+    mockGetPublicSavedEnrichment.mockResolvedValueOnce({
+      id: "saved-parent",
+      rootId: "saved-root",
+    });
+    mockSaveEnrichmentSnapshot.mockResolvedValueOnce({
+      id: "saved-next",
+      url: "/d/saved-next",
+    });
+    mockIterateStream.mockImplementation(async function* () {
+      yield {
+        type: "done",
+        markdown: valid,
+        model: "claude-sonnet-4-6",
+        latencyMs: 123,
+        usage: {
+          inputTokens: 10,
+          outputTokens: 20,
+          cacheReadInputTokens: 0,
+          cacheCreationInputTokens: 0,
+        },
+        stopReason: "end_turn",
+      };
+    });
+
+    const event = {
+      _body: {
+        sessionId: "test-iter-saved",
+        previousMarkdown: "---\nname:x\n---\n",
+        userPrompt: "Make the headline more energetic.",
+        url: "https://example.com",
+        parentId: "saved-parent",
+        deterministicMarkdown: "# Deterministic",
+        designSystemData: { colors: [] },
+        signals: { title: "Example" },
+        screenshotDataUrl: "data:image/png;base64,abc",
+      },
+    } as unknown as Record<string, unknown>;
+    const result = await routeHandler(event as never);
+    const text = await readSse(result as ReadableStream<Uint8Array>);
+
+    expect(text).toContain('"savedDesignId":"saved-next"');
+    expect(text).toContain('"savedDesignUrl":"/d/saved-next"');
+    expect(mockSaveEnrichmentSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: {
+          ownerId: "builder:user-123",
+          builderUserId: "user-123",
+          orgName: "Builder",
+          orgKind: "team",
+        },
+        sourceUrl: "https://example.com",
+        deterministicMarkdown: "# Deterministic",
+        enrichedMarkdown: valid,
+        parentId: "saved-parent",
+        rootId: "saved-root",
+        iterationPrompt: "Make the headline more energetic.",
+      }),
+    );
   });
 
   it("streams error event + refunds credit when iterateStream throws", async () => {
@@ -278,7 +396,9 @@ describe("POST /api/iterate-design-md", () => {
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
       args: [ANONYMOUS_OWNER],
     });
-    const before = Number((beforeR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0);
+    const before = Number(
+      (beforeR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
+    );
 
     const event = {
       _body: {
@@ -296,7 +416,9 @@ describe("POST /api/iterate-design-md", () => {
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
       args: [ANONYMOUS_OWNER],
     });
-    const after = Number((afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0);
+    const after = Number(
+      (afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
+    );
     expect(after).toBe(before); // refunded
   });
 });
@@ -308,7 +430,12 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     markdown: validMd,
     model: "claude-sonnet-4-6",
     latencyMs: 1,
-    usage: { inputTokens: 1, outputTokens: 1, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
+    usage: {
+      inputTokens: 1,
+      outputTokens: 1,
+      cacheReadInputTokens: 0,
+      cacheCreationInputTokens: 0,
+    },
     stopReason: "end_turn" as const,
   };
 
@@ -336,7 +463,9 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
   }
 
   it("no_api_key_available → 402", async () => {
-    mockResolveAnthropicKey.mockRejectedValueOnce(new Error("no_api_key_available"));
+    mockResolveAnthropicKey.mockRejectedValueOnce(
+      new Error("no_api_key_available"),
+    );
     const event = happyBody("test-iter-matrix-1");
     const result = await routeHandler(event as never);
     expect(statusOf(event as { _statusCode?: number })).toBe(402);
@@ -345,19 +474,33 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
   });
 
   it("BYO key → streams, no quota touched", async () => {
-    mockResolveAnthropicKey.mockResolvedValueOnce({ apiKey: "sk-byo", source: "byo", consumesQuota: false });
-    mockIterateStream.mockImplementation(async function* () { yield happyDone; });
+    mockResolveAnthropicKey.mockResolvedValueOnce({
+      apiKey: "sk-byo",
+      source: "byo",
+      consumesQuota: false,
+    });
+    mockIterateStream.mockImplementation(async function* () {
+      yield happyDone;
+    });
     const before = await quotaCount();
     const event = happyBody("test-iter-matrix-2");
     const result = await routeHandler(event as never);
     await readSse(result as ReadableStream<Uint8Array>);
     expect(await quotaCount()).toBe(before);
-    expect(mockIterateStream).toHaveBeenCalledWith(expect.objectContaining({ anthropicApiKey: "sk-byo" }));
+    expect(mockIterateStream).toHaveBeenCalledWith(
+      expect.objectContaining({ anthropicApiKey: "sk-byo" }),
+    );
   });
 
   it("server key + quota > 0 → streams, decrements quota", async () => {
-    mockResolveAnthropicKey.mockResolvedValueOnce({ apiKey: "sk-server", source: "server", consumesQuota: true });
-    mockIterateStream.mockImplementation(async function* () { yield happyDone; });
+    mockResolveAnthropicKey.mockResolvedValueOnce({
+      apiKey: "sk-server",
+      source: "server",
+      consumesQuota: true,
+    });
+    mockIterateStream.mockImplementation(async function* () {
+      yield happyDone;
+    });
     const before = await quotaCount();
     const event = happyBody("test-iter-matrix-3");
     const result = await routeHandler(event as never);
@@ -366,8 +509,14 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
   });
 
   it("BYO key + quota > 0 → BYO preferred, quota untouched", async () => {
-    mockResolveAnthropicKey.mockResolvedValueOnce({ apiKey: "sk-byo", source: "byo", consumesQuota: false });
-    mockIterateStream.mockImplementation(async function* () { yield happyDone; });
+    mockResolveAnthropicKey.mockResolvedValueOnce({
+      apiKey: "sk-byo",
+      source: "byo",
+      consumesQuota: false,
+    });
+    mockIterateStream.mockImplementation(async function* () {
+      yield happyDone;
+    });
     const before = await quotaCount();
     const event = happyBody("test-iter-matrix-4");
     const result = await routeHandler(event as never);
@@ -376,9 +525,16 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
   });
 
   it("server key + quota = 0 → 402 out_of_credits", async () => {
-    mockResolveAnthropicKey.mockResolvedValueOnce({ apiKey: "sk-server", source: "server", consumesQuota: true });
+    mockResolveAnthropicKey.mockResolvedValueOnce({
+      apiKey: "sk-server",
+      source: "server",
+      consumesQuota: true,
+    });
     const exec = getDbExec();
-    await exec.execute({ sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`, args: [ANONYMOUS_OWNER] });
+    await exec.execute({
+      sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`,
+      args: [ANONYMOUS_OWNER],
+    });
     const event = happyBody("test-iter-matrix-5");
     const result = await routeHandler(event as never);
     expect(statusOf(event as { _statusCode?: number })).toBe(402);
@@ -387,10 +543,19 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
   });
 
   it("BYO key + quota = 0 → BYO used, no 402", async () => {
-    mockResolveAnthropicKey.mockResolvedValueOnce({ apiKey: "sk-byo", source: "byo", consumesQuota: false });
-    mockIterateStream.mockImplementation(async function* () { yield happyDone; });
+    mockResolveAnthropicKey.mockResolvedValueOnce({
+      apiKey: "sk-byo",
+      source: "byo",
+      consumesQuota: false,
+    });
+    mockIterateStream.mockImplementation(async function* () {
+      yield happyDone;
+    });
     const exec = getDbExec();
-    await exec.execute({ sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`, args: [ANONYMOUS_OWNER] });
+    await exec.execute({
+      sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`,
+      args: [ANONYMOUS_OWNER],
+    });
     const event = happyBody("test-iter-matrix-6");
     const result = await routeHandler(event as never);
     expect(result).toBeInstanceOf(ReadableStream);

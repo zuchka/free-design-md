@@ -132,6 +132,15 @@ export default function IndexRoute() {
     useState<AiAccessRecoveryReason | null>(null);
   const [candidateMarkdown, setCandidateMarkdown] = useState("");
   const [candidateId, setCandidateId] = useState<string | null>(null);
+  const [candidateSavedDesignId, setCandidateSavedDesignId] = useState<
+    string | null
+  >(null);
+  const [candidateSavedDesignUrl, setCandidateSavedDesignUrl] = useState<
+    string | null
+  >(null);
+  const [previewSource, setPreviewSource] = useState<"current" | "candidate">(
+    "current",
+  );
   const iterationAccumRef = useRef("");
 
   // Iteration state: separate from the enrichment SSE flow. A session
@@ -255,8 +264,23 @@ export default function IndexRoute() {
     );
   }, [enriched?.markdown, result?.signals?.title]);
 
+  const candidatePreviewHtml = useMemo(() => {
+    if (!candidateMarkdown) return null;
+    const parsed = parseEnrichedFrontmatter(candidateMarkdown);
+    if (!parsed) return null;
+    return renderEnrichedPreview(
+      parsed,
+      candidateMarkdown,
+      result?.signals?.title,
+    );
+  }, [candidateMarkdown, result?.signals?.title]);
+
   const enrichedPreviewFailed =
     enriched !== null && enrichedPreviewHtml === null;
+  const candidatePreviewFailed =
+    previewSource === "candidate" &&
+    candidateMarkdown.length > 0 &&
+    candidatePreviewHtml === null;
 
   async function extractUrl(trimmed: string) {
     setIsLoading(true);
@@ -270,7 +294,10 @@ export default function IndexRoute() {
     setIterationRecoveryReason(null);
     setCandidateMarkdown("");
     setCandidateId(null);
+    setCandidateSavedDesignId(null);
+    setCandidateSavedDesignUrl(null);
     setIterSession(null);
+    setPreviewSource("current");
     setView("deterministic");
     setPreviewExpanded(false);
     setScreenshotHeight(null);
@@ -467,6 +494,9 @@ export default function IndexRoute() {
     setIterationRecoveryReason(null);
     setCandidateMarkdown("");
     setCandidateId(null);
+    setCandidateSavedDesignId(null);
+    setCandidateSavedDesignUrl(null);
+    setPreviewSource("candidate");
     iterationAccumRef.current = "";
 
     await iterate(
@@ -476,6 +506,10 @@ export default function IndexRoute() {
         previousMarkdown: session.current.markdown,
         userPrompt: iterationPrompt.trim(),
         parentId: session.current.id ?? enriched.savedDesignId ?? null,
+        deterministicMarkdown: result.markdown,
+        designSystemData: result.designSystemData,
+        signals: result.signals,
+        screenshotDataUrl: result.screenshotDataUrl,
       },
       {
         onDelta: (text) => {
@@ -485,6 +519,11 @@ export default function IndexRoute() {
         onDone: (done) => {
           setCandidateMarkdown(done.markdown);
           setCandidateId(done.id);
+          setCandidateSavedDesignId(done.savedDesignId ?? null);
+          setCandidateSavedDesignUrl(done.savedDesignUrl ?? null);
+          if (done.savedDesignUrl) {
+            void refreshSavedDesigns();
+          }
         },
         onError: (message) => {
           setIterationError(message);
@@ -498,11 +537,23 @@ export default function IndexRoute() {
   function handleKeep() {
     if (!result || !enriched || !candidateMarkdown || !candidateId) return;
     const nextSession = advanceSession(result.url, {
-      id: candidateId,
+      id: candidateSavedDesignId ?? candidateId,
       markdown: candidateMarkdown,
     });
     setIterSession(nextSession);
-    setEnriched({ ...enriched, markdown: candidateMarkdown });
+    setEnriched({
+      ...enriched,
+      markdown: candidateMarkdown,
+      savedDesignId: candidateSavedDesignId ?? enriched.savedDesignId,
+      savedDesignUrl: candidateSavedDesignUrl ?? enriched.savedDesignUrl,
+    });
+    if (candidateSavedDesignUrl) {
+      history.replaceState(
+        null,
+        "",
+        `${appBasePath()}${candidateSavedDesignUrl}`,
+      );
+    }
     writeCache({
       url: result.url,
       markdown: result.markdown,
@@ -515,22 +566,36 @@ export default function IndexRoute() {
     setIterationPrompt("");
     setCandidateMarkdown("");
     setCandidateId(null);
+    setCandidateSavedDesignId(null);
+    setCandidateSavedDesignUrl(null);
     setIterationError(null);
     setIterationRecoveryReason(null);
     setView("enriched");
+    setPreviewSource("current");
   }
 
   function handleDiscard() {
     setCandidateMarkdown("");
     setCandidateId(null);
+    setCandidateSavedDesignId(null);
+    setCandidateSavedDesignUrl(null);
     setIterationError(null);
     setIterationRecoveryReason(null);
+    setPreviewSource("current");
   }
 
+  const currentPreviewHtml =
+    view === "enriched" ? (enrichedPreviewHtml ?? "") : previewHtml;
   const activePreviewHtml =
-    view === "enriched" && enrichedPreviewHtml
-      ? enrichedPreviewHtml
-      : previewHtml;
+    previewSource === "candidate"
+      ? (candidatePreviewHtml ?? "")
+      : currentPreviewHtml;
+  const activePreviewLabel =
+    previewSource === "candidate"
+      ? "Candidate"
+      : view === "enriched"
+        ? "AI-enriched"
+        : "Deterministic";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -869,11 +934,39 @@ export default function IndexRoute() {
             <Pane
               title="Preview from tokens"
               action={
-                view === "enriched" && enrichedPreviewHtml ? (
+                <div className="flex items-center gap-2">
+                  {candidateMarkdown && (
+                    <div className="flex rounded-md border overflow-hidden text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewSource("current")}
+                        className={`whitespace-nowrap px-2 py-1 transition-colors ${previewSource === "current" ? "text-white" : "bg-transparent text-muted-foreground"}`}
+                        style={
+                          previewSource === "current"
+                            ? { backgroundColor: "var(--intuit-primary)" }
+                            : undefined
+                        }
+                      >
+                        Current
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewSource("candidate")}
+                        className={`whitespace-nowrap px-2 py-1 transition-colors ${previewSource === "candidate" ? "text-white" : "bg-transparent text-muted-foreground"}`}
+                        style={
+                          previewSource === "candidate"
+                            ? { backgroundColor: "var(--intuit-primary)" }
+                            : undefined
+                        }
+                      >
+                        Candidate{isIterating ? "…" : ""}
+                      </button>
+                    </div>
+                  )}
                   <span className="text-xs text-muted-foreground">
-                    AI-enriched
+                    {activePreviewLabel}
                   </span>
-                ) : undefined
+                </div>
               }
             >
               <div
@@ -906,8 +999,17 @@ export default function IndexRoute() {
                       </p>
                     </div>
                   )}
+                  {isIterating && previewSource === "candidate" && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
+                      <Spinner className="size-6 text-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        Rendering candidate preview…
+                      </p>
+                    </div>
+                  )}
                   {enrichedPreviewFailed &&
                     view === "enriched" &&
+                    previewSource === "current" &&
                     !isEnriching && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 backdrop-blur-sm">
                         <p className="text-sm font-medium">
@@ -920,6 +1022,18 @@ export default function IndexRoute() {
                         </p>
                       </div>
                     )}
+                  {candidatePreviewFailed && !isIterating && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 backdrop-blur-sm">
+                      <p className="text-sm font-medium">
+                        Candidate preview unavailable
+                      </p>
+                      <p className="text-xs text-muted-foreground max-w-xs text-center">
+                        The candidate output doesn't match the expected design
+                        token schema yet. The comparison above has the full
+                        candidate content.
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex justify-center border-t py-2">
                   <button

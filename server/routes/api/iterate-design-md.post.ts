@@ -13,6 +13,11 @@ import {
 import { resolveOwner } from "../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../lib/quota.js";
 import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
+import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
+import {
+  getPublicSavedEnrichment,
+  saveEnrichmentSnapshot,
+} from "../../lib/saved-enrichments.js";
 import {
   INPUT_CAPS,
   checkBlocklist,
@@ -27,7 +32,8 @@ const SECTION_RE = /^[a-z0-9-]{1,40}$/;
  * Each successful iteration consumes 1 credit from the app-wide
  * `fdmd_quota` row keyed on the resolved owner.
  *
- * Body: { sessionId, previousMarkdown, userPrompt, url?, sectionTarget?, parentId? }
+ * Body: { sessionId, previousMarkdown, userPrompt, url?, sectionTarget?, parentId?,
+ *         deterministicMarkdown?, designSystemData?, signals?, screenshotDataUrl? }
  * Response: text/event-stream with delta/done/error events.
  */
 export default defineEventHandler(async (event) => {
@@ -61,6 +67,16 @@ export default defineEventHandler(async (event) => {
     typeof (body as Record<string, unknown>).url === "string"
       ? ((body as Record<string, unknown>).url as string)
       : "";
+  const deterministicMarkdown =
+    typeof (body as Record<string, unknown>).deterministicMarkdown === "string"
+      ? ((body as Record<string, unknown>).deterministicMarkdown as string)
+      : null;
+  const designSystemData = (body as Record<string, unknown>).designSystemData;
+  const signals = (body as Record<string, unknown>).signals;
+  const screenshotDataUrl =
+    typeof (body as Record<string, unknown>).screenshotDataUrl === "string"
+      ? ((body as Record<string, unknown>).screenshotDataUrl as string)
+      : null;
 
   if (!previousMarkdown || !userPrompt || !sessionId) {
     setResponseStatus(event, 400);
@@ -80,6 +96,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const owner = await resolveOwner(event);
+  const connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
 
   let resolvedKey: { apiKey: string; source: string; consumesQuota: boolean };
   try {
@@ -112,7 +129,10 @@ export default defineEventHandler(async (event) => {
     dec = await decrementCredits(owner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
-      return { error: "out_of_credits", reason: "signed-in-and-out-of-credits" };
+      return {
+        error: "out_of_credits",
+        reason: "signed-in-and-out-of-credits",
+      };
     }
   }
 
@@ -134,7 +154,9 @@ export default defineEventHandler(async (event) => {
       const encoder = new TextEncoder();
       const send = (name: string, payload: unknown) => {
         controller.enqueue(
-          encoder.encode(`event: ${name}\ndata: ${JSON.stringify(payload)}\n\n`),
+          encoder.encode(
+            `event: ${name}\ndata: ${JSON.stringify(payload)}\n\n`,
+          ),
         );
       };
 
@@ -155,7 +177,55 @@ export default defineEventHandler(async (event) => {
               sectionTarget,
               result,
             });
-            send("done", { id, ...result, remaining: dec?.remaining ?? null });
+            let saveResult:
+              | { savedDesignId: string; savedDesignUrl: string }
+              | { saveError: string }
+              | null = null;
+            if (
+              connectedBuilderOwner &&
+              url &&
+              deterministicMarkdown &&
+              designSystemData &&
+              signals
+            ) {
+              try {
+                const parent = parentId
+                  ? await getPublicSavedEnrichment(parentId)
+                  : null;
+                const saved = await saveEnrichmentSnapshot({
+                  owner: connectedBuilderOwner,
+                  sourceUrl: url,
+                  deterministicMarkdown,
+                  enrichedMarkdown: result.markdown,
+                  designSystemData,
+                  signals,
+                  screenshotDataUrl,
+                  parentId: parent?.id ?? parentId,
+                  rootId: parent?.rootId ?? parent?.id ?? parentId,
+                  iterationPrompt: userPrompt,
+                  model: result.model,
+                  usage: result.usage,
+                  stopReason: result.stopReason,
+                });
+                saveResult = {
+                  savedDesignId: saved.id,
+                  savedDesignUrl: saved.url,
+                };
+              } catch (saveErr) {
+                saveResult = {
+                  saveError:
+                    saveErr instanceof Error
+                      ? saveErr.message
+                      : String(saveErr),
+                };
+              }
+            }
+            send("done", {
+              id,
+              ...result,
+              remaining: dec?.remaining ?? null,
+              ...(saveResult ?? {}),
+            });
           }
         }
       } catch (err) {
