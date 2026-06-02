@@ -1,6 +1,7 @@
 import {
   defineNitroPlugin,
   deleteBuilderCredentials,
+  getSession,
   getH3App,
 } from "@agent-native/core/server";
 import {
@@ -13,10 +14,11 @@ import {
 import { ANONYMOUS_OWNER } from "../lib/owner.js";
 
 /**
- * free-design.md uses Builder Connect without first-party app login. Core's
- * disconnect route requires an authenticated app session, so anonymous MVP
- * visitors hit 401 even though their Builder credentials are stored under the
- * app's anonymous owner bucket. Register this exact route before core-routes.
+ * free-design.md uses Builder Connect without first-party app login in prod,
+ * but local dev can still have the framework's dev session. Core's disconnect
+ * route only clears authenticated app-session credentials, so anonymous MVP
+ * visitors hit 401. Register this exact route before core-routes and clear the
+ * active session bucket when present, plus the anonymous bucket as fallback.
  */
 export default defineNitroPlugin((nitroApp) => {
   getH3App(nitroApp).use(
@@ -34,7 +36,11 @@ export default defineNitroPlugin((nitroApp) => {
         return { error: "forbidden" };
       }
 
-      await deleteBuilderCredentials(ANONYMOUS_OWNER);
+      const session = await getSession(event).catch(() => null);
+      const owners = new Set([ANONYMOUS_OWNER]);
+      if (session?.email) owners.add(session.email);
+
+      await Promise.all([...owners].map((owner) => deleteBuilderCredentials(owner)));
       return { ok: true };
     }),
   );
