@@ -20,6 +20,7 @@ import {
   saveEnrichmentSnapshot,
   type SavedEnrichmentOwner,
 } from "../../../../lib/saved-enrichments.js";
+import { createSseSender } from "../../../../lib/sse.js";
 import {
   INPUT_CAPS,
   checkBlocklist,
@@ -127,19 +128,15 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(event, "Connection", "keep-alive");
   setResponseHeader(event, "X-Accel-Buffering", "no");
 
+  let sse: ReturnType<typeof createSseSender> | null = null;
   return new ReadableStream({
     async start(controller) {
-      const encoder = new TextEncoder();
-      const send = (name: string, payload: unknown) => {
-        controller.enqueue(
-          encoder.encode(`event: ${name}\ndata: ${JSON.stringify(payload)}\n\n`),
-        );
-      };
+      sse = createSseSender(controller);
 
       try {
         for await (const ev of iterateStream(input)) {
           if (ev.type === "delta") {
-            send("delta", { text: ev.text });
+            sse.send("delta", { text: ev.text });
           } else {
             const { type: _drop, ...result } = ev;
             const saved = await saveEnrichmentSnapshot({
@@ -157,7 +154,7 @@ export default defineEventHandler(async (event) => {
               usage: result.usage,
               stopReason: result.stopReason,
             });
-            send("done", {
+            sse.send("done", {
               ...result,
               savedDesignId: saved.id,
               savedDesignUrl: saved.url,
@@ -172,10 +169,14 @@ export default defineEventHandler(async (event) => {
         if (resolvedKey.consumesQuota && dec?.ok) {
           await refundCredit(quotaOwner).catch(() => {});
         }
-        send("error", { message });
+        sse.send("error", { message });
       } finally {
-        controller.close();
+        sse.stop();
+        sse.close();
       }
+    },
+    cancel() {
+      sse?.stop();
     },
   });
 });

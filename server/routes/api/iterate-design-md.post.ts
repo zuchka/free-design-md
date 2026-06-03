@@ -22,6 +22,7 @@ import {
   INPUT_CAPS,
   checkBlocklist,
 } from "../../../shared/iteration-security.js";
+import { createSseSender } from "../../lib/sse.js";
 
 const SECTION_RE = /^[a-z0-9-]{1,40}$/;
 
@@ -149,21 +150,15 @@ export default defineEventHandler(async (event) => {
     anthropicApiKey: resolvedKey.apiKey,
   };
 
+  let sse: ReturnType<typeof createSseSender> | null = null;
   return new ReadableStream({
     async start(controller) {
-      const encoder = new TextEncoder();
-      const send = (name: string, payload: unknown) => {
-        controller.enqueue(
-          encoder.encode(
-            `event: ${name}\ndata: ${JSON.stringify(payload)}\n\n`,
-          ),
-        );
-      };
+      sse = createSseSender(controller);
 
       try {
         for await (const ev of iterateStream(input)) {
           if (ev.type === "delta") {
-            send("delta", { text: ev.text });
+            sse.send("delta", { text: ev.text });
           } else {
             // done
             const { type: _drop, ...result } = ev;
@@ -220,7 +215,7 @@ export default defineEventHandler(async (event) => {
                 };
               }
             }
-            send("done", {
+            sse.send("done", {
               id,
               ...result,
               remaining: dec?.remaining ?? null,
@@ -242,10 +237,14 @@ export default defineEventHandler(async (event) => {
           sectionTarget,
           rejectedReason: message.slice(0, 200),
         }).catch(() => {});
-        send("error", { message });
+        sse.send("error", { message });
       } finally {
-        controller.close();
+        sse.stop();
+        sse.close();
       }
+    },
+    cancel() {
+      sse?.stop();
     },
   });
 });

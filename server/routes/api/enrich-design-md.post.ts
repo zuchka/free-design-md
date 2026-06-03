@@ -13,6 +13,7 @@ import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
 import { resolveOwner, ANONYMOUS_OWNER } from "../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../lib/quota.js";
 import { saveEnrichmentSnapshot } from "../../lib/saved-enrichments.js";
+import { createSseSender } from "../../lib/sse.js";
 
 /**
  * POST /api/enrich-design-md (SSE)
@@ -118,21 +119,15 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(event, "Connection", "keep-alive");
   setResponseHeader(event, "X-Accel-Buffering", "no");
 
+  let sse: ReturnType<typeof createSseSender> | null = null;
   return new ReadableStream({
     async start(controller) {
-      const encoder = new TextEncoder();
-      const send = (eventName: string, payload: unknown) => {
-        controller.enqueue(
-          encoder.encode(
-            `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`,
-          ),
-        );
-      };
+      sse = createSseSender(controller);
 
       try {
         for await (const ev of enrichStream(inputWithKey)) {
           if (ev.type === "delta") {
-            send("delta", { text: ev.text });
+            sse.send("delta", { text: ev.text });
           } else {
             const { type: _drop, ...result } = ev;
             let saveResult:
@@ -167,7 +162,7 @@ export default defineEventHandler(async (event) => {
                   saveErr instanceof Error ? saveErr.message : String(saveErr),
               };
             }
-            send("done", { ...result, ...(saveResult ?? {}) });
+            sse.send("done", { ...result, ...(saveResult ?? {}) });
           }
         }
       } catch (err) {
@@ -175,10 +170,14 @@ export default defineEventHandler(async (event) => {
         if (resolvedKey.consumesQuota && dec?.ok) {
           await refundCredit(quotaOwner).catch(() => {});
         }
-        send("error", { message });
+        sse.send("error", { message });
       } finally {
-        controller.close();
+        sse.stop();
+        sse.close();
       }
+    },
+    cancel() {
+      sse?.stop();
     },
   });
 });
