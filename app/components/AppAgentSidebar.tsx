@@ -132,12 +132,14 @@ export default function AppAgentSidebar({
         )}
         style={panelStyle}
       >
-        <AgentPanel
-          emptyStateText={emptyStateText}
-          suggestions={suggestions}
-          chatNotice={<AgentActivityNotice />}
-          onCollapse={() => setOpen(false)}
-        />
+        {open ? (
+          <AgentPanel
+            emptyStateText={emptyStateText}
+            suggestions={suggestions}
+            chatNotice={<AgentActivityNotice />}
+            onCollapse={() => setOpen(false)}
+          />
+        ) : null}
       </aside>
     </div>
   );
