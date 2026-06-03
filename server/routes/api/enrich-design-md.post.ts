@@ -9,14 +9,9 @@ import {
   type EnrichInput,
 } from "../../../actions/enrich-design-md.js";
 import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
-import {
-  refundSpentCredit,
-  requiresBuilderConnectForServerKey,
-  resolveCreditAccount,
-  spendCredit,
-  type CreditSpendResult,
-} from "../../lib/credit-access.js";
-import { resolveOwner } from "../../lib/owner.js";
+import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
+import { resolveOwner, ANONYMOUS_OWNER } from "../../lib/owner.js";
+import { decrementCredits, refundCredit } from "../../lib/quota.js";
 import { saveEnrichmentSnapshot } from "../../lib/saved-enrichments.js";
 import { createSseSender } from "../../lib/sse.js";
 
@@ -69,8 +64,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const owner = await resolveOwner(event);
-  const creditAccount = await resolveCreditAccount(owner);
-  const connectedBuilderOwner = creditAccount.builderOwner;
 
   let resolvedKey: { apiKey: string; source: string; consumesQuota: boolean };
   try {
@@ -80,23 +73,29 @@ export default defineEventHandler(async (event) => {
     return { error: "no_api_key_available", reason: "byo-key-required" };
   }
 
+  let quotaOwner = owner;
+  let connectedBuilderOwner:
+    | Awaited<ReturnType<typeof resolveConnectedBuilderOwner>>
+    | null = null;
+
   // Anonymous callers may use the server key only after Builder Connect has
   // stored a complete credential bundle. Builder Connect does not create an app
   // session, so resolveOwner() still returns ANONYMOUS_OWNER in production.
-  if (
-    resolvedKey.consumesQuota &&
-    requiresBuilderConnectForServerKey(creditAccount)
-  ) {
-    setResponseStatus(event, 401);
-    return {
-      error: "sign_in_required",
-      reason: "add a BYO key or sign in with Builder",
-    };
+  if (owner === ANONYMOUS_OWNER && resolvedKey.source !== "byo") {
+    connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
+    if (!connectedBuilderOwner) {
+      setResponseStatus(event, 401);
+      return {
+        error: "sign_in_required",
+        reason: "add a BYO key or sign in with Builder",
+      };
+    }
+    quotaOwner = connectedBuilderOwner.ownerId;
   }
 
-  let dec: CreditSpendResult | null = null;
+  let dec: { ok: boolean; remaining: number } | null = null;
   if (resolvedKey.consumesQuota) {
-    dec = await spendCredit(creditAccount);
+    dec = await decrementCredits(quotaOwner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
       return {
@@ -136,9 +135,12 @@ export default defineEventHandler(async (event) => {
               | { saveError: string }
               | null = null;
             try {
-              if (connectedBuilderOwner) {
+              const connected =
+                connectedBuilderOwner ??
+                (await resolveConnectedBuilderOwner(owner));
+              if (connected) {
                 const saved = await saveEnrichmentSnapshot({
-                  owner: connectedBuilderOwner,
+                  owner: connected,
                   sourceUrl: url,
                   deterministicMarkdown: md,
                   enrichedMarkdown: result.markdown,
@@ -165,7 +167,9 @@ export default defineEventHandler(async (event) => {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await refundSpentCredit(creditAccount, dec).catch(() => {});
+        if (resolvedKey.consumesQuota && dec?.ok) {
+          await refundCredit(quotaOwner).catch(() => {});
+        }
         sse.send("error", { message });
       } finally {
         sse.stop();

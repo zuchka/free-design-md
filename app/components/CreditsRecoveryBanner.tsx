@@ -1,6 +1,5 @@
 import {
   IconAlertCircle,
-  IconArrowUpRight,
   IconCreditCard,
   IconKey,
   IconSparkles,
@@ -29,24 +28,24 @@ export default function CreditsRecoveryBanner({
               <IconAlertCircle size={16} />
             </span>
             {outOfCredits
-              ? "Free Builder credits are used up"
+              ? "You've used your 3 free AI credits"
               : noApiKey
                 ? "AI enrichment needs an Anthropic key"
                 : "AI enrichment needs Builder Connect or a key"}
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             {outOfCredits
-              ? "Free Builder accounts include 3 AI credits here. Upgrade Builder to a paid plan for unlimited AI enrichment and iteration, or add your own Anthropic key to continue without app credits."
+              ? "For this MVP, Builder Connect unlocks a small trial quota. Add your own Anthropic key to keep enriching and iterating right now."
               : noApiKey
                 ? "This deployment does not have a server Anthropic key configured. Add your own key to run enrichment from this browser."
-                : "Connect Builder.io to unlock credits. Paid and Enterprise Builder accounts get unlimited AI enrichment; free accounts get 3 credits."}
+                : "Connect Builder.io for the trial quota, or add your own Anthropic key to run enrichment without spending app credits."}
           </p>
 
           <div className="mt-3 grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
             <div className="flex gap-2 rounded-md border bg-muted/30 px-3 py-2">
               <IconKey size={15} className="mt-0.5 shrink-0 text-foreground" />
               <span>
-                BYO Anthropic works today and never spends Builder credits.
+                BYO Anthropic works today and does not spend the 3-credit quota.
               </span>
             </div>
             <div className="flex gap-2 rounded-md border bg-muted/30 px-3 py-2">
@@ -55,8 +54,8 @@ export default function CreditsRecoveryBanner({
                 className="mt-0.5 shrink-0 text-foreground"
               />
               <span>
-                Builder paid and Enterprise accounts use app-hosted AI without a
-                credit cap.
+                Builder Pro and higher using Builder AI compute is planned, but
+                not wired up in this hackathon build.
               </span>
             </div>
           </div>
@@ -65,18 +64,9 @@ export default function CreditsRecoveryBanner({
         <div className="w-full rounded-md border bg-muted/20 p-3 lg:w-[360px]">
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-foreground">
             <IconSparkles size={14} />
-            Continue now
+            Continue with Anthropic
           </div>
           <BYOKeyForm onSaved={onResolved} />
-          <a
-            href="https://builder.io/pricing"
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
-          >
-            Upgrade Builder
-            <IconArrowUpRight size={13} />
-          </a>
         </div>
       </div>
     </div>

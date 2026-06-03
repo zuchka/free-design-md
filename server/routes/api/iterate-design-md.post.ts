@@ -11,14 +11,9 @@ import {
   type IterationInput,
 } from "../../../actions/iterate-design-md.js";
 import { resolveOwner } from "../../lib/owner.js";
+import { decrementCredits, refundCredit } from "../../lib/quota.js";
 import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
-import {
-  refundSpentCredit,
-  requiresBuilderConnectForServerKey,
-  resolveCreditAccount,
-  spendCredit,
-  type CreditSpendResult,
-} from "../../lib/credit-access.js";
+import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
 import {
   getPublicSavedEnrichment,
   saveEnrichmentSnapshot,
@@ -102,8 +97,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const owner = await resolveOwner(event);
-  const creditAccount = await resolveCreditAccount(owner);
-  const connectedBuilderOwner = creditAccount.builderOwner;
+  const connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
 
   let resolvedKey: { apiKey: string; source: string; consumesQuota: boolean };
   try {
@@ -131,20 +125,9 @@ export default defineEventHandler(async (event) => {
   }
 
   // Atomic quota decrement before streaming (only when consuming quota).
-  if (
-    resolvedKey.consumesQuota &&
-    requiresBuilderConnectForServerKey(creditAccount)
-  ) {
-    setResponseStatus(event, 401);
-    return {
-      error: "sign_in_required",
-      reason: "add a BYO key or connect Builder",
-    };
-  }
-
-  let dec: CreditSpendResult | null = null;
+  let dec: { ok: boolean; remaining: number } | null = null;
   if (resolvedKey.consumesQuota) {
-    dec = await spendCredit(creditAccount);
+    dec = await decrementCredits(owner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
       return {
@@ -242,7 +225,9 @@ export default defineEventHandler(async (event) => {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await refundSpentCredit(creditAccount, dec).catch(() => {});
+        if (resolvedKey.consumesQuota && dec?.ok) {
+          await refundCredit(owner).catch(() => {});
+        }
         await insertRejected({
           sessionId,
           parentId,

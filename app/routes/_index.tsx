@@ -40,7 +40,6 @@ import {
   announceAgentActivity,
   clearAgentActivity,
 } from "@/lib/agent-activity";
-import { useCredits } from "@/lib/use-credits";
 
 export function meta() {
   return [
@@ -102,7 +101,6 @@ const LOADING_LABELS = [
 ];
 
 export default function IndexRoute() {
-  const { refresh: refreshCredits, setRemaining } = useCredits();
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -359,7 +357,6 @@ export default function IndexRoute() {
 
   async function handleEnrich() {
     if (!result) return;
-    let shouldRefreshCredits = false;
     setIsEnriching(true);
     setEnrichError(null);
     setEnrichRecoveryReason(null);
@@ -386,7 +383,6 @@ export default function IndexRoute() {
         }),
       });
       if (!res.ok || !res.body) {
-        void refreshCredits();
         const details = await readAiAccessErrorResponse(
           res,
           `Enrich failed with ${res.status}`,
@@ -394,7 +390,6 @@ export default function IndexRoute() {
         setEnrichRecoveryReason(details.recoveryReason);
         throw new Error(details.message);
       }
-      shouldRefreshCredits = true;
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -483,7 +478,6 @@ export default function IndexRoute() {
       // leave it visible so the user can see what they got.
       if (!streamAccumRef.current) setView("deterministic");
     } finally {
-      if (shouldRefreshCredits) void refreshCredits();
       setIsEnriching(false);
     }
   }
@@ -593,7 +587,6 @@ export default function IndexRoute() {
           }
         },
         onDone: (done) => {
-          setRemaining(done.remaining);
           setCandidateMarkdown(done.markdown);
           setCandidateId(done.id);
           setCandidateSavedDesignId(done.savedDesignId ?? null);
@@ -608,7 +601,6 @@ export default function IndexRoute() {
           if (done.savedDesignUrl) {
             void refreshSavedDesigns();
           }
-          void refreshCredits();
         },
         onError: (message) => {
           announceAgentActivity({
@@ -618,7 +610,6 @@ export default function IndexRoute() {
           });
           setIterationError(message);
           setIterationRecoveryReason(classifyAiAccessErrorMessage(message));
-          void refreshCredits();
         },
       },
     );
