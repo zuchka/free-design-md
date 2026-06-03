@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@agent-native/core':
-        specifier: ^0.28.4
-        version: 0.28.5(7e8d92fcfb29c93352963d1a34d2440f)
+        specifier: 0.28.4
+        version: 0.28.4(7e8d92fcfb29c93352963d1a34d2440f)
       '@agent-native/pinpoint':
         specifier: ^0.1.5
-        version: 0.1.5(@agent-native/core@0.28.5(7e8d92fcfb29c93352963d1a34d2440f))(react@19.2.6)
+        version: 0.1.5(@agent-native/core@0.28.4(7e8d92fcfb29c93352963d1a34d2440f))(react@19.2.6)
       '@anthropic-ai/sdk':
         specifier: ^0.96.0
         version: 0.96.0(zod@4.4.3)
@@ -147,8 +147,8 @@ importers:
 
 packages:
 
-  '@agent-native/core@0.28.5':
-    resolution: {integrity: sha512-zoLVU1XfE//j2T/MYeU6pScki48adyqbBkO9O1zT7MnyyyzdvWEKna07PxigsuYqtEBlzqqj2/JOwTYC7l9jNg==}
+  '@agent-native/core@0.28.4':
+    resolution: {integrity: sha512-5yBXy7xD3a+E6hYfke3FLIaWCpQTyvUvZ3E137RD71GJDWjufgE3VTp3XvtegUMcs3iSNPxIDfRJ8IToktNyjA==}
     engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
@@ -5759,7 +5759,7 @@ packages:
 
 snapshots:
 
-  '@agent-native/core@0.28.5(7e8d92fcfb29c93352963d1a34d2440f)':
+  '@agent-native/core@0.28.4(7e8d92fcfb29c93352963d1a34d2440f)':
     dependencies:
       '@amplitude/analytics-browser': 2.42.3
       '@anthropic-ai/sdk': 0.90.0(zod@4.4.3)
@@ -5928,9 +5928,9 @@ snapshots:
       - yaml
       - zephyr-agent
 
-  '@agent-native/pinpoint@0.1.5(@agent-native/core@0.28.5(7e8d92fcfb29c93352963d1a34d2440f))(react@19.2.6)':
+  '@agent-native/pinpoint@0.1.5(@agent-native/core@0.28.4(7e8d92fcfb29c93352963d1a34d2440f))(react@19.2.6)':
     dependencies:
-      '@agent-native/core': 0.28.5(7e8d92fcfb29c93352963d1a34d2440f)
+      '@agent-native/core': 0.28.4(7e8d92fcfb29c93352963d1a34d2440f)
       '@medv/finder': 4.0.2
       bippy: 0.5.41(react@19.2.6)
       element-source: 0.0.3(react@19.2.6)
