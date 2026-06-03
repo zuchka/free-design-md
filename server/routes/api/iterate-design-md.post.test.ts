@@ -27,6 +27,23 @@ vi.mock("../../lib/saved-enrichments", () => ({
 import { getDbExec } from "@agent-native/core/db";
 import { ANONYMOUS_OWNER } from "../../lib/owner.js";
 
+const BUILDER_OWNER = "builder:user-123";
+const FREE_BUILDER_CONNECTION = {
+  ownerId: BUILDER_OWNER,
+  builderUserId: "user-123",
+  orgName: "Builder",
+  orgKind: "team",
+  accountTier: "free",
+  planLabel: "Free",
+  hasUnlimitedCredits: false,
+};
+const PAID_BUILDER_CONNECTION = {
+  ...FREE_BUILDER_CONNECTION,
+  accountTier: "paid",
+  planLabel: "Pro",
+  hasUnlimitedCredits: true,
+};
+
 // h3 utilities for building a fake event we can pass to the handler.
 const { createApp, toNodeListener } = await import("h3");
 
@@ -37,8 +54,16 @@ async function resetDb() {
     args: [],
   });
   await exec.execute({
-    sql: `UPDATE fdmd_quota SET enrich_count = 0 WHERE user_id = ?`,
+    sql: `INSERT INTO fdmd_quota (user_id, enrich_count, bonus_credits)
+          VALUES (?, 0, 3)
+          ON CONFLICT(user_id) DO UPDATE SET enrich_count = 0, bonus_credits = 3`,
     args: [ANONYMOUS_OWNER],
+  });
+  await exec.execute({
+    sql: `INSERT INTO fdmd_quota (user_id, enrich_count, bonus_credits)
+          VALUES (?, 0, 3)
+          ON CONFLICT(user_id) DO UPDATE SET enrich_count = 0, bonus_credits = 3`,
+    args: [BUILDER_OWNER],
   });
 }
 
@@ -51,7 +76,7 @@ beforeEach(async () => {
     consumesQuota: true,
   });
   mockResolveConnectedBuilderOwner.mockReset();
-  mockResolveConnectedBuilderOwner.mockResolvedValue(null);
+  mockResolveConnectedBuilderOwner.mockResolvedValue(FREE_BUILDER_CONNECTION);
   mockGetPublicSavedEnrichment.mockReset();
   mockGetPublicSavedEnrichment.mockResolvedValue(null);
   mockSaveEnrichmentSnapshot.mockReset();
@@ -238,7 +263,7 @@ describe("POST /api/iterate-design-md", () => {
     const exec = getDbExec();
     await exec.execute({
       sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const event = {
       _body: {
@@ -275,7 +300,7 @@ describe("POST /api/iterate-design-md", () => {
     const exec = getDbExec();
     const beforeR = await exec.execute({
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const before = Number(
       (beforeR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
@@ -297,7 +322,7 @@ describe("POST /api/iterate-design-md", () => {
 
     const afterR = await exec.execute({
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const after = Number(
       (afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
@@ -324,6 +349,9 @@ describe("POST /api/iterate-design-md", () => {
       builderUserId: "user-123",
       orgName: "Builder",
       orgKind: "team",
+      accountTier: "free",
+      planLabel: "Free",
+      hasUnlimitedCredits: false,
     });
     mockGetPublicSavedEnrichment.mockResolvedValueOnce({
       id: "saved-parent",
@@ -369,12 +397,12 @@ describe("POST /api/iterate-design-md", () => {
     expect(text).toContain('"savedDesignUrl":"/d/saved-next"');
     expect(mockSaveEnrichmentSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({
-        owner: {
+        owner: expect.objectContaining({
           ownerId: "builder:user-123",
           builderUserId: "user-123",
           orgName: "Builder",
           orgKind: "team",
-        },
+        }),
         sourceUrl: "https://example.com",
         deterministicMarkdown: "# Deterministic",
         enrichedMarkdown: valid,
@@ -394,7 +422,7 @@ describe("POST /api/iterate-design-md", () => {
     const exec = getDbExec();
     const beforeR = await exec.execute({
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const before = Number(
       (beforeR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
@@ -414,7 +442,7 @@ describe("POST /api/iterate-design-md", () => {
 
     const afterR = await exec.execute({
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const after = Number(
       (afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
@@ -454,7 +482,7 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     const exec = getDbExec();
     const r = await exec.execute({
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     return Number(
       (r.rows[0] as { enrich_count: number | bigint } | undefined)
@@ -470,6 +498,22 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     const result = await routeHandler(event as never);
     expect(statusOf(event as { _statusCode?: number })).toBe(402);
     expect(result).toMatchObject({ error: "no_api_key_available" });
+    expect(mockIterateStream).not.toHaveBeenCalled();
+  });
+
+  it("anonymous server key without Builder Connect → 401", async () => {
+    mockResolveAnthropicKey.mockResolvedValueOnce({
+      apiKey: "sk-server",
+      source: "server",
+      consumesQuota: true,
+    });
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(null);
+
+    const event = happyBody("test-iter-matrix-connect-required");
+    const result = await routeHandler(event as never);
+
+    expect(statusOf(event as { _statusCode?: number })).toBe(401);
+    expect(result).toMatchObject({ error: "sign_in_required" });
     expect(mockIterateStream).not.toHaveBeenCalled();
   });
 
@@ -508,6 +552,28 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     expect(await quotaCount()).toBe(before + 1);
   });
 
+  it("paid Builder server key → streams without decrementing quota", async () => {
+    mockResolveAnthropicKey.mockResolvedValueOnce({
+      apiKey: "sk-server",
+      source: "server",
+      consumesQuota: true,
+    });
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(
+      PAID_BUILDER_CONNECTION,
+    );
+    mockIterateStream.mockImplementation(async function* () {
+      yield happyDone;
+    });
+
+    const before = await quotaCount();
+    const event = happyBody("test-iter-matrix-paid");
+    const result = await routeHandler(event as never);
+    const sse = await readSse(result as ReadableStream<Uint8Array>);
+
+    expect(await quotaCount()).toBe(before);
+    expect(sse).toContain('"remaining":null');
+  });
+
   it("BYO key + quota > 0 → BYO preferred, quota untouched", async () => {
     mockResolveAnthropicKey.mockResolvedValueOnce({
       apiKey: "sk-byo",
@@ -533,7 +599,7 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     const exec = getDbExec();
     await exec.execute({
       sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const event = happyBody("test-iter-matrix-5");
     const result = await routeHandler(event as never);
@@ -554,7 +620,7 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     const exec = getDbExec();
     await exec.execute({
       sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const event = happyBody("test-iter-matrix-6");
     const result = await routeHandler(event as never);

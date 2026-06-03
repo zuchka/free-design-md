@@ -2,12 +2,26 @@ import {
   resolveBuilderCredentials,
   runWithRequestContext,
 } from "@agent-native/core/server";
+import {
+  builderPlanLabel,
+  classifyBuilderAccount,
+  hasUnlimitedBuilderCredits,
+  type BuilderAccountTier,
+} from "../../shared/builder-entitlements.js";
 
 export interface ConnectedBuilderOwner {
   ownerId: string;
   builderUserId: string;
   orgName: string | null;
   orgKind: string | null;
+  subscription: string | null;
+  subscriptionLevel: string | null;
+  subscriptionName: string | null;
+  isEnterprise: boolean | null;
+  isFreeAccount: boolean | null;
+  accountTier: BuilderAccountTier;
+  planLabel: string | null;
+  hasUnlimitedCredits: boolean;
 }
 
 /**
@@ -29,6 +43,11 @@ export async function resolveConnectedBuilderOwner(
         userId: credentials.userId ?? null,
         orgName: credentials.orgName ?? null,
         orgKind: credentials.orgKind ?? null,
+        subscription: credentials.subscription ?? null,
+        subscriptionLevel: credentials.subscriptionLevel ?? null,
+        subscriptionName: credentials.subscriptionName ?? null,
+        isEnterprise: credentials.isEnterprise ?? null,
+        isFreeAccount: credentials.isFreeAccount ?? null,
       });
       if (
         !credentials.privateKey ||
@@ -37,11 +56,22 @@ export async function resolveConnectedBuilderOwner(
       ) {
         return null;
       }
+      const planMetadata = {
+        subscription: credentials.subscription ?? null,
+        subscriptionLevel: credentials.subscriptionLevel ?? null,
+        subscriptionName: credentials.subscriptionName ?? null,
+        isEnterprise: credentials.isEnterprise ?? null,
+        isFreeAccount: credentials.isFreeAccount ?? null,
+      };
       return {
         ownerId: `builder:${credentials.userId}`,
         builderUserId: credentials.userId,
         orgName: credentials.orgName ?? null,
         orgKind: credentials.orgKind ?? null,
+        ...planMetadata,
+        accountTier: classifyBuilderAccount(planMetadata),
+        planLabel: builderPlanLabel(planMetadata),
+        hasUnlimitedCredits: hasUnlimitedBuilderCredits(planMetadata),
       };
     });
   } catch {

@@ -108,7 +108,7 @@ export interface IterateDone {
   markdown: string;
   model: string;
   latencyMs: number;
-  remaining: number;
+  remaining: number | null;
   savedDesignId?: string;
   savedDesignUrl?: string;
   saveError?: string;

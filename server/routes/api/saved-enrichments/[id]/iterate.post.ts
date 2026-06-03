@@ -11,10 +11,15 @@ import {
   type IterationInput,
 } from "../../../../../actions/iterate-design-md.js";
 import { resolveAnthropicKey } from "../../../../lib/anthropic-key.js";
-import { resolveConnectedBuilderOwner } from "../../../../lib/builder-connection.js";
+import {
+  refundSpentCredit,
+  requiresBuilderConnectForServerKey,
+  resolveCreditAccount,
+  spendCredit,
+  type CreditSpendResult,
+} from "../../../../lib/credit-access.js";
 import { FDMD_ANON_COOKIE } from "../../../../lib/cookie-names.js";
 import { ANONYMOUS_OWNER, resolveOwner } from "../../../../lib/owner.js";
-import { decrementCredits, refundCredit } from "../../../../lib/quota.js";
 import {
   getPublicSavedEnrichment,
   saveEnrichmentSnapshot,
@@ -89,27 +94,25 @@ export default defineEventHandler(async (event) => {
     return { error: "no_api_key_available", reason: "byo-key-required" };
   }
 
-  let connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
-  let quotaOwner = owner;
-  if (resolvedKey.consumesQuota) {
-    if (owner === ANONYMOUS_OWNER) {
-      if (!connectedBuilderOwner) {
-        setResponseStatus(event, 401);
-        return {
-          error: "sign_in_required",
-          reason: "add a BYO key or connect Builder",
-        };
-      }
-      quotaOwner = connectedBuilderOwner.ownerId;
-    }
+  const creditAccount = await resolveCreditAccount(owner);
+  const connectedBuilderOwner = creditAccount.builderOwner;
+  if (
+    resolvedKey.consumesQuota &&
+    requiresBuilderConnectForServerKey(creditAccount)
+  ) {
+    setResponseStatus(event, 401);
+    return {
+      error: "sign_in_required",
+      reason: "add a BYO key or connect Builder",
+    };
   }
 
   const saveOwner =
     connectedBuilderOwner ?? fallbackSavedOwner(owner, getCookie(event, FDMD_ANON_COOKIE));
 
-  let dec: { ok: boolean; remaining: number } | null = null;
+  let dec: CreditSpendResult | null = null;
   if (resolvedKey.consumesQuota) {
-    dec = await decrementCredits(quotaOwner);
+    dec = await spendCredit(creditAccount);
     if (!dec.ok) {
       setResponseStatus(event, 402);
       return { error: "out_of_credits", reason: "signed-in-and-out-of-credits" };
@@ -166,9 +169,7 @@ export default defineEventHandler(async (event) => {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        if (resolvedKey.consumesQuota && dec?.ok) {
-          await refundCredit(quotaOwner).catch(() => {});
-        }
+        await refundSpentCredit(creditAccount, dec).catch(() => {});
         sse.send("error", { message });
       } finally {
         sse.stop();

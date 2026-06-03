@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -8,8 +9,12 @@ import {
 } from "react";
 
 export interface Credits {
-  remaining: number;
-  allowed: number;
+  remaining: number | null;
+  allowed: number | null;
+  unlimited?: boolean;
+  accountTier?: "anonymous" | "free" | "paid" | "enterprise" | "unknown";
+  planLabel?: string | null;
+  builderOrgName?: string | null;
 }
 
 interface KeyStatus {
@@ -19,7 +24,7 @@ interface KeyStatus {
 interface CreditsContextValue {
   credits: Credits | null;
   keyStatus: KeyStatus | null;
-  setRemaining: (n: number) => void;
+  setRemaining: (n: number | null) => void;
   refresh: () => Promise<void>;
 }
 
@@ -29,10 +34,10 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   const [credits, setCredits] = useState<Credits | null>(null);
   const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const [creditsR, keyR] = await Promise.allSettled([
-      fetch("/api/me/credits"),
-      fetch("/api/me/key-status"),
+      fetch("/api/me/credits", { cache: "no-store" }),
+      fetch("/api/me/key-status", { cache: "no-store" }),
     ]);
     if (creditsR.status === "fulfilled") {
       if (creditsR.value.ok) {
@@ -52,21 +57,33 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
         /* swallow */
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [refresh]);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [refresh]);
 
   const value = useMemo<CreditsContextValue>(
     () => ({
       credits,
       keyStatus,
-      setRemaining: (n: number) =>
+      setRemaining: (n: number | null) =>
         setCredits((c) => (c ? { ...c, remaining: n } : c)),
       refresh,
     }),
-    [credits, keyStatus],
+    [credits, keyStatus, refresh],
   );
 
   return (
