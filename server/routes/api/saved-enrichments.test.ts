@@ -35,7 +35,6 @@ vi.mock("../../lib/anthropic-key", () => ({
 const mockDecrementCredits = vi.hoisted(() => vi.fn());
 const mockRefundCredit = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/quota", () => ({
-  getCredits: async () => ({ remaining: 3, allowed: 3 }),
   decrementCredits: mockDecrementCredits,
   refundCredit: mockRefundCredit,
 }));
@@ -85,15 +84,6 @@ const CONNECTED = {
   builderUserId: "user-123",
   orgName: "Builder",
   orgKind: "team",
-  accountTier: "free",
-  planLabel: "Free",
-  hasUnlimitedCredits: false,
-};
-const PAID_CONNECTED = {
-  ...CONNECTED,
-  accountTier: "paid",
-  planLabel: "Pro",
-  hasUnlimitedCredits: true,
 };
 
 describe("saved enrichment API routes", () => {
@@ -226,57 +216,6 @@ describe("saved enrichment API routes", () => {
         rootId: "saved-123",
         iterationPrompt: "Make it dark mode",
         enrichedMarkdown: "# Dark mode",
-      }),
-    );
-  });
-
-  it("does not spend quota when a paid Builder account iterates a saved enrichment", async () => {
-    mockGetPublicSavedEnrichment.mockResolvedValueOnce({
-      id: "saved-123",
-      sourceUrl: "https://example.com",
-      title: "Example",
-      parentId: null,
-      rootId: "saved-123",
-      deterministicMarkdown: "# Deterministic",
-      enrichedMarkdown: "# Original",
-      designSystemData: { colors: [] },
-      signals: { title: "Example" },
-      screenshotDataUrl: null,
-    });
-    mockResolveOwner.mockResolvedValueOnce("anonymous@free-design-md.local");
-    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(PAID_CONNECTED);
-    mockResolveAnthropicKey.mockResolvedValueOnce({
-      apiKey: "sk-server",
-      source: "server",
-      consumesQuota: true,
-    });
-    mockIterateStream.mockImplementation(async function* () {
-      yield {
-        type: "done",
-        markdown: "# Dark mode",
-        model: "claude-sonnet-4-6",
-        latencyMs: 1,
-        usage: {},
-        stopReason: "end_turn",
-      };
-    });
-    mockSaveEnrichmentSnapshot.mockResolvedValueOnce({
-      id: "saved-456",
-      url: "/d/saved-456",
-    });
-
-    const result = await iterateHandler({
-      _params: { id: "saved-123" },
-      _body: { userPrompt: "Make it dark mode" },
-    } as never);
-    const sse = await readSse(result as ReadableStream<Uint8Array>);
-
-    expect(sse).toContain('"savedDesignUrl":"/d/saved-456"');
-    expect(sse).toContain('"remaining":null');
-    expect(mockDecrementCredits).not.toHaveBeenCalled();
-    expect(mockSaveEnrichmentSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({
-        owner: PAID_CONNECTED,
       }),
     );
   });

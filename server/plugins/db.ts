@@ -172,14 +172,14 @@ export default runMigrations(
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
     },
-    // v22: bonus_credits column on fdmd_quota — the finite AI credit allowance
-    // for Builder-connected accounts that are not paid/Enterprise unlimited.
+    // v22: bonus_credits column on fdmd_quota — extra enrichments earned by
+    // pasting a valid Builder.io public API key.
     {
       version: 22,
       sql: `ALTER TABLE fdmd_quota ADD COLUMN IF NOT EXISTS bonus_credits INTEGER NOT NULL DEFAULT 0`,
     },
     // v23: deduplication table for Builder.io API keys — prevents the same
-    // key from unlocking quota on multiple accounts. Retained for old rows.
+    // key from unlocking quota on multiple accounts.
     {
       version: 23,
       sql: `CREATE TABLE IF NOT EXISTS fdmd_builder_keys (
@@ -211,8 +211,8 @@ export default runMigrations(
   CREATE INDEX IF NOT EXISTS fdmd_iter_owner_created_idx ON fdmd_iterations (owner, created_at)`,
     },
     // v25: seed default iteration credits for existing fdmd_quota rows where
-    // bonus_credits is still 0. New rows are seeded with the default at insert
-    // time via getCredits().
+    // bonus_credits is still 0 (the Builder-key unlock path's default). New
+    // rows are seeded with the default at insert time via getCredits().
     {
       version: 25,
       sql: `UPDATE fdmd_quota SET bonus_credits = 3 WHERE bonus_credits = 0`,

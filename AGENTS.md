@@ -62,9 +62,9 @@ Use `pnpm action <name> [args]` to invoke any of them. Output is JSON on stdout.
 | Method | Path                                  | What it does                                                          |
 | ------ | ------------------------------------- | --------------------------------------------------------------------- |
 | GET    | `/api/extract?url=<url>&format=json`  | Thin wrapper over `extract-design-md`. Public.                        |
-| POST   | `/api/enrich-design-md`               | SSE wrapper over `enrich-design-md`. Resolves Anthropic key via `server/lib/anthropic-key.ts`: BYO key is preferred and does not spend quota; the server key uses Builder credit access. Free/unknown Builder accounts spend finite quota, paid/Enterprise Builder accounts are unlimited. Anonymous server-key calls require Builder Connect credentials, because Builder Connect does not create an app session. |
-| POST   | `/api/iterate-design-md`              | SSE wrapper over `iterate-design-md`. Uses the same Anthropic key and Builder credit-access behavior. Returns 402 when no key is available or finite credits are exhausted, 422 on blocklist hit, 400 on input-cap violation. |
-| GET    | `/api/me/credits`                     | Returns finite `{ allowed, remaining, unlimited: false, accountTier, planLabel, builderOrgName }` or unlimited `{ allowed: null, remaining: null, unlimited: true, accountTier, planLabel, builderOrgName }`; returns 401 for anonymous visitors without Builder Connect. Used by the UI to render the credits chip. |
+| POST   | `/api/enrich-design-md`               | SSE wrapper over `enrich-design-md`. Resolves Anthropic key via `server/lib/anthropic-key.ts`: BYO key is preferred and does not spend quota; the server key spends quota. Anonymous server-key calls require Builder Connect credentials, because Builder Connect does not create an app session. |
+| POST   | `/api/iterate-design-md`              | SSE wrapper over `iterate-design-md`. Uses the same Anthropic key resolution and quota behavior. Returns 402 when no key is available or credits are exhausted, 422 on blocklist hit, 400 on input-cap violation. |
+| GET    | `/api/me/credits`                     | Returns `{ allowed, remaining }` for authenticated or Builder-connected quota owners; returns 401 for anonymous visitors without Builder Connect. Used by the UI to render the credits chip. |
 | POST   | `/api/me/anthropic-key`               | Stores the user's BYO Anthropic API key against their `fdmd_anon` session token. Body: `{ apiKey: string }`. Returns 400 if key doesn't start with "sk-". |
 | GET    | `/api/me/key-status`                  | Returns `{ byoKeyConfigured: boolean }` for the current visitor. Used by the UI to decide whether a BYO key is already stored. |
 
@@ -96,15 +96,17 @@ The current model is:
 
 - **Anonymous visitor identity:** `server/plugins/anon-session.ts` sets an `fdmd_anon` cookie for every browser. This is only a stable browser token for BYO key storage.
 - **BYO Anthropic key:** `POST /api/me/anthropic-key` stores a visitor's key in `fdmd_byo_keys`, keyed by `fdmd_anon`. BYO keys always win and do not spend credits.
-- **Server Anthropic key:** when no BYO key exists, `server/lib/anthropic-key.ts` falls back to `process.env.ANTHROPIC_API_KEY`. Server-key calls go through `server/lib/credit-access.ts`: free/unknown Builder accounts spend credits from `fdmd_quota`; paid and Enterprise Builder accounts do not decrement quota.
+- **Server Anthropic key:** when no BYO key exists, `server/lib/anthropic-key.ts` falls back to `process.env.ANTHROPIC_API_KEY`. Server-key calls spend credits from `fdmd_quota`.
 - **Builder Connect:** `BuilderConnectCta` uses `useBuilderConnectFlow()` and the framework route `/_agent-native/builder/connect`. This is not app login. It stores Builder credential material in the framework's request-scoped credential store.
-- **Builder callback data:** the framework callback currently receives `p-key`, `api-key`, `user-id`, `org-name`, `kind`, `subscription`, `subscription-level`, `subscription-name`, `is-enterprise`, and `is-free-account`. The app only uses the resolved credential metadata exposed by `resolveBuilderCredentials()`; it must never log key values.
-- **Builder entitlements:** `shared/builder-entitlements.ts` classifies Builder metadata into `free`, `paid`, `enterprise`, or `unknown`. Only explicit paid/Enterprise metadata grants unlimited app-hosted AI credits; missing/unknown metadata stays on finite credits.
-- **Quota owner:** anonymous server-key AI calls are allowed only after Builder Connect resolves a complete Builder credential bundle. In that path, `server/lib/builder-connection.ts` returns `builder:<userId>` when `userId` exists; finite credits are keyed to that owner.
+- **Builder callback data:** the framework callback currently receives `p-key`, `api-key`, `user-id`, `org-name`, and `kind`. The app only uses the resolved credential metadata exposed by `resolveBuilderCredentials()`: `userId`, `orgName`, and `orgKind`; it must never log key values.
+- **Quota owner:** anonymous server-key enrich calls are allowed only after Builder Connect resolves a complete Builder credential bundle. In that path, `server/lib/builder-connection.ts` returns `builder:<userId>` when `userId` exists; otherwise it falls back to the anonymous owner.
 - **Credits:** `fdmd_quota` stores `enrich_count` and `bonus_credits`. New rows default to `DEFAULT_ALLOWED_CREDITS = 3` in `server/lib/quota.ts`.
+
+Important consequence: Builder Connect does not currently prove an app user session or expose a billing plan like free/pro. For credit decisions by Builder account level, first inspect real `orgKind`/`orgName`/`userId` values from the sanitized connect logs, then add an explicit Builder account lookup if the callback metadata is insufficient.
 
 ## Current Follow-Up Work
 
+- Decide whether credit grants should be based on Builder Connect metadata (`orgKind`) or a separate Builder API/account lookup.
 - Streaming with larger `max_tokens` and prompt caching are still productization work.
 - URL-keyed result caching exists in `enrichment_cache`; keep using it for demos and repeated enrichments.
 - Eval harness work against VoltAgent references is still deferred.

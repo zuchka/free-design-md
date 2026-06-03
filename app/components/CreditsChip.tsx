@@ -1,27 +1,12 @@
-import { IconBolt, IconInfinity } from "@tabler/icons-react";
+import { IconBolt } from "@tabler/icons-react";
 import { useCredits } from "@/lib/use-credits";
 
 export default function CreditsChip() {
   const { credits, keyStatus } = useCredits();
-  if (!credits || !keyStatus) return null;
-  if (keyStatus.byoKeyConfigured && !credits.unlimited) return null;
-
-  if (credits.unlimited) {
-    const plan = credits.planLabel ?? "paid Builder";
-    return (
-      <span
-        title={`${plan} account: unlimited AI enrichment and iteration`}
-        className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400"
-      >
-        <IconInfinity size={11} className="-mt-px" />
-        Unlimited
-      </span>
-    );
-  }
+  if (!credits || !keyStatus || keyStatus.byoKeyConfigured) return null;
 
   const { remaining, allowed } = credits;
   const empty = remaining === 0;
-  if (remaining == null || allowed == null) return null;
 
   return (
     <span
