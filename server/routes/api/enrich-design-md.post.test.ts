@@ -49,6 +49,13 @@ const BUILDER_CONNECTION = {
   builderUserId: "user-123",
   orgName: "Builder",
   orgKind: "team",
+  hasUnlimitedCredits: false,
+};
+const PAID_BUILDER_CONNECTION = {
+  ...BUILDER_CONNECTION,
+  accountTier: "paid",
+  planLabel: "Pro",
+  hasUnlimitedCredits: true,
 };
 
 function validEvent() {
@@ -165,6 +172,44 @@ describe("POST /api/enrich-design-md", () => {
     );
     expect(mockEnrichStream).toHaveBeenCalledWith(
       expect.objectContaining({ anthropicApiKey: "sk-server" }),
+    );
+  });
+
+  it("does not spend quota for paid Builder-connected server-key calls", async () => {
+    mockResolveAnthropicKey.mockResolvedValueOnce({
+      apiKey: "sk-server",
+      source: "server",
+      consumesQuota: true,
+    });
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(
+      PAID_BUILDER_CONNECTION,
+    );
+    mockSaveEnrichmentSnapshot.mockResolvedValueOnce({
+      id: "saved-123",
+      url: "/d/saved-123",
+    });
+    mockEnrichStream.mockImplementation(async function* () {
+      yield {
+        type: "done",
+        markdown: "---\nname: Example\n---\n",
+        model: "claude-opus-4-7",
+        latencyMs: 1,
+        usage: { inputTokens: 1, outputTokens: 1 },
+        stopReason: "end_turn",
+      };
+    });
+
+    const before = await quotaCount(BUILDER_OWNER);
+    const event = validEvent();
+    const result = await routeHandler(event as never);
+    await readSse(result as ReadableStream<Uint8Array>);
+
+    expect(statusOf(event as { _statusCode?: number })).toBe(200);
+    expect(await quotaCount(BUILDER_OWNER)).toBe(before);
+    expect(mockSaveEnrichmentSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: PAID_BUILDER_CONNECTION,
+      }),
     );
   });
 

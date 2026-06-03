@@ -26,6 +26,7 @@ import { renderPreview } from "../../shared/preview-template";
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
 import type { DesignSystemData } from "../../shared/api";
+import { useCredits } from "@/lib/use-credits";
 
 interface PublicSavedEnrichment {
   id: string;
@@ -57,6 +58,7 @@ export function meta() {
 }
 
 export default function SavedDesignRoute() {
+  const { refresh: refreshCredits, setRemaining } = useCredits();
   const { id } = useParams();
   const [saved, setSaved] = useState<PublicSavedEnrichment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -213,6 +215,7 @@ export default function SavedDesignRoute() {
         },
       );
       if (!res.ok || !res.body) {
+        void refreshCredits();
         const details = await readAiAccessErrorResponse(
           res,
           `Iteration failed with ${res.status}`,
@@ -252,9 +255,12 @@ export default function SavedDesignRoute() {
             const doneData = parsed.data as {
               markdown: string;
               savedDesignUrl: string;
+              remaining: number | null;
             };
+            setRemaining(doneData.remaining);
             setCandidateMarkdown(doneData.markdown);
             setCandidateSavedUrl(doneData.savedDesignUrl);
+            void refreshCredits();
             announceAgentActivity({
               title: "Public fork ready",
               detail: doneData.savedDesignUrl,
@@ -283,6 +289,7 @@ export default function SavedDesignRoute() {
       setIterationRecoveryReason(
         (current) => current ?? classifyAiAccessErrorMessage(message),
       );
+      void refreshCredits();
     } finally {
       setIsIterating(false);
     }

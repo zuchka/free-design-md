@@ -26,15 +26,37 @@ describe("Builder Connect owner resolution", () => {
       userId: "user-123",
       orgName: "Builder",
       orgKind: "team",
+      subscriptionName: "Pro",
+      isFreeAccount: false,
     });
 
     await expect(
       resolveConnectedBuilderOwner("anonymous@free-design-md.local"),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       ownerId: "builder:user-123",
       builderUserId: "user-123",
       orgName: "Builder",
       orgKind: "team",
+      subscriptionName: "Pro",
+      isFreeAccount: false,
+      accountTier: "paid",
+      planLabel: "Pro",
+      hasUnlimitedCredits: true,
+    });
+  });
+
+  it("keeps unknown plan metadata on finite credits", async () => {
+    mockResolveBuilderCredentials.mockResolvedValueOnce({
+      privateKey: "private-secret",
+      publicKey: "public-secret",
+      userId: "user-123",
+    });
+
+    await expect(resolveConnectedBuilderOwner("owner")).resolves.toMatchObject({
+      ownerId: "builder:user-123",
+      accountTier: "unknown",
+      planLabel: null,
+      hasUnlimitedCredits: false,
     });
   });
 
