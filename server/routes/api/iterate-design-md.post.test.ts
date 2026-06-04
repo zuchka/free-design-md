@@ -17,6 +17,17 @@ vi.mock("../../lib/builder-connection", () => ({
   resolveConnectedBuilderOwner: mockResolveConnectedBuilderOwner,
 }));
 
+const mockResolveAgentContextOwner = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/owner", () => ({
+  ANONYMOUS_OWNER: "anonymous@free-design-md.local",
+  resolveAgentContextOwner: mockResolveAgentContextOwner,
+  isAnonymousOwner: (owner: string | null | undefined) =>
+    owner === "anonymous@free-design-md.local" ||
+    /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(
+      owner ?? "",
+    ),
+}));
+
 const mockGetPublicSavedEnrichment = vi.hoisted(() => vi.fn());
 const mockSaveEnrichmentSnapshot = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/saved-enrichments", () => ({
@@ -27,8 +38,13 @@ vi.mock("../../lib/saved-enrichments", () => ({
 import { getDbExec } from "@agent-native/core/db";
 import { ANONYMOUS_OWNER } from "../../lib/owner.js";
 
-// h3 utilities for building a fake event we can pass to the handler.
-const { createApp, toNodeListener } = await import("h3");
+const BUILDER_OWNER = "builder:user-123";
+const CONNECTED_BUILDER_OWNER = {
+  ownerId: BUILDER_OWNER,
+  builderUserId: "user-123",
+  orgName: "Builder",
+  orgKind: "team",
+};
 
 async function resetDb() {
   const exec = getDbExec();
@@ -36,13 +52,21 @@ async function resetDb() {
     sql: `DELETE FROM fdmd_iterations WHERE session_id LIKE 'test-iter-%'`,
     args: [],
   });
-  await exec.execute({
-    sql: `UPDATE fdmd_quota SET enrich_count = 0 WHERE user_id = ?`,
-    args: [ANONYMOUS_OWNER],
-  });
+  for (const owner of [ANONYMOUS_OWNER, BUILDER_OWNER]) {
+    await exec.execute({
+      sql: `INSERT INTO fdmd_quota (user_id, enrich_count, bonus_credits)
+            VALUES (?, 0, 3)
+            ON CONFLICT(user_id) DO UPDATE SET enrich_count = 0`,
+      args: [owner],
+    });
+  }
 }
 
 beforeEach(async () => {
+  mockResolveAgentContextOwner.mockReset();
+  mockResolveAgentContextOwner.mockResolvedValue(
+    "anonymous:browser-token@free-design-md.local",
+  );
   mockIterateStream.mockReset();
   mockResolveAnthropicKey.mockReset();
   mockResolveAnthropicKey.mockResolvedValue({
@@ -58,38 +82,6 @@ beforeEach(async () => {
   await resetDb();
 });
 afterEach(resetDb);
-
-// Build a minimal stubbed H3Event the handler can read.
-function fakeEvent(body: unknown): {
-  event: Record<string, unknown>;
-  capturedStatus: () => number | undefined;
-  capturedHeaders: () => Record<string, string>;
-} {
-  let status: number | undefined;
-  const headers: Record<string, string> = {};
-  const event = {
-    // readBody reads from event.node.req body — but for h3 v2 readBody can
-    // also accept a pre-attached _body. We expose via a getter on .node.req.
-    node: {
-      req: {
-        // We bypass readBody by mocking it via h3 stub below.
-      },
-      res: {
-        setHeader: (k: string, v: string) => {
-          headers[k] = String(v);
-        },
-      },
-    },
-    _body: body,
-    headers: new Map<string, string>(),
-    method: "POST",
-  };
-  return {
-    event,
-    capturedStatus: () => status,
-    capturedHeaders: () => headers,
-  };
-}
 
 // We mock h3's readBody to return event._body directly, dodging the real
 // request parsing — handler still sees the same shape.
@@ -235,10 +227,13 @@ describe("POST /api/iterate-design-md", () => {
   });
 
   it("402 when out of credits", async () => {
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(
+      CONNECTED_BUILDER_OWNER,
+    );
     const exec = getDbExec();
     await exec.execute({
       sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const event = {
       _body: {
@@ -254,6 +249,9 @@ describe("POST /api/iterate-design-md", () => {
   });
 
   it("happy path: streams, decrements credit, persists row", async () => {
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(
+      CONNECTED_BUILDER_OWNER,
+    );
     const valid = ["---", "name: X", "---", "", "## A", "B"].join("\n");
     mockIterateStream.mockImplementation(async function* () {
       yield { type: "delta", text: valid };
@@ -275,7 +273,7 @@ describe("POST /api/iterate-design-md", () => {
     const exec = getDbExec();
     const beforeR = await exec.execute({
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const before = Number(
       (beforeR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
@@ -297,7 +295,7 @@ describe("POST /api/iterate-design-md", () => {
 
     const afterR = await exec.execute({
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const after = Number(
       (afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
@@ -319,12 +317,9 @@ describe("POST /api/iterate-design-md", () => {
 
   it("saves a public snapshot when connected Builder ownership and snapshot inputs are present", async () => {
     const valid = ["---", "name: X", "---", "", "## A", "B"].join("\n");
-    mockResolveConnectedBuilderOwner.mockResolvedValueOnce({
-      ownerId: "builder:user-123",
-      builderUserId: "user-123",
-      orgName: "Builder",
-      orgKind: "team",
-    });
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(
+      CONNECTED_BUILDER_OWNER,
+    );
     mockGetPublicSavedEnrichment.mockResolvedValueOnce({
       id: "saved-parent",
       rootId: "saved-root",
@@ -391,6 +386,9 @@ describe("POST /api/iterate-design-md", () => {
   });
 
   it("streams error event + refunds credit when iterateStream throws", async () => {
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(
+      CONNECTED_BUILDER_OWNER,
+    );
     mockIterateStream.mockImplementation(async function* () {
       throw new Error("anthropic exploded");
       yield; // unreachable, satisfies generator type
@@ -399,7 +397,7 @@ describe("POST /api/iterate-design-md", () => {
     const exec = getDbExec();
     const beforeR = await exec.execute({
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const before = Number(
       (beforeR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
@@ -419,7 +417,7 @@ describe("POST /api/iterate-design-md", () => {
 
     const afterR = await exec.execute({
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const after = Number(
       (afterR.rows[0] as { enrich_count: number | bigint })?.enrich_count ?? 0,
@@ -455,11 +453,11 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     } as unknown as Record<string, unknown>;
   }
 
-  async function quotaCount(): Promise<number> {
+  async function quotaCount(owner = BUILDER_OWNER): Promise<number> {
     const exec = getDbExec();
     const r = await exec.execute({
       sql: `SELECT enrich_count FROM fdmd_quota WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [owner],
     });
     return Number(
       (r.rows[0] as { enrich_count: number | bigint } | undefined)
@@ -478,6 +476,20 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     expect(mockIterateStream).not.toHaveBeenCalled();
   });
 
+  it("server key without Builder Connect → 401", async () => {
+    mockResolveAnthropicKey.mockResolvedValueOnce({
+      apiKey: "sk-server",
+      source: "server",
+      consumesQuota: true,
+    });
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(null);
+    const event = happyBody("test-iter-matrix-no-builder");
+    const result = await routeHandler(event as never);
+    expect(statusOf(event as { _statusCode?: number })).toBe(401);
+    expect(result).toMatchObject({ error: "sign_in_required" });
+    expect(mockIterateStream).not.toHaveBeenCalled();
+  });
+
   it("BYO key → streams, no quota touched", async () => {
     mockResolveAnthropicKey.mockResolvedValueOnce({
       apiKey: "sk-byo",
@@ -487,17 +499,20 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     mockIterateStream.mockImplementation(async function* () {
       yield happyDone;
     });
-    const before = await quotaCount();
+    const before = await quotaCount(ANONYMOUS_OWNER);
     const event = happyBody("test-iter-matrix-2");
     const result = await routeHandler(event as never);
     await readSse(result as ReadableStream<Uint8Array>);
-    expect(await quotaCount()).toBe(before);
+    expect(await quotaCount(ANONYMOUS_OWNER)).toBe(before);
     expect(mockIterateStream).toHaveBeenCalledWith(
       expect.objectContaining({ anthropicApiKey: "sk-byo" }),
     );
   });
 
   it("server key + quota > 0 → streams, decrements quota", async () => {
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(
+      CONNECTED_BUILDER_OWNER,
+    );
     mockResolveAnthropicKey.mockResolvedValueOnce({
       apiKey: "sk-server",
       source: "server",
@@ -522,14 +537,17 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     mockIterateStream.mockImplementation(async function* () {
       yield happyDone;
     });
-    const before = await quotaCount();
+    const before = await quotaCount(ANONYMOUS_OWNER);
     const event = happyBody("test-iter-matrix-4");
     const result = await routeHandler(event as never);
     await readSse(result as ReadableStream<Uint8Array>);
-    expect(await quotaCount()).toBe(before);
+    expect(await quotaCount(ANONYMOUS_OWNER)).toBe(before);
   });
 
   it("server key + quota = 0 → 402 out_of_credits", async () => {
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(
+      CONNECTED_BUILDER_OWNER,
+    );
     mockResolveAnthropicKey.mockResolvedValueOnce({
       apiKey: "sk-server",
       source: "server",
@@ -538,7 +556,7 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     const exec = getDbExec();
     await exec.execute({
       sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
+      args: [BUILDER_OWNER],
     });
     const event = happyBody("test-iter-matrix-5");
     const result = await routeHandler(event as never);

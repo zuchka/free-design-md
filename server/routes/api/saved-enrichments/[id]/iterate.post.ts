@@ -13,7 +13,10 @@ import {
 import { resolveAnthropicKey } from "../../../../lib/anthropic-key.js";
 import { resolveConnectedBuilderOwner } from "../../../../lib/builder-connection.js";
 import { FDMD_ANON_COOKIE } from "../../../../lib/cookie-names.js";
-import { ANONYMOUS_OWNER, resolveOwner } from "../../../../lib/owner.js";
+import {
+  isAnonymousOwner,
+  resolveAgentContextOwner,
+} from "../../../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../../../lib/quota.js";
 import {
   getPublicSavedEnrichment,
@@ -80,7 +83,7 @@ export default defineEventHandler(async (event) => {
     return { error: "blocked", reason: blockHit };
   }
 
-  const owner = await resolveOwner(event);
+  const owner = await resolveAgentContextOwner(event);
 
   let resolvedKey: { apiKey: string; source: string; consumesQuota: boolean };
   try {
@@ -93,7 +96,7 @@ export default defineEventHandler(async (event) => {
   let connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
   let quotaOwner = owner;
   if (resolvedKey.consumesQuota) {
-    if (owner === ANONYMOUS_OWNER) {
+    if (isAnonymousOwner(owner)) {
       if (!connectedBuilderOwner) {
         setResponseStatus(event, 401);
         return {
@@ -198,7 +201,7 @@ function fallbackSavedOwner(
   owner: string,
   anonToken: string | undefined,
 ): SavedEnrichmentOwner {
-  if (owner && owner !== ANONYMOUS_OWNER) {
+  if (owner && !isAnonymousOwner(owner)) {
     return { ownerId: `user:${owner}` };
   }
   return { ownerId: anonToken ? `anon:${anonToken}` : "public:anonymous" };

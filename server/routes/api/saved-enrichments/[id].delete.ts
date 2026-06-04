@@ -4,7 +4,7 @@ import {
   setResponseStatus,
 } from "h3";
 import { resolveConnectedBuilderOwner } from "../../../lib/builder-connection.js";
-import { resolveOwner } from "../../../lib/owner.js";
+import { resolveAgentContextOwner } from "../../../lib/owner.js";
 import { deleteSavedEnrichmentForOwner } from "../../../lib/saved-enrichments.js";
 
 export default defineEventHandler(async (event) => {
@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
     return { error: "saved enrichment id is required" };
   }
 
-  const owner = await resolveOwner(event);
+  const owner = await resolveAgentContextOwner(event);
   const connected = await resolveConnectedBuilderOwner(owner);
   if (!connected) {
     setResponseStatus(event, 401);

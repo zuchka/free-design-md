@@ -1,10 +1,10 @@
 import { defineEventHandler, setResponseStatus } from "h3";
-import { resolveOwner } from "../../../lib/owner.js";
+import { resolveAgentContextOwner } from "../../../lib/owner.js";
 import { resolveConnectedBuilderOwner } from "../../../lib/builder-connection.js";
 import { listSavedEnrichmentsForOwner } from "../../../lib/saved-enrichments.js";
 
 export default defineEventHandler(async (event) => {
-  const owner = await resolveOwner(event);
+  const owner = await resolveAgentContextOwner(event);
   const connected = await resolveConnectedBuilderOwner(owner);
 
   if (!connected) {
