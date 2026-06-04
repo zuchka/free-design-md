@@ -10,7 +10,10 @@ import {
 } from "../../../actions/enrich-design-md.js";
 import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
 import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
-import { resolveOwner, ANONYMOUS_OWNER } from "../../lib/owner.js";
+import {
+  isAnonymousOwner,
+  resolveAgentContextOwner,
+} from "../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../lib/quota.js";
 import { saveEnrichmentSnapshot } from "../../lib/saved-enrichments.js";
 import { createSseSender } from "../../lib/sse.js";
@@ -63,7 +66,7 @@ export default defineEventHandler(async (event) => {
     return "missing one of: url, designSystemData, signals, screenshotDataUrl, deterministicMarkdown/markdown";
   }
 
-  const owner = await resolveOwner(event);
+  const owner = await resolveAgentContextOwner(event);
 
   let resolvedKey: { apiKey: string; source: string; consumesQuota: boolean };
   try {
@@ -79,9 +82,8 @@ export default defineEventHandler(async (event) => {
     | null = null;
 
   // Anonymous callers may use the server key only after Builder Connect has
-  // stored a complete credential bundle. Builder Connect does not create an app
-  // session, so resolveOwner() still returns ANONYMOUS_OWNER in production.
-  if (owner === ANONYMOUS_OWNER && resolvedKey.source !== "byo") {
+  // stored a complete credential bundle under this browser's fdmd_anon owner.
+  if (isAnonymousOwner(owner) && resolvedKey.source !== "byo") {
     connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
     if (!connectedBuilderOwner) {
       setResponseStatus(event, 401);

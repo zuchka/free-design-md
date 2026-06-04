@@ -1,7 +1,5 @@
 import { defineNitroPlugin } from "@agent-native/core";
-import { getCookie, setCookie } from "h3";
-import { randomUUID } from "node:crypto";
-import { FDMD_ANON_COOKIE } from "../lib/cookie-names";
+import { getOrCreateAnonToken } from "../lib/owner.js";
 
 /**
  * Sets a `fdmd_anon` cookie for every visitor (anonymous and SSO'd alike).
@@ -10,15 +8,6 @@ import { FDMD_ANON_COOKIE } from "../lib/cookie-names";
  */
 export default defineNitroPlugin((app) => {
   app.hooks.hook("request", (event) => {
-    const existing = getCookie(event, FDMD_ANON_COOKIE);
-    if (!existing) {
-      setCookie(event, FDMD_ANON_COOKIE, randomUUID(), {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-        secure: process.env.PUBLIC_ORIGIN?.startsWith("https") ?? false,
-      });
-    }
+    getOrCreateAnonToken(event);
   });
 });

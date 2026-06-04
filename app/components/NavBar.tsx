@@ -6,6 +6,7 @@ import CreditsChip from "@/components/CreditsChip";
 export default function NavBar() {
   const location = useLocation();
   const onWorkspace = location.pathname === "/";
+  const onPublicSharedDesign = /^\/d\/[^/]+/.test(location.pathname);
 
   return (
     <header className="border-b border-border bg-background">
@@ -43,7 +44,7 @@ export default function NavBar() {
             <span className="hidden sm:inline">My workspace</span>
             <span className="sm:hidden">Home</span>
           </Link>
-          <CreditsChip />
+          {!onPublicSharedDesign && <CreditsChip />}
           <AgentToggleButton />
           <Link
             to="/quality"

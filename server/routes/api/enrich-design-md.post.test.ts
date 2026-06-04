@@ -2,6 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDbExec } from "@agent-native/core/db";
 import { ANONYMOUS_OWNER } from "../../lib/owner.js";
 
+const mockResolveAgentContextOwner = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/owner", () => ({
+  ANONYMOUS_OWNER: "anonymous@free-design-md.local",
+  resolveAgentContextOwner: mockResolveAgentContextOwner,
+  isAnonymousOwner: (owner: string | null | undefined) =>
+    owner === "anonymous@free-design-md.local" ||
+    /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(
+      owner ?? "",
+    ),
+}));
+
 const mockEnrichStream = vi.hoisted(() => vi.fn());
 vi.mock("../../../actions/enrich-design-md", () => ({
   enrichStream: mockEnrichStream,
@@ -100,6 +111,8 @@ async function quotaCount(owner: string): Promise<number> {
 }
 
 beforeEach(async () => {
+  mockResolveAgentContextOwner.mockReset();
+  mockResolveAgentContextOwner.mockResolvedValue(ANONYMOUS_OWNER);
   mockEnrichStream.mockReset();
   mockResolveAnthropicKey.mockReset();
   mockResolveConnectedBuilderOwner.mockReset();
@@ -122,6 +135,9 @@ describe("POST /api/enrich-design-md", () => {
 
     expect(statusOf(event as { _statusCode?: number })).toBe(401);
     expect(result).toMatchObject({ error: "sign_in_required" });
+    expect(mockResolveConnectedBuilderOwner).toHaveBeenCalledWith(
+      ANONYMOUS_OWNER,
+    );
     expect(mockEnrichStream).not.toHaveBeenCalled();
   });
 
@@ -149,10 +165,16 @@ describe("POST /api/enrich-design-md", () => {
 
     const before = await quotaCount(BUILDER_OWNER);
     const event = validEvent();
+    mockResolveAgentContextOwner.mockResolvedValueOnce(
+      "anonymous:browser-token@free-design-md.local",
+    );
     const result = await routeHandler(event as never);
     const sse = await readSse(result as ReadableStream<Uint8Array>);
 
     expect(statusOf(event as { _statusCode?: number })).toBe(200);
+    expect(mockResolveConnectedBuilderOwner).toHaveBeenCalledWith(
+      "anonymous:browser-token@free-design-md.local",
+    );
     expect(await quotaCount(BUILDER_OWNER)).toBe(before + 1);
     expect(sse).toContain('"savedDesignId":"saved-123"');
     expect(sse).toContain('"savedDesignUrl":"/d/saved-123"');

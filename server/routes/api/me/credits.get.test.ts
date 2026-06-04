@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockResolveOwner = vi.hoisted(() => vi.fn());
+const mockResolveAgentContextOwner = vi.hoisted(() => vi.fn());
 vi.mock("../../../lib/owner", () => ({
   ANONYMOUS_OWNER: "anonymous@free-design-md.local",
-  resolveOwner: mockResolveOwner,
+  resolveAgentContextOwner: mockResolveAgentContextOwner,
+  isAnonymousOwner: (owner: string | null | undefined) =>
+    owner === "anonymous@free-design-md.local" ||
+    /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(
+      owner ?? "",
+    ),
 }));
 
 const mockResolveConnectedBuilderQuotaOwner = vi.hoisted(() => vi.fn());
@@ -30,13 +35,15 @@ const { default: handler } = await import("./credits.get");
 
 describe("GET /api/me/credits", () => {
   beforeEach(() => {
-    mockResolveOwner.mockReset();
+    mockResolveAgentContextOwner.mockReset();
     mockResolveConnectedBuilderQuotaOwner.mockReset();
     mockGetCredits.mockReset();
   });
 
   it("401s for anonymous visitors without Builder Connect", async () => {
-    mockResolveOwner.mockResolvedValueOnce("anonymous@free-design-md.local");
+    mockResolveAgentContextOwner.mockResolvedValueOnce(
+      "anonymous:browser-a@free-design-md.local",
+    );
     mockResolveConnectedBuilderQuotaOwner.mockResolvedValueOnce(null);
 
     const event = {};
@@ -44,11 +51,16 @@ describe("GET /api/me/credits", () => {
 
     expect((event as { _statusCode?: number })._statusCode).toBe(401);
     expect(result).toEqual({ error: "builder_connect_required" });
+    expect(mockResolveConnectedBuilderQuotaOwner).toHaveBeenCalledWith(
+      "anonymous:browser-a@free-design-md.local",
+    );
     expect(mockGetCredits).not.toHaveBeenCalled();
   });
 
   it("returns Builder-connected credits for anonymous visitors", async () => {
-    mockResolveOwner.mockResolvedValueOnce("anonymous@free-design-md.local");
+    mockResolveAgentContextOwner.mockResolvedValueOnce(
+      "anonymous:browser-b@free-design-md.local",
+    );
     mockResolveConnectedBuilderQuotaOwner.mockResolvedValueOnce(
       "builder:user-123",
     );
@@ -57,11 +69,14 @@ describe("GET /api/me/credits", () => {
     const result = await handler({} as never);
 
     expect(result).toEqual({ remaining: 2, allowed: 3 });
+    expect(mockResolveConnectedBuilderQuotaOwner).toHaveBeenCalledWith(
+      "anonymous:browser-b@free-design-md.local",
+    );
     expect(mockGetCredits).toHaveBeenCalledWith("builder:user-123");
   });
 
   it("returns quota for authenticated owners", async () => {
-    mockResolveOwner.mockResolvedValueOnce("matthew@builder.io");
+    mockResolveAgentContextOwner.mockResolvedValueOnce("matthew@builder.io");
     mockGetCredits.mockResolvedValueOnce({ remaining: 1, allowed: 3 });
 
     const result = await handler({} as never);

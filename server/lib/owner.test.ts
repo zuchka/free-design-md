@@ -9,7 +9,12 @@ vi.mock("@agent-native/core", async () => {
   return { ...actual, getSession: mockGetSession };
 });
 
-const { resolveOwner, ANONYMOUS_OWNER } = await import("./owner.js");
+const {
+  resolveOwner,
+  ANONYMOUS_OWNER,
+  anonymousOwnerForToken,
+  isAnonymousOwner,
+} = await import("./owner.js");
 
 describe("resolveOwner", () => {
   it("returns ANONYMOUS_OWNER when no session is present", async () => {
@@ -31,5 +36,26 @@ describe("resolveOwner", () => {
     mockGetSession.mockResolvedValueOnce({ userId: "u-123" });
     const owner = await resolveOwner({} as never);
     expect(owner).toBe(ANONYMOUS_OWNER);
+  });
+});
+
+describe("anonymous owner helpers", () => {
+  it("scopes valid anonymous tokens to owner ids", () => {
+    expect(anonymousOwnerForToken("browser-token_123")).toBe(
+      "anonymous:browser-token_123@free-design-md.local",
+    );
+  });
+
+  it("rejects unsafe anonymous tokens", () => {
+    expect(anonymousOwnerForToken("../bad")).toBeNull();
+    expect(anonymousOwnerForToken("short")).toBeNull();
+  });
+
+  it("identifies both legacy and token-scoped anonymous owners", () => {
+    expect(isAnonymousOwner(ANONYMOUS_OWNER)).toBe(true);
+    expect(
+      isAnonymousOwner("anonymous:browser-token@free-design-md.local"),
+    ).toBe(true);
+    expect(isAnonymousOwner("matthew@builder.io")).toBe(false);
   });
 });

@@ -11,7 +11,10 @@ import {
   getRequestURL,
   setResponseStatus,
 } from "h3";
-import { ANONYMOUS_OWNER } from "../lib/owner.js";
+import {
+  ANONYMOUS_OWNER,
+  resolveAgentContextOwner,
+} from "../lib/owner.js";
 
 /**
  * free-design.md uses Builder Connect without first-party app login in prod,
@@ -37,7 +40,8 @@ export default defineNitroPlugin((nitroApp) => {
       }
 
       const session = await getSession(event).catch(() => null);
-      const owners = new Set([ANONYMOUS_OWNER]);
+      const scopedOwner = await resolveAgentContextOwner(event);
+      const owners = new Set([ANONYMOUS_OWNER, scopedOwner]);
       if (session?.email) owners.add(session.email);
 
       await Promise.all([...owners].map((owner) => deleteBuilderCredentials(owner)));

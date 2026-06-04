@@ -25,6 +25,11 @@ interface CreditsContextValue {
 
 const CreditsContext = createContext<CreditsContextValue | null>(null);
 
+function isPublicSharedDesignPath(): boolean {
+  if (typeof window === "undefined") return false;
+  return /^\/d\/[^/]+/.test(window.location.pathname);
+}
+
 export function CreditsProvider({ children }: { children: ReactNode }) {
   const [credits, setCredits] = useState<Credits | null>(null);
   const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null);
@@ -55,6 +60,7 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (isPublicSharedDesignPath()) return;
     void refresh();
   }, []);
 

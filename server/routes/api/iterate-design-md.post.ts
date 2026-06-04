@@ -10,7 +10,10 @@ import {
   iterateStream,
   type IterationInput,
 } from "../../../actions/iterate-design-md.js";
-import { resolveOwner } from "../../lib/owner.js";
+import {
+  isAnonymousOwner,
+  resolveAgentContextOwner,
+} from "../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../lib/quota.js";
 import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
 import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
@@ -97,7 +100,7 @@ export default defineEventHandler(async (event) => {
     return { error: "bad_section_target" };
   }
 
-  const owner = await resolveOwner(event);
+  const owner = await resolveAgentContextOwner(event);
   const connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
 
   let resolvedKey: { apiKey: string; source: string; consumesQuota: boolean };
@@ -127,8 +130,20 @@ export default defineEventHandler(async (event) => {
 
   // Atomic quota decrement before streaming (only when consuming quota).
   let dec: { ok: boolean; remaining: number } | null = null;
+  let quotaOwner = owner;
   if (resolvedKey.consumesQuota) {
-    dec = await decrementCredits(owner);
+    if (isAnonymousOwner(owner)) {
+      if (!connectedBuilderOwner) {
+        setResponseStatus(event, 401);
+        return {
+          error: "sign_in_required",
+          reason: "add a BYO key or connect Builder",
+        };
+      }
+      quotaOwner = connectedBuilderOwner.ownerId;
+    }
+
+    dec = await decrementCredits(quotaOwner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
       return {
@@ -235,7 +250,7 @@ export default defineEventHandler(async (event) => {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
-          await refundCredit(owner).catch(() => {});
+          await refundCredit(quotaOwner).catch(() => {});
         }
         await insertRejected({
           sessionId,

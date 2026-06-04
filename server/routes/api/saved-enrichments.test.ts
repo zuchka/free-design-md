@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockResolveOwner = vi.hoisted(() => vi.fn());
+const mockResolveAgentContextOwner = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/owner", () => ({
   ANONYMOUS_OWNER: "anonymous@free-design-md.local",
-  resolveOwner: mockResolveOwner,
+  resolveAgentContextOwner: mockResolveAgentContextOwner,
+  isAnonymousOwner: (owner: string | null | undefined) =>
+    owner === "anonymous@free-design-md.local" ||
+    /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(
+      owner ?? "",
+    ),
 }));
 
 const mockResolveConnectedBuilderOwner = vi.hoisted(() => vi.fn());
@@ -84,7 +89,10 @@ const CONNECTED = {
 
 describe("saved enrichment API routes", () => {
   beforeEach(() => {
-    mockResolveOwner.mockReset();
+    mockResolveAgentContextOwner.mockReset();
+    mockResolveAgentContextOwner.mockResolvedValue(
+      "anonymous:browser-token@free-design-md.local",
+    );
     mockResolveConnectedBuilderOwner.mockReset();
     mockGetPublicSavedEnrichment.mockReset();
     mockListSavedEnrichmentsForOwner.mockReset();
@@ -111,12 +119,11 @@ describe("saved enrichment API routes", () => {
       sourceUrl: "https://example.com",
       title: "Example",
     });
-    expect(mockResolveOwner).not.toHaveBeenCalled();
+    expect(mockResolveAgentContextOwner).not.toHaveBeenCalled();
     expect(mockResolveConnectedBuilderOwner).not.toHaveBeenCalled();
   });
 
   it("requires Builder Connect to list creator-owned enrichments", async () => {
-    mockResolveOwner.mockResolvedValueOnce("anonymous@free-design-md.local");
     mockResolveConnectedBuilderOwner.mockResolvedValueOnce(null);
 
     const event = {};
@@ -124,11 +131,13 @@ describe("saved enrichment API routes", () => {
 
     expect((event as { _statusCode?: number })._statusCode).toBe(401);
     expect(result).toEqual({ error: "builder_connect_required" });
+    expect(mockResolveConnectedBuilderOwner).toHaveBeenCalledWith(
+      "anonymous:browser-token@free-design-md.local",
+    );
     expect(mockListSavedEnrichmentsForOwner).not.toHaveBeenCalled();
   });
 
   it("lists only the connected Builder owner's enrichments", async () => {
-    mockResolveOwner.mockResolvedValueOnce("anonymous@free-design-md.local");
     mockResolveConnectedBuilderOwner.mockResolvedValueOnce(CONNECTED);
     mockListSavedEnrichmentsForOwner.mockResolvedValueOnce([
       { id: "saved-123", title: "Example" },
@@ -145,7 +154,6 @@ describe("saved enrichment API routes", () => {
   });
 
   it("deletes only rows owned by the connected Builder owner", async () => {
-    mockResolveOwner.mockResolvedValueOnce("anonymous@free-design-md.local");
     mockResolveConnectedBuilderOwner.mockResolvedValueOnce(CONNECTED);
     mockDeleteSavedEnrichmentForOwner.mockResolvedValueOnce(false);
 
@@ -173,7 +181,6 @@ describe("saved enrichment API routes", () => {
       signals: { title: "Example" },
       screenshotDataUrl: null,
     });
-    mockResolveOwner.mockResolvedValueOnce("anonymous@free-design-md.local");
     mockResolveConnectedBuilderOwner.mockResolvedValueOnce(CONNECTED);
     mockResolveAnthropicKey.mockResolvedValueOnce({
       apiKey: "sk-server",
