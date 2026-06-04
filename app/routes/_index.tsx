@@ -6,7 +6,10 @@ import {
   useBuilderConnectFlow,
 } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
-import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
+import {
+  extractSectionList,
+  parseEnrichedFrontmatter,
+} from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
 import type { DesignSystemData } from "../../shared/api";
 import { Spinner } from "@/components/ui/spinner";
@@ -100,6 +103,20 @@ const LOADING_LABELS = [
   "Rendering preview…",
 ];
 
+function formatSectionLabel(section: string): string {
+  const knownLabels: Record<string, string> = {
+    "do-s-and-don-ts": "Do's and Don'ts",
+    "elevation-depth": "Elevation & Depth",
+    "border-radii": "Border Radii",
+  };
+  if (knownLabels[section]) return knownLabels[section];
+  return section
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default function IndexRoute() {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -131,6 +148,7 @@ export default function IndexRoute() {
   );
   const [copiedShareUrl, setCopiedShareUrl] = useState(false);
   const [iterationPrompt, setIterationPrompt] = useState("");
+  const [iterationSectionTarget, setIterationSectionTarget] = useState("");
   const [isIterating, setIsIterating] = useState(false);
   const [iterationError, setIterationError] = useState<string | null>(null);
   const [iterationRecoveryReason, setIterationRecoveryReason] =
@@ -512,6 +530,21 @@ export default function IndexRoute() {
         ? enriched.markdown
         : streamingMarkdown
       : (result?.markdown ?? "");
+  const iterationScopeMarkdown =
+    iterSession?.current.markdown ?? enriched?.markdown ?? "";
+  const iterationSectionOptions = useMemo(
+    () => extractSectionList(iterationScopeMarkdown),
+    [iterationScopeMarkdown],
+  );
+
+  useEffect(() => {
+    if (
+      iterationSectionTarget &&
+      !iterationSectionOptions.includes(iterationSectionTarget)
+    ) {
+      setIterationSectionTarget("");
+    }
+  }, [iterationSectionOptions, iterationSectionTarget]);
 
   async function handleCopyShareUrl() {
     if (!enriched?.savedDesignUrl) return;
@@ -566,6 +599,7 @@ export default function IndexRoute() {
         url: result.url,
         previousMarkdown: session.current.markdown,
         userPrompt: iterationPrompt.trim(),
+        sectionTarget: iterationSectionTarget || undefined,
         parentId: session.current.id ?? enriched.savedDesignId ?? null,
         deterministicMarkdown: result.markdown,
         designSystemData: result.designSystemData,
@@ -608,6 +642,11 @@ export default function IndexRoute() {
             detail: message,
             tone: "error",
           });
+          setCandidateMarkdown("");
+          setCandidateId(null);
+          setCandidateSavedDesignId(null);
+          setCandidateSavedDesignUrl(null);
+          setPreviewSource("current");
           setIterationError(message);
           setIterationRecoveryReason(classifyAiAccessErrorMessage(message));
         },
@@ -936,6 +975,32 @@ export default function IndexRoute() {
                         disabled={isIterating}
                       />
                     </div>
+                    {iterationSectionOptions.length > 0 && (
+                      <div className="w-full lg:w-56">
+                        <label
+                          htmlFor="iteration-scope"
+                          className="text-sm font-semibold tracking-tight"
+                        >
+                          Scope
+                        </label>
+                        <select
+                          id="iteration-scope"
+                          value={iterationSectionTarget}
+                          onChange={(e) =>
+                            setIterationSectionTarget(e.target.value)
+                          }
+                          disabled={isIterating}
+                          className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition-colors focus:border-primary"
+                        >
+                          <option value="">Whole document</option>
+                          {iterationSectionOptions.map((section) => (
+                            <option key={section} value={section}>
+                              {formatSectionLabel(section)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div className="flex shrink-0 gap-2">
                       {(candidateMarkdown || iterationError) && (
                         <Button

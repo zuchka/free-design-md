@@ -147,6 +147,7 @@ export default defineEventHandler(async (event) => {
     previousMarkdown,
     userPrompt,
     sectionTarget: sectionTarget ?? undefined,
+    deterministicMarkdown: deterministicMarkdown ?? undefined,
     anthropicApiKey: resolvedKey.apiKey,
   };
 
