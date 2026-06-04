@@ -498,7 +498,7 @@ export default function SavedDesignRoute() {
 
           <section className="rounded-md border bg-background p-4">
             <form onSubmit={iterateSavedDesign} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
                 <div className="min-w-0 flex-1">
                   <label
                     htmlFor="iteration-prompt"
@@ -516,57 +516,61 @@ export default function SavedDesignRoute() {
                     disabled={isIterating}
                   />
                 </div>
-                {iterationSectionOptions.length > 0 && (
-                  <div className="w-full lg:w-56">
-                    <label
-                      htmlFor="iteration-scope"
-                      className="text-sm font-semibold tracking-tight"
-                    >
-                      Scope
-                    </label>
-                    <select
-                      id="iteration-scope"
-                      value={iterationSectionTarget}
-                      onChange={(e) =>
-                        setIterationSectionTarget(e.target.value)
-                      }
-                      disabled={isIterating}
-                      className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition-colors focus:border-primary"
-                    >
-                      <option value="">Whole document</option>
-                      {iterationSectionOptions.map((section) => (
-                        <option key={section} value={section}>
-                          {formatSectionLabel(section)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div className="flex shrink-0 gap-2">
-                  {(candidateMarkdown || iterationError) && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={discardCandidate}
-                      disabled={isIterating}
-                    >
-                      <IconX size={14} />
-                      <span className="ml-1">Clear</span>
-                    </Button>
+                <div className="flex w-full shrink-0 flex-col gap-2 lg:w-56">
+                  {iterationSectionOptions.length > 0 && (
+                    <div className="w-full">
+                      <label
+                        htmlFor="iteration-scope"
+                        className="text-sm font-semibold tracking-tight"
+                      >
+                        Scope
+                      </label>
+                      <select
+                        id="iteration-scope"
+                        value={iterationSectionTarget}
+                        onChange={(e) =>
+                          setIterationSectionTarget(e.target.value)
+                        }
+                        disabled={isIterating}
+                        className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition-colors focus:border-primary"
+                      >
+                        <option value="">Whole document</option>
+                        {iterationSectionOptions.map((section) => (
+                          <option key={section} value={section}>
+                            {formatSectionLabel(section)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   )}
-                  <Button
-                    type="submit"
-                    disabled={isIterating || !iterationPrompt.trim()}
-                  >
-                    {isIterating ? (
-                      <Spinner className="size-4" />
-                    ) : (
-                      <IconSparkles size={16} />
+                  <div className="flex flex-col gap-2">
+                    {(candidateMarkdown || iterationError) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-center"
+                        onClick={discardCandidate}
+                        disabled={isIterating}
+                      >
+                        <IconX size={14} />
+                        <span className="ml-1">Clear</span>
+                      </Button>
                     )}
-                    <span className="ml-1">
-                      {isIterating ? "Iterating..." : "Create version"}
-                    </span>
-                  </Button>
+                    <Button
+                      type="submit"
+                      className="w-full justify-center"
+                      disabled={isIterating || !iterationPrompt.trim()}
+                    >
+                      {isIterating ? (
+                        <Spinner className="size-4" />
+                      ) : (
+                        <IconSparkles size={16} />
+                      )}
+                      <span className="ml-1">
+                        {isIterating ? "Iterating..." : "Create version"}
+                      </span>
+                    </Button>
+                  </div>
                 </div>
               </div>
               {iterationRecoveryReason && (
