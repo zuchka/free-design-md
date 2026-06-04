@@ -66,7 +66,10 @@ export function renderEnrichedPreview(
     findTypoProp(enriched.typography, "fontSize", "title", "display-sm", "h3", "body-lg") || "20px",
     SAFE_SIZE,
   ) || "20px";
-  const buttonRadius = safe(pick(enriched.rounded, "pill", "xl", "lg", "md"), SAFE_SIZE) || radius;
+  const buttonRadius = safe(
+    pick(enriched.rounded, "button", "cta", "pill", "xl", "lg", "md"),
+    SAFE_SIZE,
+  ) || radius;
   const cardRadius = safe(pick(enriched.rounded, "xl", "lg", "md"), SAFE_SIZE) || radius;
 
   const safeTitle = escapeHtml((enriched.name ?? title ?? "Design System").trim());

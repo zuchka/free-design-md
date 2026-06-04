@@ -287,6 +287,7 @@ export default function IndexRoute() {
     previewSource === "candidate" &&
     candidateMarkdown.length > 0 &&
     candidatePreviewHtml === null;
+  const hasCandidateComparison = isIterating || candidateMarkdown.length > 0;
 
   async function extractUrl(trimmed: string) {
     clearAgentActivity();
@@ -988,7 +989,7 @@ export default function IndexRoute() {
               </section>
             )}
 
-            {candidateMarkdown && iterSession && (
+            {hasCandidateComparison && iterSession && (
               <SideBySideMemo
                 previous={iterSession.current.markdown}
                 next={candidateMarkdown}
@@ -1017,7 +1018,7 @@ export default function IndexRoute() {
               title="Preview from tokens"
               action={
                 <div className="flex items-center gap-2">
-                  {candidateMarkdown && (
+                  {hasCandidateComparison && (
                     <div className="flex rounded-md border overflow-hidden text-xs">
                       <button
                         type="button"

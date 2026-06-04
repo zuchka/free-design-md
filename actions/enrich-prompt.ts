@@ -8,7 +8,7 @@ import type { ExtractedSignals } from "../shared/extract-design-system.js";
  * whenever the prompt structure changes in a way that should produce
  * different output for the same URL.
  */
-export const PROMPT_VERSION = "v2";
+export const PROMPT_VERSION = "v3";
 
 export interface EnrichmentPromptInput {
   /** The URL the user is enriching a DESIGN.md for. */
@@ -52,7 +52,13 @@ export interface EnrichmentPrompt {
 export function buildEnrichmentPrompt(
   input: EnrichmentPromptInput,
 ): EnrichmentPrompt {
-  const { url, designSystemData, deterministicMarkdown, signals, schemaReference } = input;
+  const {
+    url,
+    designSystemData,
+    deterministicMarkdown,
+    signals,
+    schemaReference,
+  } = input;
 
   const systemPrompt = `You are a senior design-systems writer producing a DESIGN.md file for a brand. DESIGN.md is a plain-text design-system document (concept introduced by Google Stitch) that AI agents read to generate consistent UI.
 
@@ -94,6 +100,7 @@ Match the reference's structure exactly:
 5. **The reference is for SCHEMA, not CONTENT.** Match the reference's SHAPE. Do not copy its colours, names, or prose — those belong to Vercel, not to the URL you're enriching.
 6. **fontFamily must be a single fully-quoted string.** Write fontFamily: "Courier New, Courier, monospace" — the entire font stack inside one set of double quotes. Never write fontFamily: "Courier New", Courier, monospace — quoting only the first name breaks YAML because the parser reads "Courier New" as the complete scalar and errors on the unquoted tail.
 7. **Scalar values containing ": " must be quoted.** If any value (especially the top-level description) contains a colon followed by a space, wrap the entire value in double quotes, e.g. description: "A brand: that uses colons".
+8. **Measured component geometry is locked.** If the deterministic extraction reports a button or CTA radius, copy that exact value into a \`rounded.button\` token and make button/CTA components reference it. Do not round it up, map it to a nicer-looking generic token, or replace it with a pill radius.
 
 ## Reference DESIGN.md (Vercel — VoltAgent, MIT)
 
@@ -109,6 +116,7 @@ Reply with ONLY the DESIGN.md file content, starting with the '---' YAML frontma
 
   const designSystemJson = JSON.stringify(designSystemData, null, 2);
   const signalsSummary = summariseSignals(signals);
+  const geometryLocks = summariseGeometryLocks(designSystemData);
 
   const userText = `Enrich the DESIGN.md for: **${url}**
 
@@ -123,6 +131,10 @@ ${deterministicMarkdown}
 \`\`\`json
 ${designSystemJson}
 \`\`\`
+
+## Deterministic token locks
+
+${geometryLocks}
 
 ## Additional signals from the live page
 
@@ -152,6 +164,37 @@ Reply with the DESIGN.md file content only.`;
     ],
     userText,
   };
+}
+
+function summariseGeometryLocks(data: DesignSystemData): string {
+  const lines: string[] = [];
+  const buttonRadius =
+    data.components?.button?.primary?.radius?.trim() ||
+    data.borders?.radii?.button?.trim() ||
+    "";
+  if (buttonRadius) {
+    lines.push(
+      `- Button/CTA radius is measured as \`${buttonRadius}\`. Define \`rounded.button: "${buttonRadius}"\` and make every button/CTA component use \`"{rounded.button}"\` for its radius/rounded property.`,
+    );
+  }
+
+  const cardRadius =
+    data.components?.card?.radius?.trim() || data.borders?.radii?.card?.trim();
+  if (cardRadius) {
+    lines.push(
+      `- Card radius is measured as \`${cardRadius}\`. Keep it separate from the button radius and do not apply button geometry to cards.`,
+    );
+  }
+
+  if (data.borders?.radii?.pill?.trim()) {
+    lines.push(
+      `- A pill radius was observed as \`${data.borders.radii.pill.trim()}\`, but this is only for explicitly pill-shaped elements. Do not use it for normal Stripe-style rectangular CTAs unless the measured button radius is also pill-sized.`,
+    );
+  }
+
+  return lines.length
+    ? lines.join("\n")
+    : "- No locked component geometry was available from the deterministic pass.";
 }
 
 function summariseSignals(signals: ExtractedSignals): string {

@@ -30,6 +30,7 @@ import { getDb, schema } from "../server/db/index.js";
 import { useDemoBrandCache } from "../shared/flags.js";
 import type { DesignSystemData } from "../shared/api.js";
 import type { ExtractedSignals } from "../shared/extract-design-system.js";
+import { applyDeterministicRadiusFidelity } from "../shared/radius-fidelity.js";
 
 const ENRICH_MODEL = "claude-sonnet-4-6";
 const ENRICH_MAX_TOKENS = 64000;
@@ -271,18 +272,23 @@ export async function* enrichStream(
   const textBlocks = finalMessage.content.filter(
     (b): b is Anthropic.TextBlock => b.type === "text",
   );
-  const markdown =
+  const rawMarkdown =
     textBlocks
       .map((b) => b.text)
       .join("\n")
       .trim() || accumulatedText.trim();
 
-  if (!markdown) {
+  if (!rawMarkdown) {
     throw new Error(
       "Enrichment returned no text content. Stop reason: " +
         (finalMessage.stop_reason ?? "unknown"),
     );
   }
+
+  const markdown = applyDeterministicRadiusFidelity(
+    rawMarkdown,
+    input.designSystemData,
+  );
 
   const result: EnrichResult = {
     url: input.url,

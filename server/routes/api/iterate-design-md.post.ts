@@ -23,6 +23,7 @@ import {
   checkBlocklist,
 } from "../../../shared/iteration-security.js";
 import { createSseSender } from "../../lib/sse.js";
+import { applyDeterministicRadiusFidelity } from "../../../shared/radius-fidelity.js";
 
 const SECTION_RE = /^[a-z0-9-]{1,40}$/;
 
@@ -161,7 +162,14 @@ export default defineEventHandler(async (event) => {
             sse.send("delta", { text: ev.text });
           } else {
             // done
-            const { type: _drop, ...result } = ev;
+            const { type: _drop, ...rawResult } = ev;
+            const result = {
+              ...rawResult,
+              markdown: applyDeterministicRadiusFidelity(
+                rawResult.markdown,
+                designSystemData,
+              ),
+            };
             await insertSuccess({
               id,
               sessionId,
