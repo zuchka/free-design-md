@@ -57,4 +57,13 @@ describe("renderEnrichedPreview", () => {
     expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
     expect(html).not.toContain("<img src=x onerror=alert(1)>");
   });
+
+  it("prefers the explicit button radius token over pill radius", () => {
+    const data = enrichedData();
+    data.rounded = { button: "4px", pill: "9999px", md: "8px" };
+
+    const html = renderEnrichedPreview(data, "");
+    expect(html).toContain("--eds-button-radius: 4px;");
+    expect(html).toContain("--eds-card-radius: 8px;");
+  });
 });

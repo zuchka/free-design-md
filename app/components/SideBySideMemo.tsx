@@ -38,9 +38,15 @@ export default function SideBySideMemo({
           </pre>
         </Pane>
         <Pane title={isStreaming ? "New (streaming…)" : "New"}>
-          <pre className="overflow-auto whitespace-pre-wrap text-xs leading-relaxed">
-            {next}
-          </pre>
+          {next ? (
+            <pre className="overflow-auto whitespace-pre-wrap text-xs leading-relaxed">
+              {next}
+            </pre>
+          ) : (
+            <div className="rounded-md border border-dashed bg-muted/30 px-3 py-8 text-center text-xs text-muted-foreground">
+              Waiting for the first streamed tokens…
+            </div>
+          )}
         </Pane>
       </div>
       {candidatePending && !isStreaming && (

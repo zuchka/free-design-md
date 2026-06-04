@@ -196,6 +196,7 @@ export default function SavedDesignRoute() {
     previewSource === "candidate" &&
     candidateMarkdown.length > 0 &&
     candidatePreviewHtml === null;
+  const hasCandidateComparison = isIterating || candidateMarkdown.length > 0;
   const iterationSectionOptions = useMemo(
     () => extractSectionList(saved?.enrichedMarkdown ?? ""),
     [saved?.enrichedMarkdown],
@@ -597,7 +598,7 @@ export default function SavedDesignRoute() {
             </form>
           </section>
 
-          {candidateMarkdown && (
+          {hasCandidateComparison && saved && (
             <SideBySideMemo
               previous={saved.enrichedMarkdown}
               next={candidateMarkdown}
@@ -612,7 +613,7 @@ export default function SavedDesignRoute() {
             title="Preview from tokens"
             action={
               <div className="flex items-center gap-2">
-                {candidateMarkdown && (
+                {hasCandidateComparison && (
                   <div className="flex overflow-hidden rounded-md border text-xs">
                     <button
                       type="button"

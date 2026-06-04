@@ -25,6 +25,7 @@ import {
   INPUT_CAPS,
   checkBlocklist,
 } from "../../../../../shared/iteration-security.js";
+import { applyDeterministicRadiusFidelity } from "../../../../../shared/radius-fidelity.js";
 
 const SECTION_RE = /^[a-z0-9-]{1,40}$/;
 
@@ -143,7 +144,14 @@ export default defineEventHandler(async (event) => {
           if (ev.type === "delta") {
             sse.send("delta", { text: ev.text });
           } else {
-            const { type: _drop, ...result } = ev;
+            const { type: _drop, ...rawResult } = ev;
+            const result = {
+              ...rawResult,
+              markdown: applyDeterministicRadiusFidelity(
+                rawResult.markdown,
+                parent.designSystemData,
+              ),
+            };
             const saved = await saveEnrichmentSnapshot({
               owner: saveOwner,
               sourceUrl: parent.sourceUrl,

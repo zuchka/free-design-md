@@ -116,6 +116,7 @@ Reply with ONLY the DESIGN.md file content, starting with the '---' YAML frontma
 
   const designSystemJson = JSON.stringify(designSystemData, null, 2);
   const signalsSummary = summariseSignals(signals);
+  const geometryLocks = summariseGeometryLocks(designSystemData);
 
   const userText = `Enrich the DESIGN.md for: **${url}**
 
@@ -130,6 +131,10 @@ ${deterministicMarkdown}
 \`\`\`json
 ${designSystemJson}
 \`\`\`
+
+## Deterministic token locks
+
+${geometryLocks}
 
 ## Additional signals from the live page
 
@@ -160,6 +165,37 @@ Reply with the DESIGN.md file content only.`;
     ],
     userText,
   };
+}
+
+function summariseGeometryLocks(data: DesignSystemData): string {
+  const lines: string[] = [];
+  const buttonRadius =
+    data.components?.button?.primary?.radius?.trim() ||
+    data.borders?.radii?.button?.trim() ||
+    "";
+  if (buttonRadius) {
+    lines.push(
+      `- Button/CTA radius is measured as \`${buttonRadius}\`. Define \`rounded.button: "${buttonRadius}"\` and make every button/CTA component use \`"{rounded.button}"\` for its radius/rounded property.`,
+    );
+  }
+
+  const cardRadius =
+    data.components?.card?.radius?.trim() || data.borders?.radii?.card?.trim();
+  if (cardRadius) {
+    lines.push(
+      `- Card radius is measured as \`${cardRadius}\`. Keep it separate from the button radius and do not apply button geometry to cards.`,
+    );
+  }
+
+  if (data.borders?.radii?.pill?.trim()) {
+    lines.push(
+      `- A pill radius was observed as \`${data.borders.radii.pill.trim()}\`, but this is only for explicitly pill-shaped elements. Do not use it for normal Stripe-style rectangular CTAs unless the measured button radius is also pill-sized.`,
+    );
+  }
+
+  return lines.length
+    ? lines.join("\n")
+    : "- No locked component geometry was available from the deterministic pass.";
 }
 
 function summariseSignals(signals: ExtractedSignals): string {

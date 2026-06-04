@@ -117,7 +117,10 @@ export function renderEnrichedPreview(
       SAFE_SIZE,
     ) || "20px";
   const buttonRadius =
-    safe(pick(enriched.rounded, "pill", "xl", "lg", "md"), SAFE_SIZE) || radius;
+    safe(
+      pick(enriched.rounded, "button", "cta", "pill", "xl", "lg", "md"),
+      SAFE_SIZE,
+    ) || radius;
   const cardRadius =
     safe(pick(enriched.rounded, "xl", "lg", "md"), SAFE_SIZE) || radius;
 
