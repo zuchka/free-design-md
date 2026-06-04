@@ -525,6 +525,8 @@ export default function IndexRoute() {
   }
 
   const hasEnrichedContent = enriched !== null || streamingMarkdown.length > 0;
+  const showEnrichBanner =
+    !isLoading && !hasEnrichedContent && (!configured || result !== null);
   const currentMarkdown =
     view === "enriched"
       ? enriched
@@ -750,7 +752,7 @@ export default function IndexRoute() {
           </Button>
         </form>
 
-        {!isLoading && !hasEnrichedContent && (
+        {showEnrichBanner && (
           <div className="mb-8">
             <EnrichBanner
               isEnriching={isEnriching}
