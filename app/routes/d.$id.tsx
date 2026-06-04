@@ -22,6 +22,7 @@ import {
   type AiAccessRecoveryReason,
 } from "@/lib/ai-access-errors";
 import { announceAgentActivity } from "@/lib/agent-activity";
+import { publishDesignContext } from "@/lib/agent-design-context";
 import { renderPreview } from "../../shared/preview-template";
 import {
   extractSectionList,
@@ -124,6 +125,16 @@ export default function SavedDesignRoute() {
 
   useEffect(() => {
     if (!saved?.enrichedMarkdown) return;
+    void publishDesignContext({
+      url: saved.sourceUrl,
+      title: saved.signals?.title ?? saved.title,
+      stage: "enriched",
+      deterministicMarkdown: saved.deterministicMarkdown,
+      currentMarkdown: saved.enrichedMarkdown,
+      designSystemData: saved.designSystemData,
+      savedDesignId: saved.id,
+      savedDesignUrl: `/d/${saved.id}`,
+    });
     updateMcpAppModelContext({
       content: [
         {
