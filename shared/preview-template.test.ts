@@ -105,6 +105,28 @@ describe("renderPreview", () => {
     expect(html).toContain("Stripe");
   });
 
+  it("uses the deterministic description as the landing page lede", () => {
+    const html = renderPreview(fullData(), {
+      title: "Stripe",
+      designMd:
+        '---\nname: Stripe\ndescription: "Measured Stripe system prose."\n---\n',
+    });
+    expect(html).toContain('<p class="lede">Measured Stripe system prose.</p>');
+    expect(html).not.toContain(
+      "A synthetic landing page styled with the design system extracted from the live site.",
+    );
+  });
+
+  it("escapes deterministic description HTML in the landing page lede", () => {
+    const html = renderPreview(fullData(), {
+      title: "Stripe",
+      designMd:
+        '---\nname: Stripe\ndescription: "<script>alert(1)</script>"\n---\n',
+    });
+    expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(html).not.toContain("<script>alert(1)</script>");
+  });
+
   it("falls back to a default brand name when title is omitted", () => {
     const html = renderPreview(fullData());
     // Some non-empty default should be present in the header brand slot
@@ -208,7 +230,7 @@ describe("renderPreview", () => {
 
   it("preserves separate stacks for heading vs body", () => {
     const data = fullData();
-    data.typography.headingFontStack = 'Mackinac, ui-serif, serif';
+    data.typography.headingFontStack = "Mackinac, ui-serif, serif";
     data.typography.bodyFontStack =
       '"Fricolage Grotesque", ui-sans-serif, system-ui, sans-serif';
     const html = renderPreview(data);
@@ -405,7 +427,17 @@ describe("showcase — components", () => {
   it("renders live button with extracted styles", () => {
     const data = fullData();
     data.components = {
-      button: { primary: { background: "#635bff", color: "#ffffff", radius: "6px", padding: "12px 22px", fontSize: "15px", fontWeight: "600", border: "" } },
+      button: {
+        primary: {
+          background: "#635bff",
+          color: "#ffffff",
+          radius: "6px",
+          padding: "12px 22px",
+          fontSize: "15px",
+          fontWeight: "600",
+          border: "",
+        },
+      },
     };
     const html = renderPreview(data, { title: "Acme" });
     expect(html).toContain("sc-component-section");
@@ -423,7 +455,10 @@ describe("showcase — components", () => {
 describe("showcase — design.md source", () => {
   it("renders raw design.md when opts.designMd is provided", () => {
     const data = fullData();
-    const html = renderPreview(data, { title: "Acme", designMd: "---\nname: Acme\n---\n\n## Overview\n" });
+    const html = renderPreview(data, {
+      title: "Acme",
+      designMd: "---\nname: Acme\n---\n\n## Overview\n",
+    });
     expect(html).toContain("sc-source-block");
     expect(html).toContain("name: Acme");
   });

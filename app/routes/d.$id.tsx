@@ -23,7 +23,10 @@ import {
 } from "@/lib/ai-access-errors";
 import { announceAgentActivity } from "@/lib/agent-activity";
 import { renderPreview } from "../../shared/preview-template";
-import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
+import {
+  extractSectionList,
+  parseEnrichedFrontmatter,
+} from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
 import type { DesignSystemData } from "../../shared/api";
 
@@ -56,6 +59,20 @@ export function meta() {
   ];
 }
 
+function formatSectionLabel(section: string): string {
+  const knownLabels: Record<string, string> = {
+    "do-s-and-don-ts": "Do's and Don'ts",
+    "elevation-depth": "Elevation & Depth",
+    "border-radii": "Border Radii",
+  };
+  if (knownLabels[section]) return knownLabels[section];
+  return section
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default function SavedDesignRoute() {
   const { id } = useParams();
   const [saved, setSaved] = useState<PublicSavedEnrichment | null>(null);
@@ -66,6 +83,7 @@ export default function SavedDesignRoute() {
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
   const [iterationPrompt, setIterationPrompt] = useState("");
+  const [iterationSectionTarget, setIterationSectionTarget] = useState("");
   const [isIterating, setIsIterating] = useState(false);
   const [iterationError, setIterationError] = useState<string | null>(null);
   const [iterationRecoveryReason, setIterationRecoveryReason] =
@@ -179,6 +197,19 @@ export default function SavedDesignRoute() {
     candidateMarkdown.length > 0 &&
     candidatePreviewHtml === null;
   const hasCandidateComparison = isIterating || candidateMarkdown.length > 0;
+  const iterationSectionOptions = useMemo(
+    () => extractSectionList(saved?.enrichedMarkdown ?? ""),
+    [saved?.enrichedMarkdown],
+  );
+
+  useEffect(() => {
+    if (
+      iterationSectionTarget &&
+      !iterationSectionOptions.includes(iterationSectionTarget)
+    ) {
+      setIterationSectionTarget("");
+    }
+  }, [iterationSectionOptions, iterationSectionTarget]);
 
   async function copyLink() {
     await navigator.clipboard.writeText(window.location.href);
@@ -210,7 +241,10 @@ export default function SavedDesignRoute() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userPrompt: iterationPrompt.trim() }),
+          body: JSON.stringify({
+            userPrompt: iterationPrompt.trim(),
+            sectionTarget: iterationSectionTarget || undefined,
+          }),
         },
       );
       if (!res.ok || !res.body) {
@@ -284,6 +318,9 @@ export default function SavedDesignRoute() {
       setIterationRecoveryReason(
         (current) => current ?? classifyAiAccessErrorMessage(message),
       );
+      setCandidateMarkdown("");
+      setCandidateSavedUrl(null);
+      setPreviewSource("current");
     } finally {
       setIsIterating(false);
     }
@@ -468,6 +505,32 @@ export default function SavedDesignRoute() {
                     disabled={isIterating}
                   />
                 </div>
+                {iterationSectionOptions.length > 0 && (
+                  <div className="w-full lg:w-56">
+                    <label
+                      htmlFor="iteration-scope"
+                      className="text-sm font-semibold tracking-tight"
+                    >
+                      Scope
+                    </label>
+                    <select
+                      id="iteration-scope"
+                      value={iterationSectionTarget}
+                      onChange={(e) =>
+                        setIterationSectionTarget(e.target.value)
+                      }
+                      disabled={isIterating}
+                      className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition-colors focus:border-primary"
+                    >
+                      <option value="">Whole document</option>
+                      {iterationSectionOptions.map((section) => (
+                        <option key={section} value={section}>
+                          {formatSectionLabel(section)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="flex shrink-0 gap-2">
                   {(candidateMarkdown || iterationError) && (
                     <Button

@@ -12,7 +12,12 @@ function makeMockStream(text: string, stopReason: string = "end_turn") {
   const stream: AsyncIterable<unknown> & {
     finalMessage(): Promise<{
       content: { type: string; text: string }[];
-      usage: { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
+      usage: {
+        input_tokens: number;
+        output_tokens: number;
+        cache_read_input_tokens?: number;
+        cache_creation_input_tokens?: number;
+      };
       stop_reason: string;
       model: string;
     }>;
@@ -21,7 +26,12 @@ function makeMockStream(text: string, stopReason: string = "end_turn") {
     async finalMessage() {
       return {
         content: [{ type: "text", text }],
-        usage: { input_tokens: 100, output_tokens: 200, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+        usage: {
+          input_tokens: 100,
+          output_tokens: 200,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+        },
         stop_reason: stopReason,
         model: "claude-sonnet-4-6",
       };
@@ -49,8 +59,154 @@ beforeEach(() => {
 
 import iterateAction, { iterateStream } from "./iterate-design-md";
 
-const FAKE_PREV = ["---", "name: X", "url: https://x.com", "---", "", "## Colors", "Primary: #000"].join("\n");
-const VALID_OUTPUT = ["---", "name: X", "url: https://x.com", "---", "", "## Colors", "Primary: #635bff"].join("\n");
+const FAKE_PREV = [
+  "---",
+  "name: X",
+  "url: https://x.com",
+  "---",
+  "",
+  "## Colors",
+  "Primary: #000",
+].join("\n");
+const VALID_OUTPUT = [
+  "---",
+  "name: X",
+  "url: https://x.com",
+  "---",
+  "",
+  "## Colors",
+  "Primary: #635bff",
+].join("\n");
+const DARK_PREV = `---
+name: Stripe
+colors:
+  primary: "#533afd"
+  on-primary: "#ffffff"
+  ink: "#061b31"
+  body: "#061b31"
+  mute: "#425466"
+  hairline: "#d0d8e4"
+  canvas: "#ffffff"
+  canvas-soft: "#f2f7fe"
+components:
+  card-feature:
+    backgroundColor: "{colors.canvas-soft}"
+    textColor: "{colors.ink}"
+    borderColor: "{colors.hairline}"
+---
+
+## Overview
+Light mode Stripe memo.
+`;
+const DARK_ALTERNATES_ONLY = `---
+name: Stripe
+colors:
+  primary: "#533afd"
+  on-primary: "#ffffff"
+  ink: "#061b31"
+  body: "#061b31"
+  mute: "#425466"
+  hairline: "#d0d8e4"
+  canvas: "#ffffff"
+  canvas-soft: "#f2f7fe"
+  dark-canvas: "#061b31"
+  dark-ink: "#e8f0fb"
+  dark-hairline: "#1a3a5c"
+components:
+  card-feature:
+    backgroundColor: "{colors.canvas-soft}"
+    textColor: "{colors.ink}"
+    borderColor: "{colors.hairline}"
+  dark-card-feature:
+    backgroundColor: "{colors.dark-canvas}"
+    textColor: "{colors.dark-ink}"
+    borderColor: "{colors.dark-hairline}"
+---
+
+## Overview
+This now includes a dark mode.
+`;
+const DARK_CANONICAL_OUTPUT = `---
+name: Stripe
+colors:
+  primary: "#6b55fd"
+  on-primary: "#ffffff"
+  ink: "#e8f0fb"
+  body: "#d6e2f0"
+  mute: "#7a9bbf"
+  hairline: "#1a3a5c"
+  canvas: "#061b31"
+  canvas-soft: "#0c2340"
+components:
+  card-feature:
+    backgroundColor: "{colors.canvas-soft}"
+    textColor: "{colors.ink}"
+    borderColor: "{colors.hairline}"
+---
+
+## Overview
+The default system is now dark.
+`;
+const SCOPED_PREV = `---
+name: Stripe
+colors:
+  canvas: "#ffffff"
+typography:
+  body-md:
+    fontSize: 16px
+spacing:
+  md: 16px
+components:
+  card:
+    padding: "{spacing.md}"
+---
+
+## Typography
+Original type prose.
+
+## Layout
+Original layout prose.
+`;
+const SCOPED_BAD_OUTPUT = `---
+name: Stripe
+colors:
+  canvas: "#ffffff"
+typography:
+  body-md:
+    fontSize: 18px
+spacing:
+  md: 20px
+components:
+  card:
+    padding: "{spacing.md}"
+---
+
+## Typography
+Updated type prose.
+
+## Layout
+Original layout prose.
+`;
+const SCOPED_GOOD_OUTPUT = `---
+name: Stripe
+colors:
+  canvas: "#ffffff"
+typography:
+  body-md:
+    fontSize: 18px
+spacing:
+  md: 16px
+components:
+  card:
+    padding: "{spacing.md}"
+---
+
+## Typography
+Updated type prose.
+
+## Layout
+Original layout prose.
+`;
 
 describe("iterate-design-md action", () => {
   it("rejects oversized userPrompt before any LLM call", async () => {
@@ -70,6 +226,19 @@ describe("iterate-design-md action", () => {
         userPrompt: "Make it pop.",
       }),
     ).rejects.toThrow(/previousMarkdown.*too long|too long.*previousMarkdown/i);
+    expect(mockStream).not.toHaveBeenCalled();
+  });
+
+  it("rejects oversized deterministicMarkdown before any LLM call", async () => {
+    await expect(
+      iterateAction.run({
+        previousMarkdown: FAKE_PREV,
+        deterministicMarkdown: "x".repeat(200_001),
+        userPrompt: "Use the measured values.",
+      }),
+    ).rejects.toThrow(
+      /deterministicMarkdown.*too long|too long.*deterministicMarkdown/i,
+    );
     expect(mockStream).not.toHaveBeenCalled();
   });
 
@@ -107,6 +276,83 @@ describe("iterate-design-md action", () => {
     expect(typeof r.latencyMs).toBe("number");
   });
 
+  it("rejects dark-mode outputs that only append alternate dark tokens", async () => {
+    mockStream
+      .mockReturnValueOnce(makeMockStream(DARK_ALTERNATES_ONLY))
+      .mockReturnValueOnce(makeMockStream(DARK_ALTERNATES_ONLY));
+    await expect(
+      iterateAction.run({
+        previousMarkdown: DARK_PREV,
+        userPrompt:
+          "Turn this into a dark mode version, but keep the brand voice.",
+      }),
+    ).rejects.toThrow(/dark_mode_added_alternate_tokens_only/i);
+    expect(mockStream).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries dark-mode outputs that only append alternate dark tokens", async () => {
+    mockStream
+      .mockReturnValueOnce(makeMockStream(DARK_ALTERNATES_ONLY))
+      .mockReturnValueOnce(makeMockStream(DARK_CANONICAL_OUTPUT));
+    const r = await iterateAction.run({
+      previousMarkdown: DARK_PREV,
+      userPrompt:
+        "Turn this into a dark mode version, but keep the brand voice.",
+    });
+    expect(mockStream).toHaveBeenCalledTimes(2);
+    expect(r.markdown).toContain('canvas: "#061b31"');
+  });
+
+  it("accepts dark-mode outputs that rewrite canonical active tokens", async () => {
+    mockStream.mockReturnValueOnce(makeMockStream(DARK_CANONICAL_OUTPUT));
+    const r = await iterateAction.run({
+      previousMarkdown: DARK_PREV,
+      userPrompt:
+        "Turn this into a dark mode version, but keep the brand voice.",
+    });
+    expect(r.markdown).toContain('canvas: "#061b31"');
+    expect(r.markdown).toContain('ink: "#e8f0fb"');
+  });
+
+  it("rejects scoped outputs that alter unrelated token groups", async () => {
+    mockStream.mockReturnValueOnce(makeMockStream(SCOPED_BAD_OUTPUT));
+    await expect(
+      iterateAction.run({
+        previousMarkdown: SCOPED_PREV,
+        userPrompt: "Make the type larger.",
+        sectionTarget: "typography",
+      }),
+    ).rejects.toThrow(/section_scope_frontmatter_changed:spacing/i);
+  });
+
+  it("accepts scoped outputs that only alter the target token group", async () => {
+    mockStream.mockReturnValueOnce(makeMockStream(SCOPED_GOOD_OUTPUT));
+    const r = await iterateAction.run({
+      previousMarkdown: SCOPED_PREV,
+      userPrompt: "Make the type larger.",
+      sectionTarget: "typography",
+    });
+    expect(r.markdown).toContain("fontSize: 18px");
+    expect(r.markdown).toContain("md: 16px");
+  });
+
+  it("sends deterministic markdown to Anthropic when supplied", async () => {
+    mockStream.mockReturnValueOnce(makeMockStream(VALID_OUTPUT));
+    await iterateAction.run({
+      previousMarkdown: FAKE_PREV,
+      deterministicMarkdown: "---\nrounded:\n  button: 4px\n---\n",
+      userPrompt: "The primary button radius is wrong.",
+    });
+    const call = mockStream.mock.calls[0]?.[0] as {
+      messages?: { content?: { text?: string }[] }[];
+    };
+    const userText = call.messages?.[0]?.content?.find(
+      (part) => part.text,
+    )?.text;
+    expect(userText).toContain("<deterministic_memo_");
+    expect(userText).toContain("button: 4px");
+  });
+
   it("rejects output that fails shape validation", async () => {
     mockStream.mockReturnValueOnce(makeMockStream("Not a memo, just words."));
     await expect(
@@ -114,7 +360,9 @@ describe("iterate-design-md action", () => {
         previousMarkdown: FAKE_PREV,
         userPrompt: "Update the colors.",
       }),
-    ).rejects.toThrow(/output invalid.*missing_frontmatter|missing_frontmatter/i);
+    ).rejects.toThrow(
+      /output invalid.*missing_frontmatter|missing_frontmatter/i,
+    );
   });
 
   it("rejects output that leaks the system prompt", async () => {

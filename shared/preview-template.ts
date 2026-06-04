@@ -14,9 +14,11 @@ const SAFE_STACK = /^[a-zA-Z0-9 ,'"._\-]+$/;
 export const SAFE_SIZE = /^\d+(\.\d+)?(px|rem|em|%)$/;
 const SAFE_WEIGHT = /^[1-9]00$|^\d{3}$/;
 // Padding shorthand: one to four space-separated length values.
-const SAFE_PADDING = /^\d+(\.\d+)?(px|rem|em|%)(\s+\d+(\.\d+)?(px|rem|em|%)){0,3}$/;
+const SAFE_PADDING =
+  /^\d+(\.\d+)?(px|rem|em|%)(\s+\d+(\.\d+)?(px|rem|em|%)){0,3}$/;
 // Border shorthand: "<width> <style> <color>" e.g. "1px solid #e5e5e5".
-const SAFE_BORDER = /^\d+(\.\d+)?(px|rem|em)\s+(solid|dashed|dotted|double)\s+#[0-9a-fA-F]{3,8}$/;
+const SAFE_BORDER =
+  /^\d+(\.\d+)?(px|rem|em)\s+(solid|dashed|dotted|double)\s+#[0-9a-fA-F]{3,8}$/;
 
 export function safe(value: string, pattern: RegExp): string {
   if (!value) return "";
@@ -33,15 +35,38 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-const COLOR_LABELS: { key: keyof DesignSystemData["colors"]; label: string }[] = [
-  { key: "primary",    label: "Primary"    },
-  { key: "secondary",  label: "Secondary"  },
-  { key: "accent",     label: "Accent"     },
-  { key: "background", label: "Background" },
-  { key: "surface",    label: "Surface"    },
-  { key: "text",       label: "Text"       },
-  { key: "textMuted",  label: "Text Muted" },
-];
+function extractDescriptionFromDesignMd(markdown: string | undefined): string {
+  if (!markdown) return "";
+  const match = markdown
+    .trim()
+    .replace(/\r\n/g, "\n")
+    .match(/^---\s*\n([\s\S]*?)\n---/);
+  if (!match?.[1]) return "";
+  const line = match[1]
+    .split("\n")
+    .find((candidate) => /^description:\s*/.test(candidate.trim()));
+  if (!line) return "";
+  const raw = line.replace(/^\s*description:\s*/, "").trim();
+  if (!raw) return "";
+  if (
+    (raw.startsWith('"') && raw.endsWith('"')) ||
+    (raw.startsWith("'") && raw.endsWith("'"))
+  ) {
+    return raw.slice(1, -1).replace(/\\"/g, '"').replace(/\\'/g, "'");
+  }
+  return raw;
+}
+
+const COLOR_LABELS: { key: keyof DesignSystemData["colors"]; label: string }[] =
+  [
+    { key: "primary", label: "Primary" },
+    { key: "secondary", label: "Secondary" },
+    { key: "accent", label: "Accent" },
+    { key: "background", label: "Background" },
+    { key: "surface", label: "Surface" },
+    { key: "text", label: "Text" },
+    { key: "textMuted", label: "Text Muted" },
+  ];
 
 function buildFontFamily(stack: string, primary: string): string {
   // Use the brand's full captured stack verbatim when it survives sanitization
@@ -59,8 +84,9 @@ function buildFontFamily(stack: string, primary: string): string {
 
 function renderShowcase(data: DesignSystemData, designMd: string): string {
   // ── Colors ──────────────────────────────────────────────────
-  const colorSwatches = COLOR_LABELS
-    .filter(({ key }) => (data.colors[key] ?? "").trim())
+  const colorSwatches = COLOR_LABELS.filter(({ key }) =>
+    (data.colors[key] ?? "").trim(),
+  )
     .map(({ key, label }) => {
       const value = safe(data.colors[key].trim(), SAFE_COLOR);
       if (!value) return null;
@@ -82,14 +108,27 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
 
   // ── Typography ───────────────────────────────────────────
   const headingSamples = [
-    { size: safe(data.typography.headingSizes.h1, SAFE_SIZE) || "56px", label: "Heading 1" },
-    { size: safe(data.typography.headingSizes.h2, SAFE_SIZE) || "32px", label: "Heading 2" },
-    { size: safe(data.typography.headingSizes.h3, SAFE_SIZE) || "20px", label: "Heading 3" },
-  ].map(({ size, label }) => `
+    {
+      size: safe(data.typography.headingSizes.h1, SAFE_SIZE) || "56px",
+      label: "Heading 1",
+    },
+    {
+      size: safe(data.typography.headingSizes.h2, SAFE_SIZE) || "32px",
+      label: "Heading 2",
+    },
+    {
+      size: safe(data.typography.headingSizes.h3, SAFE_SIZE) || "20px",
+      label: "Heading 3",
+    },
+  ]
+    .map(
+      ({ size, label }) => `
   <div class="sc-type-sample">
     <div class="sc-type-specimen" style="font-family:var(--ds-heading-font);font-weight:var(--ds-heading-weight);font-size:${size};line-height:1.1;">The quick brown fox</div>
     <div class="sc-type-meta">${escapeHtml(label)} · ${escapeHtml(size)} · weight ${escapeHtml(safe(data.typography.headingWeight, SAFE_WEIGHT) || "700")}</div>
-  </div>`).join("\n");
+  </div>`,
+    )
+    .join("\n");
 
   const bodyLabel = `Body / Regular · ${escapeHtml(safe(data.typography.bodyFont, SAFE_FONT) || "system-ui")} · weight ${escapeHtml(safe(data.typography.bodyWeight, SAFE_WEIGHT) || "400")}`;
   const bodySample = `
@@ -123,14 +162,16 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
 <section class="sc-section">
       <h2 class="sc-section-title">Spacing Scale</h2>
       <div class="sc-spacing-track">
-        ${scale.map((v) => {
-          const sv = safe(v, SAFE_SIZE);
-          if (!sv) return "";
-          return `<div class="sc-spacing-item">
+        ${scale
+          .map((v) => {
+            const sv = safe(v, SAFE_SIZE);
+            if (!sv) return "";
+            return `<div class="sc-spacing-item">
             <div class="sc-spacing-bar" style="width:${escapeHtml(sv)};height:${escapeHtml(sv)};"></div>
             <div class="sc-spacing-val">${escapeHtml(sv)}</div>
           </div>`;
-        }).join("\n")}
+          })
+          .join("\n")}
       </div>
     </section>`
     : "";
@@ -138,9 +179,12 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
   // ── Border radii ─────────────────────────────────────────
   const radiiItems: { label: string; value: string }[] = [
     { label: "Default", value: safe(data.borders.radius, SAFE_SIZE) },
-    { label: "Button",  value: safe(data.borders.radii?.button ?? "", SAFE_SIZE) },
-    { label: "Card",    value: safe(data.borders.radii?.card   ?? "", SAFE_SIZE) },
-    { label: "Pill",    value: safe(data.borders.radii?.pill   ?? "", SAFE_SIZE) },
+    {
+      label: "Button",
+      value: safe(data.borders.radii?.button ?? "", SAFE_SIZE),
+    },
+    { label: "Card", value: safe(data.borders.radii?.card ?? "", SAFE_SIZE) },
+    { label: "Pill", value: safe(data.borders.radii?.pill ?? "", SAFE_SIZE) },
   ].filter(({ value }) => value);
 
   const radiiSection = radiiItems.length
@@ -154,12 +198,16 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
 <section class="sc-section">
       <h2 class="sc-section-title">Border Radii</h2>
       <div class="sc-swatches">
-        ${radiiItems.map(({ label, value }) => `
+        ${radiiItems
+          .map(
+            ({ label, value }) => `
           <div class="sc-swatch">
             <div class="sc-radius-chip" style="border-radius:${escapeHtml(value)};"></div>
             <div class="sc-swatch-label">${escapeHtml(label)}</div>
             <div class="sc-swatch-value">${escapeHtml(value)}</div>
-          </div>`).join("\n")}
+          </div>`,
+          )
+          .join("\n")}
       </div>
     </section>`
     : "";
@@ -172,47 +220,75 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
     const card = comps.card;
     const link = comps.link;
     const hasButton = !!(bp && (bp.background || bp.color || bp.radius));
-    const hasCard = !!(card && (card.background || card.border || card.padding));
+    const hasCard = !!(
+      card &&
+      (card.background || card.border || card.padding)
+    );
     const hasLink = !!(link && link.color);
 
     if (hasButton || hasCard || hasLink) {
-      const btnBg = safe(bp?.background ?? "", SAFE_COLOR) || "var(--ds-primary)";
+      const btnBg =
+        safe(bp?.background ?? "", SAFE_COLOR) || "var(--ds-primary)";
       const btnColor = safe(bp?.color ?? "", SAFE_COLOR) || "var(--ds-bg)";
-      const btnRadius = safe(bp?.radius ?? "", SAFE_SIZE) || "var(--ds-button-radius)";
+      const btnRadius =
+        safe(bp?.radius ?? "", SAFE_SIZE) || "var(--ds-button-radius)";
       const btnPad = safe(bp?.padding ?? "", SAFE_PADDING) || "12px 22px";
       const btnFs = safe(bp?.fontSize ?? "", SAFE_SIZE) || "15px";
       const btnFw = safe(bp?.fontWeight ?? "", SAFE_WEIGHT) || "600";
 
-      const cardBgC = safe(card?.background ?? "", SAFE_COLOR) || "var(--ds-bg)";
-      const cardBorderC = safe(card?.border ?? "", SAFE_BORDER) || "1px solid var(--ds-border)";
-      const cardRadiusC = safe(card?.radius ?? "", SAFE_SIZE) || "var(--ds-card-radius)";
+      const cardBgC =
+        safe(card?.background ?? "", SAFE_COLOR) || "var(--ds-bg)";
+      const cardBorderC =
+        safe(card?.border ?? "", SAFE_BORDER) || "1px solid var(--ds-border)";
+      const cardRadiusC =
+        safe(card?.radius ?? "", SAFE_SIZE) || "var(--ds-card-radius)";
       const cardPadC = safe(card?.padding ?? "", SAFE_PADDING) || "24px";
 
-      const linkColorC = safe(link?.color ?? "", SAFE_COLOR) || "var(--ds-primary)";
-      const linkDeco = (link?.textDecoration ?? "").trim() === "underline" ? "underline" : "none";
+      const linkColorC =
+        safe(link?.color ?? "", SAFE_COLOR) || "var(--ds-primary)";
+      const linkDeco =
+        (link?.textDecoration ?? "").trim() === "underline"
+          ? "underline"
+          : "none";
 
       componentSection = `<section class="sc-section sc-component-section">
       <h2 class="sc-section-title">Components</h2>
       <div class="sc-comp-grid">
-        ${hasButton ? `<div class="sc-comp-item">
+        ${
+          hasButton
+            ? `<div class="sc-comp-item">
           <button style="background:${btnBg};color:${btnColor};border-radius:${btnRadius};padding:${btnPad};font-size:${btnFs};font-weight:${btnFw};border:0;font-family:var(--ds-body-font);cursor:pointer;">Get started</button>
           <div class="sc-comp-label">Primary Button</div>
-        </div>` : ""}
-        ${hasButton ? `<div class="sc-comp-item">
+        </div>`
+            : ""
+        }
+        ${
+          hasButton
+            ? `<div class="sc-comp-item">
           <button style="background:transparent;color:var(--ds-text);border-radius:${btnRadius};padding:${btnPad};font-size:${btnFs};font-weight:${btnFw};border:1px solid var(--ds-border);font-family:var(--ds-body-font);cursor:pointer;">Learn more</button>
           <div class="sc-comp-label">Ghost Button</div>
-        </div>` : ""}
-        ${hasCard ? `<div class="sc-comp-item">
+        </div>`
+            : ""
+        }
+        ${
+          hasCard
+            ? `<div class="sc-comp-item">
           <div style="background:${cardBgC};border:${cardBorderC};border-radius:${cardRadiusC};padding:${cardPadC};max-width:220px;">
             <div style="font-family:var(--ds-heading-font);font-weight:var(--ds-heading-weight);font-size:var(--ds-h3-size);margin:0 0 8px 0;">Card Title</div>
             <div style="font-size:14px;color:var(--ds-muted);">Sample card body text extracted from the site.</div>
           </div>
           <div class="sc-comp-label">Card</div>
-        </div>` : ""}
-        ${hasLink ? `<div class="sc-comp-item">
+        </div>`
+            : ""
+        }
+        ${
+          hasLink
+            ? `<div class="sc-comp-item">
           <a style="color:${linkColorC};text-decoration:${linkDeco};font-family:var(--ds-body-font);">Example link text</a>
           <div class="sc-comp-label">Link</div>
-        </div>` : ""}
+        </div>`
+            : ""
+        }
       </div>
     </section>`;
     }
@@ -264,6 +340,16 @@ export function renderPreview(
   const title = (opts.title ?? "Brand").trim() || "Brand";
   const safeTitle = escapeHtml(title);
   const initial = escapeHtml((title.charAt(0) || "B").toUpperCase());
+  const maybeLegacyData = data as unknown as { description?: unknown };
+  const legacyDescription =
+    typeof maybeLegacyData.description === "string"
+      ? maybeLegacyData.description
+      : "";
+  const lede = escapeHtml(
+    extractDescriptionFromDesignMd(opts.designMd).trim() ||
+      legacyDescription.trim() ||
+      "A synthetic landing page styled with the design system extracted from the live site. Squint — does it feel like the brand?",
+  );
 
   const primary = safe(data.colors.primary, SAFE_COLOR);
   const bg = safe(data.colors.background, SAFE_COLOR) || "#ffffff";
@@ -308,7 +394,8 @@ export function renderPreview(
   const buttonFontSize =
     safe(data.components?.button?.primary?.fontSize ?? "", SAFE_SIZE) || "15px";
   const buttonFontWeight =
-    safe(data.components?.button?.primary?.fontWeight ?? "", SAFE_WEIGHT) || "600";
+    safe(data.components?.button?.primary?.fontWeight ?? "", SAFE_WEIGHT) ||
+    "600";
   const buttonBorder = safe(
     data.components?.button?.primary?.border ?? "",
     SAFE_BORDER,
@@ -565,7 +652,7 @@ footer {
   <section class="hero">
     <div class="label">Built with extracted tokens</div>
     <h1>This is what ${safeTitle} could look like.</h1>
-    <p class="lede">A synthetic landing page styled with the design system extracted from the live site. Squint — does it feel like the brand?</p>
+    <p class="lede">${lede}</p>
     <div class="ctas">
       <button class="${primaryButtonClass}">Get started</button>
       <button class="ghost">Read docs</button>

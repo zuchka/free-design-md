@@ -1,10 +1,14 @@
-import type { EnrichedFrontmatter, EnrichedTypographyScale } from "./parse-enriched-design-md";
+import type {
+  EnrichedFrontmatter,
+  EnrichedTypographyScale,
+} from "./parse-enriched-design-md";
 import { buildTokenMap, resolveTokenRefs } from "./parse-enriched-design-md";
 import { safe, escapeHtml, SAFE_COLOR, SAFE_SIZE } from "./preview-template";
 
 const SAFE_WEIGHT = /^[1-9]00$|^\d{3}$/;
 const SAFE_LHEIGHT = /^\d+(\.\d+)?(px|rem|em|%)?$/;
-const SAFE_PADDING = /^\d+(\.\d+)?(px|rem|em|%)(\s+\d+(\.\d+)?(px|rem|em|%)){0,3}$/;
+const SAFE_PADDING =
+  /^\d+(\.\d+)?(px|rem|em|%)(\s+\d+(\.\d+)?(px|rem|em|%)){0,3}$/;
 const SAFE_STACK = /^[a-zA-Z0-9 ,'"._\-]+$/;
 
 function pick(map: Record<string, string>, ...keys: string[]): string {
@@ -35,59 +39,119 @@ export function renderEnrichedPreview(
   const tokenMap = buildTokenMap(enriched);
 
   // Base color tokens
-  const bg = safe(pick(enriched.colors, "canvas", "canvas-soft", "background"), SAFE_COLOR) || "#ffffff";
-  const text = safe(pick(enriched.colors, "ink", "text"), SAFE_COLOR) || "#1a1a1a";
+  const bg =
+    safe(
+      pick(enriched.colors, "canvas", "canvas-soft", "background"),
+      SAFE_COLOR,
+    ) || "#ffffff";
+  const text =
+    safe(pick(enriched.colors, "ink", "text"), SAFE_COLOR) || "#1a1a1a";
   const primary = safe(enriched.colors["primary"] ?? "", SAFE_COLOR) || "";
-  const border = safe(pick(enriched.colors, "hairline", "border"), SAFE_COLOR) || "";
+  const border =
+    safe(pick(enriched.colors, "hairline", "border"), SAFE_COLOR) || "";
   const radius = safe(pick(enriched.rounded, "md", "sm"), SAFE_SIZE) || "8px";
 
   // Landing page typography — search common enriched scale name patterns
-  const headingFont = safe(
-    findTypoProp(enriched.typography, "fontFamily", "display-xl", "display-lg", "display-md", "h1") || "system-ui, sans-serif",
-    SAFE_STACK,
-  ) || "system-ui, sans-serif";
-  const headingWeight = safe(
-    findTypoProp(enriched.typography, "fontWeight", "display-xl", "display-lg", "h1") || "700",
-    SAFE_WEIGHT,
-  ) || "700";
-  const bodyFont = safe(
-    findTypoProp(enriched.typography, "fontFamily", "body-md", "body-lg", "body", "body-sm") || "system-ui, sans-serif",
-    SAFE_STACK,
-  ) || "system-ui, sans-serif";
-  const bodyWeight = safe(
-    findTypoProp(enriched.typography, "fontWeight", "body-md", "body") || "400",
-    SAFE_WEIGHT,
-  ) || "400";
-  const h1Size = safe(
-    findTypoProp(enriched.typography, "fontSize", "display-xl", "display-lg", "h1") || "56px",
-    SAFE_SIZE,
-  ) || "56px";
-  const h3Size = safe(
-    findTypoProp(enriched.typography, "fontSize", "title", "display-sm", "h3", "body-lg") || "20px",
-    SAFE_SIZE,
-  ) || "20px";
-  const buttonRadius = safe(
-    pick(enriched.rounded, "button", "cta", "pill", "xl", "lg", "md"),
-    SAFE_SIZE,
-  ) || radius;
-  const cardRadius = safe(pick(enriched.rounded, "xl", "lg", "md"), SAFE_SIZE) || radius;
+  const headingFont =
+    safe(
+      findTypoProp(
+        enriched.typography,
+        "fontFamily",
+        "display-xl",
+        "display-lg",
+        "display-md",
+        "h1",
+      ) || "system-ui, sans-serif",
+      SAFE_STACK,
+    ) || "system-ui, sans-serif";
+  const headingWeight =
+    safe(
+      findTypoProp(
+        enriched.typography,
+        "fontWeight",
+        "display-xl",
+        "display-lg",
+        "h1",
+      ) || "700",
+      SAFE_WEIGHT,
+    ) || "700";
+  const bodyFont =
+    safe(
+      findTypoProp(
+        enriched.typography,
+        "fontFamily",
+        "body-md",
+        "body-lg",
+        "body",
+        "body-sm",
+      ) || "system-ui, sans-serif",
+      SAFE_STACK,
+    ) || "system-ui, sans-serif";
+  const bodyWeight =
+    safe(
+      findTypoProp(enriched.typography, "fontWeight", "body-md", "body") ||
+        "400",
+      SAFE_WEIGHT,
+    ) || "400";
+  const h1Size =
+    safe(
+      findTypoProp(
+        enriched.typography,
+        "fontSize",
+        "display-xl",
+        "display-lg",
+        "h1",
+      ) || "56px",
+      SAFE_SIZE,
+    ) || "56px";
+  const h3Size =
+    safe(
+      findTypoProp(
+        enriched.typography,
+        "fontSize",
+        "title",
+        "display-sm",
+        "h3",
+        "body-lg",
+      ) || "20px",
+      SAFE_SIZE,
+    ) || "20px";
+  const buttonRadius =
+    safe(
+      pick(enriched.rounded, "button", "cta", "pill", "xl", "lg", "md"),
+      SAFE_SIZE,
+    ) || radius;
+  const cardRadius =
+    safe(pick(enriched.rounded, "xl", "lg", "md"), SAFE_SIZE) || radius;
 
-  const safeTitle = escapeHtml((enriched.name ?? title ?? "Design System").trim());
-  const initial = escapeHtml(((enriched.name ?? title ?? "B").charAt(0) || "B").toUpperCase());
+  const safeTitle = escapeHtml(
+    (enriched.name ?? title ?? "Design System").trim(),
+  );
+  const initial = escapeHtml(
+    ((enriched.name ?? title ?? "B").charAt(0) || "B").toUpperCase(),
+  );
+  const lede = escapeHtml(
+    (enriched.description ?? "").trim() ||
+      "A synthetic landing page styled with the AI-enriched design system. Squint — does it feel like the brand?",
+  );
   const primaryVar = primary || "var(--eds-text)";
-  const borderVar = border || "color-mix(in srgb, var(--eds-text) 12%, var(--eds-bg))";
+  const borderVar =
+    border || "color-mix(in srgb, var(--eds-text) 12%, var(--eds-bg))";
 
   // ── Colors ────────────────────────────────────────────────────────────────────
   const colorEntries = Object.entries(enriched.colors);
-  const colorSwatches = colorEntries.map(([tokenName, value]) => {
-    const sv = safe(value, SAFE_COLOR);
-    if (!sv) return "";
-    return `<div class="eds-swatch">
+  const colorSwatches = colorEntries
+    .map(([tokenName, value]) => {
+      const sv = safe(value, SAFE_COLOR);
+      if (!sv) return "";
+      return `<div class="eds-swatch">
       <div class="eds-swatch-chip" style="background:${sv};"></div>
       <div class="eds-swatch-name">${escapeHtml(tokenName)}</div>
       <div class="eds-swatch-value">${escapeHtml(sv)}</div>
     </div>`;
-  }).filter(Boolean).join("\n");
+    })
+    .filter(Boolean)
+    .join("\n");
 
   const colorsSection = colorSwatches
     ? `<section class="eds-section">
@@ -98,25 +162,34 @@ export function renderEnrichedPreview(
 
   // ── Typography ────────────────────────────────────────────────────────────────
   const typographyEntries = Object.entries(enriched.typography);
-  const typeSamples = typographyEntries.map(([scaleName, scale]) => {
-    const fontSize = safe(scale.fontSize ?? "", SAFE_SIZE);
-    const fontWeight = safe(scale.fontWeight ?? "", SAFE_WEIGHT);
-    const lineHeight = safe(scale.lineHeight ?? "", SAFE_LHEIGHT);
-    const letterSpacing = safe(scale.letterSpacing ?? "", /^-?\d+(\.\d+)?(px|em|rem)$/);
-    const fontFamily = safe(scale.fontFamily ?? "system-ui, sans-serif", SAFE_STACK) || "system-ui, sans-serif";
-    const displaySize = fontSize || "16px";
-    const metaParts = [
-      fontSize,
-      fontWeight ? `weight ${fontWeight}` : "",
-      lineHeight ? `lh ${lineHeight}` : "",
-      letterSpacing ? `ls ${letterSpacing}` : "",
-    ].filter(Boolean).join(" · ");
-    return `<div class="eds-type-sample">
+  const typeSamples = typographyEntries
+    .map(([scaleName, scale]) => {
+      const fontSize = safe(scale.fontSize ?? "", SAFE_SIZE);
+      const fontWeight = safe(scale.fontWeight ?? "", SAFE_WEIGHT);
+      const lineHeight = safe(scale.lineHeight ?? "", SAFE_LHEIGHT);
+      const letterSpacing = safe(
+        scale.letterSpacing ?? "",
+        /^-?\d+(\.\d+)?(px|em|rem)$/,
+      );
+      const fontFamily =
+        safe(scale.fontFamily ?? "system-ui, sans-serif", SAFE_STACK) ||
+        "system-ui, sans-serif";
+      const displaySize = fontSize || "16px";
+      const metaParts = [
+        fontSize,
+        fontWeight ? `weight ${fontWeight}` : "",
+        lineHeight ? `lh ${lineHeight}` : "",
+        letterSpacing ? `ls ${letterSpacing}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return `<div class="eds-type-sample">
       <div class="eds-type-scale-name">${escapeHtml(scaleName)}</div>
       <div class="eds-type-specimen" style="font-size:${escapeHtml(displaySize)};font-weight:${escapeHtml(fontWeight || "400")};line-height:${escapeHtml(lineHeight || "1.4")};letter-spacing:${escapeHtml(letterSpacing || "0")};font-family:${escapeHtml(fontFamily)};">The quick brown fox</div>
       <div class="eds-type-meta">${escapeHtml(metaParts)}</div>
     </div>`;
-  }).join("\n");
+    })
+    .join("\n");
 
   const typographySection = typeSamples
     ? `<section class="eds-section">
@@ -127,15 +200,18 @@ export function renderEnrichedPreview(
 
   // ── Spacing ───────────────────────────────────────────────────────────────────
   const spacingEntries = Object.entries(enriched.spacing);
-  const spacingItems = spacingEntries.map(([tokenName, value]) => {
-    const sv = safe(value, SAFE_SIZE);
-    if (!sv) return "";
-    return `<div class="eds-spacing-item">
+  const spacingItems = spacingEntries
+    .map(([tokenName, value]) => {
+      const sv = safe(value, SAFE_SIZE);
+      if (!sv) return "";
+      return `<div class="eds-spacing-item">
       <div class="eds-spacing-bar" style="width:${escapeHtml(sv)};height:${escapeHtml(sv)};"></div>
       <div class="eds-spacing-name">${escapeHtml(tokenName)}</div>
       <div class="eds-spacing-val">${escapeHtml(sv)}</div>
     </div>`;
-  }).filter(Boolean).join("\n");
+    })
+    .filter(Boolean)
+    .join("\n");
 
   const spacingSection = spacingItems
     ? `<section class="eds-section">
@@ -146,15 +222,18 @@ export function renderEnrichedPreview(
 
   // ── Radii ─────────────────────────────────────────────────────────────────────
   const radiiEntries = Object.entries(enriched.rounded);
-  const radiiItems = radiiEntries.map(([tokenName, value]) => {
-    const sv = safe(value.trim(), SAFE_SIZE);
-    if (!sv) return "";
-    return `<div class="eds-radius-item">
+  const radiiItems = radiiEntries
+    .map(([tokenName, value]) => {
+      const sv = safe(value.trim(), SAFE_SIZE);
+      if (!sv) return "";
+      return `<div class="eds-radius-item">
       <div class="eds-radius-chip" style="border-radius:${escapeHtml(sv)};"></div>
       <div class="eds-radius-name">${escapeHtml(tokenName)}</div>
       <div class="eds-radius-val">${escapeHtml(sv)}</div>
     </div>`;
-  }).filter(Boolean).join("\n");
+    })
+    .filter(Boolean)
+    .join("\n");
 
   const radiiSection = radiiItems
     ? `<section class="eds-section">
@@ -165,29 +244,39 @@ export function renderEnrichedPreview(
 
   // ── Components ────────────────────────────────────────────────────────────────
   const componentEntries = Object.entries(enriched.components);
-  const componentCards = componentEntries.map(([compName, props]) => {
-    const resolved = Object.fromEntries(
-      Object.entries(props).map(([k, v]) => [k, resolveTokenRefs(v, tokenMap)])
-    );
+  const componentCards = componentEntries
+    .map(([compName, props]) => {
+      const resolved = Object.fromEntries(
+        Object.entries(props).map(([k, v]) => [
+          k,
+          resolveTokenRefs(v, tokenMap),
+        ]),
+      );
 
-    const isButtonLike = !!(resolved["backgroundColor"] && resolved["color"] && resolved["padding"]);
-    const livePreview = isButtonLike
-      ? `<div class="eds-comp-preview">
+      const isButtonLike = !!(
+        resolved["backgroundColor"] &&
+        resolved["color"] &&
+        resolved["padding"]
+      );
+      const livePreview = isButtonLike
+        ? `<div class="eds-comp-preview">
           <button style="background:${escapeHtml(safe(resolved["backgroundColor"] ?? "", SAFE_COLOR))};color:${escapeHtml(safe(resolved["color"] ?? "", SAFE_COLOR))};padding:${escapeHtml(safe(resolved["padding"] ?? "8px 16px", SAFE_PADDING))};border-radius:${escapeHtml(safe(resolved["borderRadius"] ?? resolved["rounded"] ?? "4px", SAFE_SIZE))};border:0;font-size:${escapeHtml(safe(resolved["fontSize"] ?? "14px", SAFE_SIZE))};font-weight:${escapeHtml(safe(resolved["fontWeight"] ?? "600", SAFE_WEIGHT))};cursor:pointer;">${escapeHtml(compName)}</button>
         </div>`
-      : "";
+        : "";
 
-    const tokenRows = Object.entries(props).map(([prop, rawVal]) => {
-      const resolvedVal = resolveTokenRefs(rawVal, tokenMap);
-      const isRef = rawVal !== resolvedVal;
-      return `<tr>
+      const tokenRows = Object.entries(props)
+        .map(([prop, rawVal]) => {
+          const resolvedVal = resolveTokenRefs(rawVal, tokenMap);
+          const isRef = rawVal !== resolvedVal;
+          return `<tr>
         <td class="eds-token-prop">${escapeHtml(prop)}</td>
         <td class="eds-token-resolved">${escapeHtml(resolvedVal)}</td>
         ${isRef ? `<td class="eds-token-ref">${escapeHtml(rawVal)}</td>` : `<td></td>`}
       </tr>`;
-    }).join("\n");
+        })
+        .join("\n");
 
-    return `<div class="eds-comp-card">
+      return `<div class="eds-comp-card">
       <div class="eds-comp-name">${escapeHtml(compName)}</div>
       ${livePreview}
       <table class="eds-token-table">
@@ -195,7 +284,8 @@ export function renderEnrichedPreview(
         <tbody>${tokenRows}</tbody>
       </table>
     </div>`;
-  }).join("\n");
+    })
+    .join("\n");
 
   const componentsSection = componentCards
     ? `<section class="eds-section">
@@ -316,7 +406,7 @@ html, body { margin: 0; padding: 0; background: var(--eds-bg); color: var(--eds-
   <section class="lp-hero">
     <div class="lp-label">Built with AI-enriched tokens</div>
     <h1>This is what ${safeTitle} could look like.</h1>
-    <p class="lp-lede">A synthetic landing page styled with the AI-enriched design system. Squint — does it feel like the brand?</p>
+    <p class="lp-lede">${lede}</p>
     <div class="lp-ctas">
       <button class="lp-btn-primary">Get started</button>
       <button class="lp-btn-ghost">Read docs</button>

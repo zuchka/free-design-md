@@ -19,6 +19,11 @@ import {
   containsSystemPromptLeak,
   validateOutputShape,
 } from "../shared/iteration-security.js";
+import {
+  isDarkModeRequest,
+  validateIterationFulfillment,
+} from "../shared/iteration-fulfillment.js";
+import { validateSectionScope } from "../shared/iteration-scope.js";
 
 const ITERATE_MODEL = "claude-sonnet-4-6";
 const ITERATE_MAX_TOKENS = 16_000;
@@ -49,10 +54,29 @@ export interface IterationDoneEvent extends IterationResult {
 
 export type IterationStreamEvent = IterationDeltaEvent | IterationDoneEvent;
 
+interface AnthropicFinalMessage {
+  content: { type: string; text: string }[];
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+  };
+  stop_reason: string | null;
+  model: string;
+}
+
+interface IterationAttempt {
+  markdown: string;
+  finalMessage: AnthropicFinalMessage;
+  latencyMs: number;
+}
+
 export interface IterationInput {
   previousMarkdown: string;
   userPrompt: string;
   sectionTarget?: string;
+  deterministicMarkdown?: string;
   anthropicApiKey?: string;
 }
 
@@ -63,6 +87,7 @@ const InputSchema = z.object({
     .string()
     .regex(/^[a-z0-9-]{1,40}$/)
     .optional(),
+  deterministicMarkdown: z.string().optional(),
   anthropicApiKey: z.string().min(1).optional(),
 });
 
@@ -74,9 +99,22 @@ export async function* iterateStream(
     throw new Error(`userPrompt too long (max ${INPUT_CAPS.userPrompt})`);
   }
   if (input.previousMarkdown.length > INPUT_CAPS.parentMarkdown) {
-    throw new Error(`previousMarkdown too long (max ${INPUT_CAPS.parentMarkdown})`);
+    throw new Error(
+      `previousMarkdown too long (max ${INPUT_CAPS.parentMarkdown})`,
+    );
   }
-  if (input.sectionTarget && input.sectionTarget.length > INPUT_CAPS.sectionTarget) {
+  if (
+    input.deterministicMarkdown &&
+    input.deterministicMarkdown.length > INPUT_CAPS.parentMarkdown
+  ) {
+    throw new Error(
+      `deterministicMarkdown too long (max ${INPUT_CAPS.parentMarkdown})`,
+    );
+  }
+  if (
+    input.sectionTarget &&
+    input.sectionTarget.length > INPUT_CAPS.sectionTarget
+  ) {
     throw new Error(`sectionTarget too long`);
   }
 
@@ -97,10 +135,53 @@ export async function* iterateStream(
     previousMarkdown: input.previousMarkdown,
     userPrompt: input.userPrompt,
     sectionTarget: input.sectionTarget,
+    deterministicMarkdown: input.deterministicMarkdown,
   });
 
   const client = new Anthropic({ apiKey });
   const startedAt = Date.now();
+
+  if (isDarkModeRequest(input.userPrompt)) {
+    let attempt = await collectIterationAttempt(
+      client,
+      system,
+      user,
+      startedAt,
+    );
+    let invalidReason = validateFinalMarkdown(system, input, attempt.markdown);
+
+    if (invalidReason) {
+      const retrySystem = [
+        system,
+        "",
+        "Additional validation requirement for this retry:",
+        "The previous draft did not make the active design system dark enough.",
+        "Rewrite canonical color tokens such as canvas, canvas-soft, ink, body, and hairline when they exist.",
+        "Rewrite canonical component definitions so default component names render with dark surfaces, light text, and dark-compatible borders.",
+        "Do not rely on appended dark-* alternate tokens as the only implementation of dark mode.",
+      ].join("\n");
+      attempt = await collectIterationAttempt(
+        client,
+        retrySystem,
+        user,
+        startedAt,
+      );
+      invalidReason = validateFinalMarkdown(
+        retrySystem,
+        input,
+        attempt.markdown,
+      );
+    }
+
+    if (invalidReason) {
+      throw new Error(`output invalid: ${invalidReason}`);
+    }
+
+    const result = buildIterationResult(attempt);
+    yield { type: "delta", text: result.markdown };
+    yield { type: "done", ...result };
+    return;
+  }
 
   let stream: ReturnType<typeof client.messages.stream>;
   try {
@@ -110,9 +191,7 @@ export async function* iterateStream(
       system: [
         { type: "text", text: system, cache_control: { type: "ephemeral" } },
       ],
-      messages: [
-        { role: "user", content: [{ type: "text", text: user }] },
-      ],
+      messages: [{ role: "user", content: [{ type: "text", text: user }] }],
     });
   } catch (err) {
     if (err instanceof Anthropic.APIError) {
@@ -127,7 +206,11 @@ export async function* iterateStream(
       type: string;
       delta?: { type: string; text?: string };
     }>) {
-      if (event.type === "content_block_delta" && event.delta?.type === "text_delta" && event.delta.text) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta?.type === "text_delta" &&
+        event.delta.text
+      ) {
         accumulatedText += event.delta.text;
         yield { type: "delta", text: event.delta.text };
       }
@@ -139,43 +222,131 @@ export async function* iterateStream(
     throw err;
   }
 
-  const finalMessage = await (stream as unknown as {
-    finalMessage(): Promise<{
-      content: { type: string; text: string }[];
-      usage: { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
-      stop_reason: string | null;
-      model: string;
-    }>;
-  }).finalMessage();
+  const finalMessage = await (
+    stream as unknown as {
+      finalMessage(): Promise<AnthropicFinalMessage>;
+    }
+  ).finalMessage();
   const latencyMs = Date.now() - startedAt;
 
   const textBlocks = finalMessage.content.filter((b) => b.type === "text");
   const markdown =
-    textBlocks.map((b) => b.text).join("\n").trim() || accumulatedText.trim();
+    textBlocks
+      .map((b) => b.text)
+      .join("\n")
+      .trim() || accumulatedText.trim();
 
-  // Output validation.
-  const shape = validateOutputShape(markdown);
-  if (!shape.ok) {
-    throw new Error(`output invalid: ${(shape as { ok: false; reason: string }).reason}`);
-  }
-  if (containsSystemPromptLeak(system, markdown)) {
-    throw new Error(`output invalid: system_prompt_leak`);
+  const invalidReason = validateFinalMarkdown(system, input, markdown);
+  if (invalidReason) {
+    throw new Error(`output invalid: ${invalidReason}`);
   }
 
-  const result: IterationResult = {
-    markdown,
-    model: finalMessage.model,
-    latencyMs,
-    usage: {
-      inputTokens: finalMessage.usage.input_tokens,
-      outputTokens: finalMessage.usage.output_tokens,
-      cacheReadInputTokens: finalMessage.usage.cache_read_input_tokens ?? 0,
-      cacheCreationInputTokens: finalMessage.usage.cache_creation_input_tokens ?? 0,
-    },
-    stopReason: finalMessage.stop_reason,
-  };
+  const result = buildIterationResult({ markdown, finalMessage, latencyMs });
 
   yield { type: "done", ...result };
+}
+
+async function collectIterationAttempt(
+  client: Anthropic,
+  system: string,
+  user: string,
+  startedAt: number,
+): Promise<IterationAttempt> {
+  let stream: ReturnType<typeof client.messages.stream>;
+  try {
+    stream = client.messages.stream({
+      model: ITERATE_MODEL,
+      max_tokens: ITERATE_MAX_TOKENS,
+      system: [
+        { type: "text", text: system, cache_control: { type: "ephemeral" } },
+      ],
+      messages: [{ role: "user", content: [{ type: "text", text: user }] }],
+    });
+  } catch (err) {
+    if (err instanceof Anthropic.APIError) {
+      throw new Error(`Anthropic API error (${err.status}): ${err.message}`);
+    }
+    throw err;
+  }
+
+  let accumulatedText = "";
+  try {
+    for await (const event of stream as AsyncIterable<{
+      type: string;
+      delta?: { type: string; text?: string };
+    }>) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta?.type === "text_delta" &&
+        event.delta.text
+      ) {
+        accumulatedText += event.delta.text;
+      }
+    }
+  } catch (err) {
+    if (err instanceof Anthropic.APIError) {
+      throw new Error(`Anthropic API error (${err.status}): ${err.message}`);
+    }
+    throw err;
+  }
+
+  const finalMessage = await (
+    stream as unknown as {
+      finalMessage(): Promise<AnthropicFinalMessage>;
+    }
+  ).finalMessage();
+  const textBlocks = finalMessage.content.filter((b) => b.type === "text");
+  const markdown =
+    textBlocks
+      .map((b) => b.text)
+      .join("\n")
+      .trim() || accumulatedText.trim();
+
+  return {
+    markdown,
+    finalMessage,
+    latencyMs: Date.now() - startedAt,
+  };
+}
+
+function validateFinalMarkdown(
+  system: string,
+  input: IterationInput,
+  markdown: string,
+): string | null {
+  const shape = validateOutputShape(markdown);
+  if (!shape.ok) {
+    return (shape as { ok: false; reason: string }).reason;
+  }
+  if (containsSystemPromptLeak(system, markdown)) {
+    return "system_prompt_leak";
+  }
+  const fulfillment = validateIterationFulfillment(input, markdown);
+  if (!fulfillment.ok) {
+    return (fulfillment as { ok: false; reason: string }).reason;
+  }
+  const scope = validateSectionScope(input, markdown);
+  if (!scope.ok) {
+    return (scope as { ok: false; reason: string }).reason;
+  }
+  return null;
+}
+
+function buildIterationResult(attempt: IterationAttempt): IterationResult {
+  return {
+    markdown: attempt.markdown,
+    model: attempt.finalMessage.model,
+    latencyMs: attempt.latencyMs,
+    usage: {
+      inputTokens: attempt.finalMessage.usage.input_tokens,
+      outputTokens: attempt.finalMessage.usage.output_tokens,
+      cacheReadInputTokens:
+        attempt.finalMessage.usage.cache_read_input_tokens ?? 0,
+      cacheCreationInputTokens:
+        attempt.finalMessage.usage.cache_creation_input_tokens ?? 0,
+    },
+    stopReason: attempt.finalMessage.stop_reason,
+  };
 }
 
 export default defineAction({

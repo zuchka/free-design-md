@@ -100,7 +100,7 @@ Match the reference's structure exactly:
 5. **The reference is for SCHEMA, not CONTENT.** Match the reference's SHAPE. Do not copy its colours, names, or prose — those belong to Vercel, not to the URL you're enriching.
 6. **fontFamily must be a single fully-quoted string.** Write fontFamily: "Courier New, Courier, monospace" — the entire font stack inside one set of double quotes. Never write fontFamily: "Courier New", Courier, monospace — quoting only the first name breaks YAML because the parser reads "Courier New" as the complete scalar and errors on the unquoted tail.
 7. **Scalar values containing ": " must be quoted.** If any value (especially the top-level description) contains a colon followed by a space, wrap the entire value in double quotes, e.g. description: "A brand: that uses colons".
-8. **Measured component geometry is locked.** If the deterministic extraction reports a button or CTA radius, copy that exact value into a \`rounded.button\` token and make button/CTA components reference it. Do not round it up, map it to a nicer-looking generic token, or replace it with a pill radius.
+8. **Measured radii are source-of-truth tokens.** When deterministic extraction or raw signals include button, card, or pill radii, preserve those exact measured radius values in the 'rounded' scale and make the matching components reference them. Do not convert a measured square/4px/6px/8px button into a pill just because the reference DESIGN.md uses pill buttons. For example, if the extracted primary button radius is 4px, 'button-primary' must resolve to 4px.
 
 ## Reference DESIGN.md (Vercel — VoltAgent, MIT)
 
@@ -149,6 +149,7 @@ ${signalsSummary}
 Produce a richer DESIGN.md that:
 - Matches the reference's SCHEMA exactly (frontmatter blocks with named tokens + token references, then prose sections).
 - Uses ONLY the colours/fonts present above or visible in the screenshot.
+- Preserves objective measurements from the deterministic extraction, especially button radius, card radius, pill radius, padding, and typography sizes.
 - Has a brand-specific editorial voice in the description and Overview — not generic.
 - Names 15+ components based on what is actually visible in the screenshot.
 
@@ -200,10 +201,14 @@ function summariseGeometryLocks(data: DesignSystemData): string {
 function summariseSignals(signals: ExtractedSignals): string {
   const lines: string[] = [];
   lines.push(`- Page title: ${signals.title || "(none)"}`);
-  if (signals.description) lines.push(`- Meta description: ${signals.description}`);
-  if (signals.themeColor) lines.push(`- meta theme-color: \`${signals.themeColor}\``);
-  if (signals.body.fontFamily) lines.push(`- Body computed font-family: \`${signals.body.fontFamily}\``);
-  if (signals.h1?.fontFamily) lines.push(`- H1 computed font-family: \`${signals.h1.fontFamily}\``);
+  if (signals.description)
+    lines.push(`- Meta description: ${signals.description}`);
+  if (signals.themeColor)
+    lines.push(`- meta theme-color: \`${signals.themeColor}\``);
+  if (signals.body.fontFamily)
+    lines.push(`- Body computed font-family: \`${signals.body.fontFamily}\``);
+  if (signals.h1?.fontFamily)
+    lines.push(`- H1 computed font-family: \`${signals.h1.fontFamily}\``);
   if (signals.cta) {
     lines.push(
       `- CTA element bg: \`${signals.cta.backgroundColor}\`, color: \`${signals.cta.color}\`, radius: \`${signals.cta.borderRadius}\`, padding: \`${signals.cta.padding ?? "?"}\`, fontSize: \`${signals.cta.fontSize ?? "?"}\`, fontWeight: \`${signals.cta.fontWeight ?? "?"}\``,
@@ -219,7 +224,8 @@ function summariseSignals(signals: ExtractedSignals): string {
       `- Card sample bg: \`${signals.cardSample.backgroundColor ?? "?"}\`, radius: \`${signals.cardSample.borderRadius}\`, padding: \`${signals.cardSample.padding ?? "?"}\`, shadow: \`${signals.cardSample.boxShadow ?? "?"}\``,
     );
   }
-  if (signals.pillRadius) lines.push(`- Pill radius observed on page: \`${signals.pillRadius}\``);
+  if (signals.pillRadius)
+    lines.push(`- Pill radius observed on page: \`${signals.pillRadius}\``);
   if (signals.paddingHistogram) {
     const top = Object.entries(signals.paddingHistogram)
       .sort((a, b) => b[1] - a[1])
