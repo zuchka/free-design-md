@@ -66,4 +66,17 @@ describe("renderEnrichedPreview", () => {
     expect(html).toContain("--eds-button-radius: 4px;");
     expect(html).toContain("--eds-card-radius: 8px;");
   });
+
+  it("uses fixed app chrome radius for the source block, not enriched brand radius", () => {
+    const data = enrichedData();
+    data.rounded = { md: "9999px" };
+
+    const html = renderEnrichedPreview(data, "---\nname: Walmart\n---\n");
+    expect(html).toContain(
+      ".eds-source-block { background: color-mix(in srgb, var(--eds-text) 4%, var(--eds-bg)); border: 1px solid var(--eds-border); border-radius: 8px;",
+    );
+    expect(html).not.toMatch(
+      /\.eds-source-block\s*\{[\s\S]*?border-radius:\s*var\(--eds-radius\)/,
+    );
+  });
 });

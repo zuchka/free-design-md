@@ -463,6 +463,19 @@ describe("showcase — design.md source", () => {
     expect(html).toContain("name: Acme");
   });
 
+  it("uses fixed app chrome radius for the source block, not extracted brand radius", () => {
+    const data = fullData();
+    data.borders.radius = "9999px";
+    const html = renderPreview(data, {
+      title: "Acme",
+      designMd: "---\nname: Acme\n---\n\n## Overview\n",
+    });
+    expect(html).toContain("border-radius: 8px;");
+    expect(html).not.toMatch(
+      /\.sc-source-block\s*\{[\s\S]*?border-radius:\s*var\(--ds-radius\)/,
+    );
+  });
+
   it("omits source block when opts.designMd is empty", () => {
     const data = fullData();
     const html = renderPreview(data, { title: "Acme" });

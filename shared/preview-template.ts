@@ -300,7 +300,7 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
 .sc-source-block {
   background: color-mix(in srgb, var(--ds-text) 4%, var(--ds-bg));
   border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius);
+  border-radius: 8px;
   padding: 24px;
   overflow-x: auto;
   font-size: 12px;
