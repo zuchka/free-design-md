@@ -367,6 +367,11 @@ describe("POST /api/iterate-design-md", () => {
 
     expect(text).toContain('"savedDesignId":"saved-next"');
     expect(text).toContain('"savedDesignUrl":"/d/saved-next"');
+    expect(mockIterateStream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deterministicMarkdown: "# Deterministic",
+      }),
+    );
     expect(mockSaveEnrichmentSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({
         owner: {

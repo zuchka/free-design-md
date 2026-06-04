@@ -105,14 +105,18 @@ export default defineEventHandler(async (event) => {
   }
 
   const saveOwner =
-    connectedBuilderOwner ?? fallbackSavedOwner(owner, getCookie(event, FDMD_ANON_COOKIE));
+    connectedBuilderOwner ??
+    fallbackSavedOwner(owner, getCookie(event, FDMD_ANON_COOKIE));
 
   let dec: { ok: boolean; remaining: number } | null = null;
   if (resolvedKey.consumesQuota) {
     dec = await decrementCredits(quotaOwner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
-      return { error: "out_of_credits", reason: "signed-in-and-out-of-credits" };
+      return {
+        error: "out_of_credits",
+        reason: "signed-in-and-out-of-credits",
+      };
     }
   }
 
@@ -120,6 +124,7 @@ export default defineEventHandler(async (event) => {
     previousMarkdown: parent.enrichedMarkdown,
     userPrompt,
     sectionTarget: sectionTarget ?? undefined,
+    deterministicMarkdown: parent.deterministicMarkdown,
     anthropicApiKey: resolvedKey.apiKey,
   };
 

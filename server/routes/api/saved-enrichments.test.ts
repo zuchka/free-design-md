@@ -47,10 +47,8 @@ vi.mock("h3", async () => {
       event: { _params?: Record<string, string> },
       key: string,
     ) => event._params?.[key],
-    getCookie: (
-      event: { _cookies?: Record<string, string> },
-      key: string,
-    ) => event._cookies?.[key],
+    getCookie: (event: { _cookies?: Record<string, string> }, key: string) =>
+      event._cookies?.[key],
     readBody: async (event: { _body: unknown }) => event._body,
     setResponseHeader: (
       event: { _headers?: Record<string, string> },
@@ -69,9 +67,7 @@ vi.mock("h3", async () => {
 const { default: listHandler } = await import(
   "./saved-enrichments/index.get.js"
 );
-const { default: getHandler } = await import(
-  "./saved-enrichments/[id].get.js"
-);
+const { default: getHandler } = await import("./saved-enrichments/[id].get.js");
 const { default: deleteHandler } = await import(
   "./saved-enrichments/[id].delete.js"
 );
@@ -203,11 +199,17 @@ describe("saved enrichment API routes", () => {
 
     const result = await iterateHandler({
       _params: { id: "saved-123" },
-      _body: { userPrompt: "Make it dark mode" },
+      _body: { userPrompt: "Make it dark mode", sectionTarget: "colors" },
     } as never);
     const sse = await readSse(result as ReadableStream<Uint8Array>);
 
     expect(sse).toContain('"savedDesignUrl":"/d/saved-456"');
+    expect(mockIterateStream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sectionTarget: "colors",
+        deterministicMarkdown: "# Deterministic",
+      }),
+    );
     expect(mockDecrementCredits).toHaveBeenCalledWith("builder:user-123");
     expect(mockSaveEnrichmentSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({
