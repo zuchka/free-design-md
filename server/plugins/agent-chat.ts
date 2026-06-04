@@ -8,7 +8,7 @@ import { getOrgContext } from "@agent-native/core/org";
 import path from "path";
 import { saveUploadedReferenceFile } from "../handlers/uploads.js";
 import { isSlidesReferenceFileExtension } from "../../shared/upload-types.js";
-import { ANONYMOUS_OWNER } from "../lib/owner.js";
+import { resolveAgentContextOwner } from "../lib/owner.js";
 import "../register-secrets.js";
 
 const MAX_CHAT_UPLOAD_BYTES = 50 * 1024 * 1024;
@@ -122,7 +122,7 @@ const CHAT_ACTION_DENYLIST = new Set([
 
 export default createAgentChatPlugin({
   appId: "free-design-md",
-  anonymousOwner: () => ANONYMOUS_OWNER,
+  anonymousOwner: resolveAgentContextOwner,
   systemPrompt:
     "You are the AI assistant for free-design.md, a tool that extracts and enriches design systems from websites.\n\n" +
     "## Workflow rules\n\n" +

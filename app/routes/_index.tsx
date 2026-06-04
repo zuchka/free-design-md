@@ -43,6 +43,7 @@ import {
   announceAgentActivity,
   clearAgentActivity,
 } from "@/lib/agent-activity";
+import { publishDesignContext } from "@/lib/agent-design-context";
 
 export function meta() {
   return [
@@ -207,6 +208,18 @@ export default function IndexRoute() {
   useEffect(() => {
     if (!enriched?.markdown) return;
     focusAgentChat();
+    if (result?.url) {
+      void publishDesignContext({
+        url: result.url,
+        title: result.signals?.title,
+        stage: "enriched",
+        deterministicMarkdown: result.markdown,
+        currentMarkdown: enriched.markdown,
+        designSystemData: result.designSystemData,
+        savedDesignId: enriched.savedDesignId ?? null,
+        savedDesignUrl: enriched.savedDesignUrl ?? null,
+      });
+    }
     updateMcpAppModelContext({
       content: [
         {
@@ -222,6 +235,18 @@ export default function IndexRoute() {
       ],
     });
   }, [enriched?.markdown, result?.url]);
+
+  useEffect(() => {
+    if (!result?.markdown || enriched?.markdown) return;
+    void publishDesignContext({
+      url: result.url,
+      title: result.signals?.title,
+      stage: "deterministic",
+      deterministicMarkdown: result.markdown,
+      currentMarkdown: result.markdown,
+      designSystemData: result.designSystemData,
+    });
+  }, [enriched?.markdown, result]);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -628,6 +653,16 @@ export default function IndexRoute() {
           setCandidateId(done.id);
           setCandidateSavedDesignId(done.savedDesignId ?? null);
           setCandidateSavedDesignUrl(done.savedDesignUrl ?? null);
+          void publishDesignContext({
+            url: result.url,
+            title: result.signals?.title,
+            stage: "iteration",
+            deterministicMarkdown: result.markdown,
+            currentMarkdown: done.markdown,
+            designSystemData: result.designSystemData,
+            savedDesignId: done.savedDesignId ?? null,
+            savedDesignUrl: done.savedDesignUrl ?? null,
+          });
           announceAgentActivity({
             title: "Iteration ready",
             detail: done.savedDesignUrl
@@ -699,6 +734,18 @@ export default function IndexRoute() {
   }
 
   function handleDiscard() {
+    if (result && enriched?.markdown) {
+      void publishDesignContext({
+        url: result.url,
+        title: result.signals?.title,
+        stage: "enriched",
+        deterministicMarkdown: result.markdown,
+        currentMarkdown: enriched.markdown,
+        designSystemData: result.designSystemData,
+        savedDesignId: enriched.savedDesignId ?? null,
+        savedDesignUrl: enriched.savedDesignUrl ?? null,
+      });
+    }
     setCandidateMarkdown("");
     setCandidateId(null);
     setCandidateSavedDesignId(null);
