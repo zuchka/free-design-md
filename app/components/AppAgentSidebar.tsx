@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AgentPanel } from "@agent-native/core/client";
 import { cn } from "@/lib/utils";
 import AgentActivityNotice from "@/components/AgentActivityNotice";
+import { getBrowserTabId } from "@/lib/browser-tab-id";
 
 const SIDEBAR_OPEN_KEY = "agent-native-sidebar-open";
 const SIDEBAR_WIDTH = 380;
@@ -20,6 +21,11 @@ export default function AppAgentSidebar({
 }: AppAgentSidebarProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [open, setOpen] = useState(false);
+  const [browserTabId, setBrowserTabId] = useState<string>();
+
+  useEffect(() => {
+    setBrowserTabId(getBrowserTabId());
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia(MOBILE_QUERY);
@@ -134,6 +140,7 @@ export default function AppAgentSidebar({
       >
         {open ? (
           <AgentPanel
+            browserTabId={browserTabId}
             emptyStateText={emptyStateText}
             suggestions={suggestions}
             chatNotice={<AgentActivityNotice />}
