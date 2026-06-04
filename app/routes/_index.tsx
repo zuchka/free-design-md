@@ -16,9 +16,20 @@ import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  IconChevronDown,
   IconCheck,
   IconCopy,
   IconExternalLink,
+  IconLayoutGrid,
+  IconSearch,
   IconSparkles,
   IconTrash,
   IconX,
@@ -1345,58 +1356,200 @@ function SavedDesignsList({
   items: SavedDesignItem[];
   onDelete: (id: string) => void;
 }) {
-  const visible = items.slice(0, 4);
+  const [expanded, setExpanded] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const visible = items.slice(0, 2);
+  const filteredItems = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return items;
+    return items.filter((item) => {
+      return [item.title, item.sourceUrl, item.model]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(normalizedQuery));
+    });
+  }, [items, query]);
+  const publicLinksLabel = `${items.length} public link${items.length === 1 ? "" : "s"}`;
+
+  function copyPublicLink(id: string) {
+    void navigator.clipboard.writeText(
+      `${window.location.origin}${appBasePath()}/d/${id}`,
+    );
+  }
+
   return (
-    <section className="mb-8">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Saved designs
-        </h2>
-        <span className="text-xs text-muted-foreground">Public links</span>
-      </div>
-      <div className="grid gap-2 md:grid-cols-2">
-        {visible.map((item) => (
-          <div
-            key={item.id}
-            className="flex min-w-0 items-center gap-3 rounded-md border bg-background px-3 py-2"
+    <section className="mb-6 rounded-md border bg-background">
+      <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="flex min-w-0 items-center gap-3 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-expanded={expanded}
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-secondary text-secondary-foreground">
+            <IconLayoutGrid size={16} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Saved designs
+            </span>
+            <span className="block truncate text-sm text-foreground">
+              {items[0]?.title ?? "No saved designs yet"}
+            </span>
+          </span>
+          <IconChevronDown
+            size={16}
+            className={
+              expanded
+                ? "shrink-0 rotate-180 text-muted-foreground transition-transform"
+                : "shrink-0 text-muted-foreground transition-transform"
+            }
+          />
+        </button>
+
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <span className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
+            {publicLinksLabel}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setExpanded((value) => !value)}
           >
-            <a
-              href={`${appBasePath()}/d/${item.id}`}
-              className="min-w-0 flex-1 no-underline"
-            >
-              <div className="truncate text-sm font-medium text-foreground">
-                {item.title}
+            {expanded ? "Hide recent" : "Show recent"}
+          </Button>
+          <Sheet open={libraryOpen} onOpenChange={setLibraryOpen}>
+            <SheetTrigger asChild>
+              <Button type="button" variant="outline" size="sm">
+                View all
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-xl">
+              <SheetHeader className="border-b px-6 py-5">
+                <SheetTitle>Design library</SheetTitle>
+                <SheetDescription>
+                  Search saved public design.md links.
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="border-b px-6 py-4">
+                <div className="flex items-center gap-2 rounded-md border bg-background px-3">
+                  <IconSearch size={16} className="text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search by title, URL, or model"
+                    className="h-9 border-0 px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </div>
               </div>
-              <div className="truncate text-xs text-muted-foreground">
-                {item.sourceUrl}
+
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+                {filteredItems.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {filteredItems.map((item) => (
+                      <SavedDesignRow
+                        key={item.id}
+                        item={item}
+                        onCopy={copyPublicLink}
+                        onDelete={onDelete}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+                    No saved designs match that search.
+                  </div>
+                )}
               </div>
-            </a>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                void navigator.clipboard.writeText(
-                  `${window.location.origin}${appBasePath()}/d/${item.id}`,
-                );
-              }}
-              title="Copy public link"
-              aria-label="Copy public link"
-            >
-              <IconCopy size={14} />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onDelete(item.id)}
-              title="Delete saved design"
-              aria-label="Delete saved design"
-            >
-              <IconTrash size={14} />
-            </Button>
-          </div>
-        ))}
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
+
+      {expanded && (
+        <div className="border-t px-3 pb-3 pt-2">
+          <div className="flex flex-col gap-2">
+            {visible.map((item) => (
+              <SavedDesignRow
+                key={item.id}
+                item={item}
+                onCopy={copyPublicLink}
+                onDelete={onDelete}
+                compact
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function SavedDesignRow({
+  item,
+  onCopy,
+  onDelete,
+  compact = false,
+}: {
+  item: SavedDesignItem;
+  onCopy: (id: string) => void;
+  onDelete: (id: string) => void;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={
+        compact
+          ? "flex min-w-0 items-center gap-2 rounded-md bg-secondary/50 px-2 py-2"
+          : "flex min-w-0 items-center gap-3 rounded-md border bg-background px-3 py-3"
+      }
+    >
+      <a
+        href={`${appBasePath()}/d/${item.id}`}
+        className="min-w-0 flex-1 no-underline"
+      >
+        <div className="truncate text-sm font-medium text-foreground">
+          {item.title}
+        </div>
+        <div className="truncate text-xs text-muted-foreground">
+          {item.sourceUrl}
+        </div>
+      </a>
+      <Button
+        size="icon"
+        variant="ghost"
+        asChild
+        title="Open saved design"
+        aria-label="Open saved design"
+        className="size-9 shrink-0"
+      >
+        <a href={`${appBasePath()}/d/${item.id}`}>
+          <IconExternalLink size={14} />
+        </a>
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        onClick={() => onCopy(item.id)}
+        title="Copy public link"
+        aria-label="Copy public link"
+        className="size-9 shrink-0"
+      >
+        <IconCopy size={14} />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        onClick={() => onDelete(item.id)}
+        title="Delete saved design"
+        aria-label="Delete saved design"
+        className="size-9 shrink-0"
+      >
+        <IconTrash size={14} />
+      </Button>
+    </div>
   );
 }
 
