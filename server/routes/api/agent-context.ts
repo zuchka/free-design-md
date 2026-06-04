@@ -1,12 +1,29 @@
-import { defineEventHandler, getMethod, readBody, setResponseStatus } from "h3";
+import {
+  defineEventHandler,
+  getMethod,
+  getQuery,
+  readBody,
+  setResponseStatus,
+} from "h3";
 import { appStateGet, appStatePut } from "@agent-native/core/application-state";
 import { resolveAgentContextOwner } from "../../lib/owner.js";
 
 const MAX_MARKDOWN_CHARS = 200_000;
+const BROWSER_TAB_ID_PATTERN = /^[A-Za-z0-9_-]{1,96}$/;
 
 function stringValue(value: unknown, max = MAX_MARKDOWN_CHARS): string | null {
   if (typeof value !== "string") return null;
   return value.length <= max ? value : value.slice(0, max);
+}
+
+function browserTabIdValue(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return BROWSER_TAB_ID_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function navigationKey(browserTabId: string | null): string {
+  return browserTabId ? `navigation:${browserTabId}` : "navigation";
 }
 
 export default defineEventHandler(async (event) => {
@@ -14,6 +31,11 @@ export default defineEventHandler(async (event) => {
   const method = getMethod(event);
 
   if (method === "GET") {
+    const browserTabId = browserTabIdValue(getQuery(event).browserTabId);
+    if (browserTabId) {
+      const scoped = await appStateGet(owner, navigationKey(browserTabId));
+      if (scoped) return scoped;
+    }
     return (await appStateGet(owner, "navigation")) ?? null;
   }
 
@@ -36,6 +58,7 @@ export default defineEventHandler(async (event) => {
 
   const payload = {
     view: "design-md",
+    browserTabId: browserTabIdValue(body.browserTabId),
     url,
     title: stringValue(body.title, 512) ?? url,
     stage: stringValue(body.stage, 64) ?? "deterministic",
@@ -57,9 +80,21 @@ export default defineEventHandler(async (event) => {
       "Use currentMarkdown as the loaded design.md. Do not ask the user to paste or enrich the URL again.",
   };
 
-  await appStatePut(owner, "navigation", payload, {
-    requestSource: "free-design-md",
-  });
+  const writes = [
+    appStatePut(owner, "navigation", payload, {
+      requestSource: "free-design-md",
+    }),
+  ];
+
+  if (payload.browserTabId) {
+    writes.push(
+      appStatePut(owner, navigationKey(payload.browserTabId), payload, {
+        requestSource: "free-design-md",
+      }),
+    );
+  }
+
+  await Promise.all(writes);
 
   return payload;
 });

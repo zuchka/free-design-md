@@ -1,5 +1,6 @@
 import { appBasePath } from "@agent-native/core/client";
 import type { DesignSystemData } from "../../shared/api";
+import { getBrowserTabId } from "./browser-tab-id";
 
 type DesignContextStage = "deterministic" | "enriched" | "iteration";
 
@@ -33,6 +34,7 @@ export async function publishDesignContext({
 }: PublishDesignContextInput) {
   const payload = {
     view: "design-md",
+    browserTabId: getBrowserTabId() ?? null,
     url,
     title: title ?? url,
     stage,

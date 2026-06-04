@@ -1,5 +1,6 @@
 import { defineAction } from "@agent-native/core";
 import { readAppState } from "@agent-native/core/application-state";
+import { getRequestRunContext } from "@agent-native/core/server";
 import { z } from "zod";
 
 interface DesignNavigationState {
@@ -14,10 +15,31 @@ interface DesignNavigationState {
   currentMarkdownPreview?: unknown;
   deterministicMarkdown?: unknown;
   designSystemData?: unknown;
+  browserTabId?: unknown;
 }
+
+const BROWSER_TAB_ID_PATTERN = /^[A-Za-z0-9_-]{1,96}$/;
 
 function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function browserTabIdValue(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return BROWSER_TAB_ID_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+async function readNavigationState(): Promise<DesignNavigationState | null> {
+  const browserTabId = browserTabIdValue(getRequestRunContext()?.browserTabId);
+  if (browserTabId) {
+    const scoped = (await readAppState(
+      `navigation:${browserTabId}`,
+    )) as DesignNavigationState | null;
+    if (scoped) return scoped;
+  }
+
+  return (await readAppState("navigation")) as DesignNavigationState | null;
 }
 
 export default defineAction({
@@ -27,9 +49,7 @@ export default defineAction({
   readOnly: true,
   http: false,
   run: async () => {
-    const navigation = (await readAppState(
-      "navigation",
-    )) as DesignNavigationState | null;
+    const navigation = await readNavigationState();
 
     if (!navigation || navigation.view !== "design-md") {
       return "No design.md is currently loaded in application state.";
@@ -40,6 +60,7 @@ export default defineAction({
 
     return {
       view: "design-md",
+      browserTabId: asString(navigation.browserTabId) ?? null,
       url: asString(navigation.url) ?? null,
       title: asString(navigation.title) ?? null,
       stage: asString(navigation.stage) ?? null,
