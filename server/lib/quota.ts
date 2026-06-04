@@ -1,6 +1,8 @@
 import { getDbExec } from "@agent-native/core/db";
 
 export const DEFAULT_ALLOWED_CREDITS = 3;
+export const SHARE_PROMO_BONUS_CREDITS = 3;
+export const SHARE_PROMO_CAMPAIGN = "share-v1";
 
 export interface Credits {
   remaining: number;
@@ -75,4 +77,67 @@ export async function refundCredit(owner: string): Promise<void> {
           WHERE user_id = ?`,
     args: [owner],
   });
+}
+
+export interface CreditPromoStatus {
+  campaign: string;
+  credits: number;
+  claimed: boolean;
+}
+
+interface CreditPromoRow {
+  credits: number | bigint;
+}
+
+export async function getSharePromoStatus(
+  owner: string,
+): Promise<CreditPromoStatus> {
+  await getCredits(owner);
+  const exec = getDbExec();
+  const result = await exec.execute({
+    sql: `SELECT credits
+          FROM fdmd_credit_promos
+          WHERE owner_id = ? AND campaign = ?`,
+    args: [owner, SHARE_PROMO_CAMPAIGN],
+  });
+  const row = result.rows[0] as CreditPromoRow | undefined;
+  return {
+    campaign: SHARE_PROMO_CAMPAIGN,
+    credits: row ? toNum(row.credits) : SHARE_PROMO_BONUS_CREDITS,
+    claimed: Boolean(row),
+  };
+}
+
+export interface ClaimSharePromoResult {
+  claimedNow: boolean;
+  promo: CreditPromoStatus;
+  credits: Credits;
+}
+
+export async function claimSharePromoCredits(
+  owner: string,
+): Promise<ClaimSharePromoResult> {
+  await getCredits(owner);
+  const exec = getDbExec();
+  const inserted = await exec.execute({
+    sql: `INSERT INTO fdmd_credit_promos (owner_id, campaign, credits)
+          VALUES (?, ?, ?)
+          ON CONFLICT(owner_id, campaign) DO NOTHING`,
+    args: [owner, SHARE_PROMO_CAMPAIGN, SHARE_PROMO_BONUS_CREDITS],
+  });
+
+  const claimedNow = (inserted.rowsAffected ?? 0) > 0;
+  if (claimedNow) {
+    await exec.execute({
+      sql: `UPDATE fdmd_quota
+            SET bonus_credits = bonus_credits + ?,
+                updated_at = datetime('now')
+            WHERE user_id = ?`,
+      args: [SHARE_PROMO_BONUS_CREDITS, owner],
+    });
+  }
+
+  const credits = await getCredits(owner);
+  const promo = await getSharePromoStatus(owner);
+  return { claimedNow, promo, credits };
 }

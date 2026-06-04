@@ -259,6 +259,19 @@ export default runMigrations(
   CREATE INDEX IF NOT EXISTS fdmd_saved_enrichments_parent_idx ON fdmd_saved_enrichments (parent_id);
   CREATE INDEX IF NOT EXISTS fdmd_saved_enrichments_root_created_idx ON fdmd_saved_enrichments (root_id, created_at)`,
     },
+    // v29: one-time promotional credit grants. Used by the share CTA so a
+    // quota owner can earn one extra trial refill without BYO Anthropic.
+    {
+      version: 29,
+      sql: `CREATE TABLE IF NOT EXISTS fdmd_credit_promos (
+    owner_id TEXT NOT NULL,
+    campaign TEXT NOT NULL,
+    credits INTEGER NOT NULL,
+    claimed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (owner_id, campaign)
+  );
+  CREATE INDEX IF NOT EXISTS fdmd_credit_promos_owner_idx ON fdmd_credit_promos (owner_id, claimed_at)`,
+    },
   ],
   { table: "slides_migrations" },
 );

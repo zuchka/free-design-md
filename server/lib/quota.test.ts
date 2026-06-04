@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getDbExec } from "@agent-native/core/db";
 import {
   DEFAULT_ALLOWED_CREDITS,
+  SHARE_PROMO_BONUS_CREDITS,
+  claimSharePromoCredits,
   decrementCredits,
   getCredits,
+  getSharePromoStatus,
   refundCredit,
 } from "./quota";
 
@@ -11,6 +14,10 @@ const TEST_OWNER = "test-quota@iteration.local";
 
 async function reset() {
   const exec = getDbExec();
+  await exec.execute({
+    sql: `DELETE FROM fdmd_credit_promos WHERE owner_id = ?`,
+    args: [TEST_OWNER],
+  });
   await exec.execute({
     sql: `DELETE FROM fdmd_quota WHERE user_id = ?`,
     args: [TEST_OWNER],
@@ -68,5 +75,32 @@ describe("quota helpers", () => {
     });
     const count = Number((r.rows[0] as { c: number | bigint }).c);
     expect(count).toBe(1);
+  });
+
+  it("share promo status is unclaimed before the one-time grant", async () => {
+    const status = await getSharePromoStatus(TEST_OWNER);
+    expect(status).toEqual({
+      campaign: "share-v1",
+      credits: SHARE_PROMO_BONUS_CREDITS,
+      claimed: false,
+    });
+  });
+
+  it("claimSharePromoCredits adds one refill and is idempotent", async () => {
+    for (let i = 0; i < DEFAULT_ALLOWED_CREDITS; i++) {
+      await decrementCredits(TEST_OWNER);
+    }
+
+    const first = await claimSharePromoCredits(TEST_OWNER);
+    expect(first.claimedNow).toBe(true);
+    expect(first.promo.claimed).toBe(true);
+    expect(first.credits).toEqual({
+      allowed: DEFAULT_ALLOWED_CREDITS + SHARE_PROMO_BONUS_CREDITS,
+      remaining: SHARE_PROMO_BONUS_CREDITS,
+    });
+
+    const second = await claimSharePromoCredits(TEST_OWNER);
+    expect(second.claimedNow).toBe(false);
+    expect(second.credits).toEqual(first.credits);
   });
 });

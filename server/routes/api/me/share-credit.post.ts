@@ -1,5 +1,5 @@
 import { defineEventHandler, setResponseStatus } from "h3";
-import { getCredits } from "../../../lib/quota.js";
+import { claimSharePromoCredits } from "../../../lib/quota.js";
 import { resolveQuotaOwner } from "../../../lib/quota-owner.js";
 
 export default defineEventHandler(async (event) => {
@@ -9,5 +9,5 @@ export default defineEventHandler(async (event) => {
     return { error: "builder_connect_required" };
   }
 
-  return await getCredits(owner);
+  return await claimSharePromoCredits(owner);
 });

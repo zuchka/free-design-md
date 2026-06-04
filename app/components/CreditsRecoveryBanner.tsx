@@ -5,6 +5,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import BYOKeyForm from "@/components/BYOKeyForm";
+import ShareCreditsUnlock from "@/components/ShareCreditsUnlock";
 import type { AiAccessRecoveryReason } from "@/lib/ai-access-errors";
 
 interface CreditsRecoveryBannerProps {
@@ -35,7 +36,7 @@ export default function CreditsRecoveryBanner({
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             {outOfCredits
-              ? "For this MVP, Builder Connect unlocks a small trial quota. Add your own Anthropic key to keep enriching and iterating right now."
+              ? "Post Free design.md once to unlock a one-time credit refill, or add your own Anthropic key to keep enriching and iterating without app credits."
               : noApiKey
                 ? "This deployment does not have a server Anthropic key configured. Add your own key to run enrichment from this browser."
                 : "Connect Builder.io for the trial quota, or add your own Anthropic key to run enrichment without spending app credits."}
@@ -54,19 +55,22 @@ export default function CreditsRecoveryBanner({
                 className="mt-0.5 shrink-0 text-foreground"
               />
               <span>
-                Builder Pro and higher using Builder AI compute is planned, but
-                not wired up in this hackathon build.
+                Plan-based credits are paused until Builder account metadata is
+                reliable enough to use for grants.
               </span>
             </div>
           </div>
         </div>
 
-        <div className="w-full rounded-md border bg-muted/20 p-3 lg:w-[360px]">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-foreground">
-            <IconSparkles size={14} />
-            Continue with Anthropic
+        <div className="grid w-full gap-3 lg:w-[360px]">
+          {outOfCredits && <ShareCreditsUnlock onResolved={onResolved} />}
+          <div className="rounded-md border bg-muted/20 p-3">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-foreground">
+              <IconSparkles size={14} />
+              Continue with Anthropic
+            </div>
+            <BYOKeyForm onSaved={onResolved} />
           </div>
-          <BYOKeyForm onSaved={onResolved} />
         </div>
       </div>
     </div>
