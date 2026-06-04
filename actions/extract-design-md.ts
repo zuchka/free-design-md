@@ -1,6 +1,6 @@
 import { defineAction } from "@agent-native/core";
 import { z } from "zod";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import { designSystemToDesignMd } from "../shared/design-md.js";
 import {
   synthesizeDesignSystem,
@@ -36,6 +36,243 @@ function assertSafeUrl(rawUrl: string): URL {
     throw new Error("Internal/private URLs are not allowed");
   }
   return parsed;
+}
+
+type ConsentIntent = "decline" | "accept";
+
+interface ConsentButtonCandidate {
+  cmp: string;
+  intent: ConsentIntent;
+  selector?: string;
+  name?: RegExp;
+  requiresConsentContext?: boolean;
+}
+
+export const CONSENT_OVERLAY_SELECTORS = [
+  // OneTrust
+  "#onetrust-banner-sdk",
+  "#onetrust-consent-sdk",
+  ".onetrust-pc-dark-filter",
+  // Cookiebot
+  "#CybotCookiebotDialog",
+  "#CookiebotWidget",
+  // TrustArc
+  "#truste-consent-track",
+  "#truste-consent-content",
+  ".truste_box_overlay",
+  // Didomi
+  "#didomi-host",
+  ".didomi-popup-container",
+  // Quantcast Choice
+  ".qc-cmp2-container",
+  ".qc-cmp2-consent-info",
+  ".qc-cmp-cleanslate",
+] as const;
+
+export const CONSENT_DISMISSAL_CANDIDATES: ConsentButtonCandidate[] = [
+  // Privacy-preserving controls first.
+  {
+    cmp: "onetrust",
+    intent: "decline",
+    selector: "#onetrust-reject-all-handler",
+  },
+  {
+    cmp: "cookiebot",
+    intent: "decline",
+    selector: "#CybotCookiebotDialogBodyButtonDecline",
+  },
+  {
+    cmp: "cookiebot",
+    intent: "decline",
+    selector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinDeclineAll",
+  },
+  {
+    cmp: "trustarc",
+    intent: "decline",
+    selector: "#truste-consent-required",
+  },
+  {
+    cmp: "didomi",
+    intent: "decline",
+    selector: "#didomi-notice-disagree-button",
+  },
+  {
+    cmp: "didomi",
+    intent: "decline",
+    selector: ".didomi-components-button--disagree",
+  },
+  {
+    cmp: "quantcast",
+    intent: "decline",
+    name: /^(reject|decline|deny)( all)?$/i,
+    requiresConsentContext: true,
+  },
+  {
+    cmp: "generic",
+    intent: "decline",
+    name: /^(reject|decline|deny)( all)?( optional cookies)?$/i,
+    requiresConsentContext: true,
+  },
+  {
+    cmp: "generic",
+    intent: "decline",
+    name: /^(only necessary|necessary only|essential only|strictly necessary)$/i,
+    requiresConsentContext: true,
+  },
+  // Fallback: accept only when no decline/necessary-only option is visible.
+  {
+    cmp: "onetrust",
+    intent: "accept",
+    selector: "#onetrust-accept-btn-handler",
+  },
+  {
+    cmp: "cookiebot",
+    intent: "accept",
+    selector: "#CybotCookiebotDialogBodyButtonAccept",
+  },
+  {
+    cmp: "cookiebot",
+    intent: "accept",
+    selector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+  },
+  {
+    cmp: "trustarc",
+    intent: "accept",
+    selector: "#truste-consent-button",
+  },
+  {
+    cmp: "didomi",
+    intent: "accept",
+    selector: "#didomi-notice-agree-button",
+  },
+  {
+    cmp: "didomi",
+    intent: "accept",
+    selector: ".didomi-components-button--agree",
+  },
+  {
+    cmp: "quantcast",
+    intent: "accept",
+    name: /^accept( all)?$/i,
+    requiresConsentContext: true,
+  },
+  {
+    cmp: "generic",
+    intent: "accept",
+    name: /^accept( all)?( optional cookies| cookies)?$/i,
+    requiresConsentContext: true,
+  },
+];
+
+export interface ConsentDismissalResult {
+  attempted: boolean;
+  dismissed: boolean;
+  cmp?: string;
+  intent?: ConsentIntent;
+  selector?: string;
+  name?: string;
+}
+
+async function locatorHasConsentContext(
+  locator: ReturnType<Page["locator"]>,
+): Promise<boolean> {
+  return locator
+    .evaluate((el) => {
+      let current: Element | null = el;
+      for (let depth = 0; current && depth < 6; depth++) {
+        const text = (current.textContent ?? "").replace(/\s+/g, " ");
+        const className =
+          typeof current.className === "string" ? current.className : "";
+        const haystack = [
+          current.id,
+          className,
+          current.getAttribute("aria-label") ?? "",
+          current.getAttribute("role") ?? "",
+          text,
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (
+          /cookie|consent|privacy|preferences|onetrust|cookiebot|trustarc|didomi|quantcast|qc-cmp/.test(
+            haystack,
+          )
+        ) {
+          return true;
+        }
+        current = current.parentElement;
+      }
+      return false;
+    })
+    .catch(() => false);
+}
+
+async function knownConsentOverlayVisible(page: Page): Promise<boolean> {
+  for (const selector of CONSENT_OVERLAY_SELECTORS) {
+    const locator = page.locator(selector).first();
+    if ((await locator.count().catch(() => 0)) === 0) continue;
+    if (await locator.isVisible().catch(() => false)) return true;
+  }
+  return false;
+}
+
+async function waitForConsentOverlaysToSettle(page: Page): Promise<boolean> {
+  await page.waitForTimeout(250);
+  await Promise.all(
+    CONSENT_OVERLAY_SELECTORS.map((selector) =>
+      page
+        .locator(selector)
+        .first()
+        .waitFor({ state: "hidden", timeout: 2_000 })
+        .catch(() => undefined),
+    ),
+  );
+  return !(await knownConsentOverlayVisible(page));
+}
+
+async function tryClickConsentCandidate(
+  page: Page,
+  candidate: ConsentButtonCandidate,
+): Promise<ConsentDismissalResult | null> {
+  const locator = candidate.selector
+    ? page.locator(candidate.selector).first()
+    : page.getByRole("button", { name: candidate.name }).first();
+
+  if ((await locator.count().catch(() => 0)) === 0) return null;
+  if (!(await locator.isVisible().catch(() => false))) return null;
+
+  if (
+    candidate.requiresConsentContext &&
+    !(await locatorHasConsentContext(locator))
+  ) {
+    return null;
+  }
+
+  await locator.click({ timeout: 1_500 });
+  const dismissed = await waitForConsentOverlaysToSettle(page);
+  return {
+    attempted: true,
+    dismissed,
+    cmp: candidate.cmp,
+    intent: candidate.intent,
+    selector: candidate.selector,
+    name: candidate.name?.source,
+  };
+}
+
+export async function dismissConsent(
+  page: Page,
+): Promise<ConsentDismissalResult> {
+  for (const candidate of CONSENT_DISMISSAL_CANDIDATES) {
+    const result = await tryClickConsentCandidate(page, candidate).catch(
+      () => null,
+    );
+    if (result) return result;
+  }
+
+  return {
+    attempted: false,
+    dismissed: !(await knownConsentOverlayVisible(page)),
+  };
 }
 
 export default defineAction({
@@ -78,6 +315,8 @@ export default defineAction({
         /* networkidle never reached — proceed with the load-state DOM */
       }
 
+      await dismissConsent(page);
+
       const signals = (await page.evaluate(() => {
         const body = document.body;
         if (!body) {
@@ -91,12 +330,8 @@ export default defineAction({
         const isVisibleBg = (color: string) =>
           color && color !== "rgba(0, 0, 0, 0)" && color !== "transparent";
 
-        const parseRgb = (
-          color: string,
-        ): [number, number, number] | null => {
-          const m = color.match(
-            /rgba?\(\s*(\d+)\s*,?\s*(\d+)\s*,?\s*(\d+)/,
-          );
+        const parseRgb = (color: string): [number, number, number] | null => {
+          const m = color.match(/rgba?\(\s*(\d+)\s*,?\s*(\d+)\s*,?\s*(\d+)/);
           if (!m) return null;
           return [
             parseInt(m[1] ?? "0", 10),
@@ -203,8 +438,7 @@ export default defineAction({
           const rgb = parseRgb(cs.backgroundColor);
           if (!rgb) return;
           const chroma =
-            Math.max(rgb[0], rgb[1], rgb[2]) -
-            Math.min(rgb[0], rgb[1], rgb[2]);
+            Math.max(rgb[0], rgb[1], rgb[2]) - Math.min(rgb[0], rgb[1], rgb[2]);
           if (chroma <= 30) return;
           const rect = (a as HTMLElement).getBoundingClientRect();
           const aboveFold = rect.top >= 0 && rect.top < 800 ? 1 : 0;
