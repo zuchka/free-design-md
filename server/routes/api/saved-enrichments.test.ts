@@ -6,9 +6,7 @@ vi.mock("../../lib/owner", () => ({
   resolveAgentContextOwner: mockResolveAgentContextOwner,
   isAnonymousOwner: (owner: string | null | undefined) =>
     owner === "anonymous@free-design-md.local" ||
-    /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(
-      owner ?? "",
-    ),
+    /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(owner ?? ""),
 }));
 
 const mockResolveConnectedBuilderOwner = vi.hoisted(() => vi.fn());
@@ -33,9 +31,15 @@ vi.mock("../../../actions/iterate-design-md", () => ({
 }));
 
 const mockResolveAnthropicKey = vi.hoisted(() => vi.fn());
-vi.mock("../../lib/anthropic-key", () => ({
-  resolveAnthropicKey: mockResolveAnthropicKey,
-}));
+vi.mock("../../lib/anthropic-key", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../lib/anthropic-key")
+  >("../../lib/anthropic-key");
+  return {
+    ...actual,
+    resolveAnthropicKey: mockResolveAnthropicKey,
+  };
+});
 
 const mockDecrementCredits = vi.hoisted(() => vi.fn());
 const mockRefundCredit = vi.hoisted(() => vi.fn());
@@ -54,6 +58,10 @@ vi.mock("h3", async () => {
     ) => event._params?.[key],
     getCookie: (event: { _cookies?: Record<string, string> }, key: string) =>
       event._cookies?.[key],
+    getHeader: (
+      event: { _requestHeaders?: Record<string, string> },
+      key: string,
+    ) => event._requestHeaders?.[key.toLowerCase()],
     readBody: async (event: { _body: unknown }) => event._body,
     setResponseHeader: (
       event: { _headers?: Record<string, string> },
@@ -226,6 +234,81 @@ describe("saved enrichment API routes", () => {
         iterationPrompt: "Make it dark mode",
         enrichedMarkdown: "# Dark mode",
       }),
+    );
+  });
+
+  it("rejects request Anthropic keys when iterating a saved enrichment", async () => {
+    mockGetPublicSavedEnrichment.mockResolvedValueOnce({
+      id: "saved-123",
+      sourceUrl: "https://example.com",
+      title: "Example",
+      parentId: null,
+      rootId: "saved-123",
+      deterministicMarkdown: "# Deterministic",
+      enrichedMarkdown: "# Original",
+      designSystemData: { colors: [] },
+      signals: { title: "Example" },
+      screenshotDataUrl: null,
+    });
+
+    const event = {
+      _params: { id: "saved-123" },
+      _requestHeaders: { "x-anthropic-api-key": "sk-request" },
+      _body: { userPrompt: "Make it dark mode" },
+    };
+    const result = await iterateHandler(event as never);
+
+    expect((event as { _statusCode?: number })._statusCode).toBe(400);
+    expect(result).toMatchObject({ error: "user_keys_not_accepted" });
+    expect(mockResolveAnthropicKey).not.toHaveBeenCalled();
+    expect(mockIterateStream).not.toHaveBeenCalled();
+  });
+
+  it("allows self-host saved-enrichment iteration without spending quota", async () => {
+    mockGetPublicSavedEnrichment.mockResolvedValueOnce({
+      id: "saved-123",
+      sourceUrl: "https://example.com",
+      title: "Example",
+      parentId: null,
+      rootId: "saved-123",
+      deterministicMarkdown: "# Deterministic",
+      enrichedMarkdown: "# Original",
+      designSystemData: { colors: [] },
+      signals: { title: "Example" },
+      screenshotDataUrl: null,
+    });
+    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(null);
+    mockResolveAnthropicKey.mockResolvedValueOnce({
+      apiKey: "sk-self-host",
+      source: "self-host",
+      consumesQuota: false,
+    });
+    mockIterateStream.mockImplementation(async function* () {
+      yield {
+        type: "done",
+        markdown: "# Local",
+        model: "claude-sonnet-4-6",
+        latencyMs: 1,
+        usage: {},
+        stopReason: "end_turn",
+      };
+    });
+    mockSaveEnrichmentSnapshot.mockResolvedValueOnce({
+      id: "saved-local",
+      url: "/d/saved-local",
+    });
+
+    const result = await iterateHandler({
+      _params: { id: "saved-123" },
+      _body: { userPrompt: "Make it local" },
+      _cookies: { fdmd_anon: "local-token" },
+    } as never);
+    const sse = await readSse(result as ReadableStream<Uint8Array>);
+
+    expect(sse).toContain('"savedDesignUrl":"/d/saved-local"');
+    expect(mockDecrementCredits).not.toHaveBeenCalled();
+    expect(mockIterateStream).toHaveBeenCalledWith(
+      expect.not.objectContaining({ anthropicApiKey: expect.anything() }),
     );
   });
 });

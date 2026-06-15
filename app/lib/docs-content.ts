@@ -26,6 +26,18 @@ export const DOCS_ARTICLES = [
       "A concise answer-first guide to MDX, including syntax, build requirements, use cases, and common tradeoffs.",
   },
   {
+    path: "/docs/api-and-cli",
+    shortTitle: "API and CLI",
+    title: "Free design.md API and CLI: Extract design.md from a URL",
+    seoTitle: "Free design.md API and CLI: Extract design.md from a URL",
+    description:
+      "Use Free design.md from HTTP APIs, the command line, or the public Docker image. Learn how hosted extraction, hosted AI credits, local Anthropic environment keys, SSE responses, and CLI actions work.",
+    intent: "Developer guide",
+    topic: "API",
+    summary:
+      "Use hosted keyless extraction, hosted AI credits, and the public Docker image or self-hosted environment keys for private AI enrichment.",
+  },
+  {
     path: "/docs/markdown-vs-mdx",
     shortTitle: "Markdown vs MDX",
     title: "Markdown vs MDX: Differences and When to Use Each",

@@ -217,8 +217,8 @@ export default runMigrations(
       version: 25,
       sql: `UPDATE fdmd_quota SET bonus_credits = 3 WHERE bonus_credits = 0`,
     },
-    // v26: per-visitor BYO Anthropic API key store. The token is the value
-    // of the `fdmd_anon` cookie set by server/plugins/anon-session.ts.
+    // v26: legacy per-visitor BYO Anthropic key store. Hosted BYO keys are no
+    // longer active, but the table remains for compatibility/no destructive migration.
     {
       version: 26,
       sql: `CREATE TABLE IF NOT EXISTS fdmd_byo_keys (
@@ -260,7 +260,7 @@ export default runMigrations(
   CREATE INDEX IF NOT EXISTS fdmd_saved_enrichments_root_created_idx ON fdmd_saved_enrichments (root_id, created_at)`,
     },
     // v29: one-time promotional credit grants. Used by the share CTA so a
-    // quota owner can earn one extra trial refill without BYO Anthropic.
+    // quota owner can earn one extra hosted trial refill.
     {
       version: 29,
       sql: `CREATE TABLE IF NOT EXISTS fdmd_credit_promos (

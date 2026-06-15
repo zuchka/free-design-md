@@ -1,6 +1,6 @@
 # free-design-md
 
-Paste any URL. Get a portable `design.md` spec. Optionally enrich it with Claude Opus 4.7.
+Paste any URL. Get a portable `design.md` spec. Optionally enrich it with Claude Sonnet 4.6.
 
 ![paste a URL → get a design.md](./public/icon-180.svg)
 
@@ -9,9 +9,9 @@ Paste any URL. Get a portable `design.md` spec. Optionally enrich it with Claude
 A headless-Chromium pipeline that extracts a design system from any live page:
 
 - **Deterministic pass** — Playwright opens the page in a real browser, samples computed CSS for colors, typography, buttons, cards, headings, links, the spacing histogram, and corner radii, and renders a `design.md` following the Google Stitch / VoltAgent schema.
-- **AI-enriched pass** *(one click)* — the deterministic output plus a full-page screenshot is sent to Claude Opus 4.7, which returns a richer, brand-voice-aware `design.md` with semantic naming, design-token references, and editorial-grade component notes.
+- **AI-enriched pass** _(one click)_ — the deterministic output plus a full-page screenshot is sent to Claude Sonnet 4.6, which returns a richer, brand-voice-aware `design.md` with semantic naming, design-token references, and editorial-grade component notes.
 
-No sign-in is required for the deterministic pass. The AI-enriched pass needs an `ANTHROPIC_API_KEY` in `.env.local` today, and will move behind Builder.io SSO + a per-user quota in Phase 2.
+No sign-in is required for the deterministic pass. Hosted AI enrichment runs through Free design.md credits and never accepts user Anthropic keys. Local or private deployments can set `FREE_DESIGN_MD_SELF_HOSTED=1` and `ANTHROPIC_API_KEY` in the environment.
 
 ## How to run
 
@@ -31,6 +31,28 @@ pnpm action extract-design-md --url stripe.com
 
 `pnpm action enrich-design-md` takes the deterministic JSON output and produces the AI-enriched markdown.
 
+To use your own Anthropic key, load `ANTHROPIC_API_KEY` into the local environment and run the app locally or in a private deployment:
+
+```bash
+FREE_DESIGN_MD_SELF_HOSTED=1 pnpm dev
+```
+
+### Docker
+
+The public image is published to GitHub Container Registry for Linux amd64 and arm64. Docker pulls the matching image on macOS, Windows, and Linux:
+
+```bash
+docker pull ghcr.io/zuchka/free-design-md:latest
+
+docker run --rm \
+  -p 3000:3000 \
+  -e FREE_DESIGN_MD_SELF_HOSTED=1 \
+  -e ANTHROPIC_API_KEY \
+  -e DATABASE_URL=file:./data/app.db \
+  -v free-design-md-data:/app/data \
+  ghcr.io/zuchka/free-design-md:latest
+```
+
 ## Why this is agent-native
 
 Three load-bearing properties, not vibes:
@@ -41,7 +63,7 @@ Three load-bearing properties, not vibes:
 
 3. **We kept the load-bearing framework primitives:** `@agent-native/core` runtime, `defineAction()`, `appBasePath()`, the auth plugin, and the A2A agent card. Discovery + invocation + authorization are the parts of agent-native that earn their complexity; they all still work.
 
-We deliberately did **not** ship a chat sidebar. Extract → enrich is a one-shot structured transformation; the chat-sidebar tool-loop is overhead for nothing here. The direct Anthropic SDK call inside [`actions/enrich-design-md.ts`](./actions/enrich-design-md.ts) is measurably faster end-to-end with the same key + model. Agent-native ≠ "must show a chat UI."
+The app also ships an agent chat sidebar for follow-up iteration on an already-loaded design.md. Extract → enrich remains the primary one-shot workflow, and the direct Anthropic SDK call inside [`actions/enrich-design-md.ts`](./actions/enrich-design-md.ts) keeps that main path fast.
 
 ## Roadmap
 
@@ -49,7 +71,7 @@ The spike that proved out the enrichment lane is documented in [`docs/spike-ai-e
 
 Phase 2 (next push) productizes the lane:
 
-- Builder.io SSO sign-in gate; anonymous users get the deterministic pass, signed-in users unlock AI enrichment
+- Builder Connect credit gate; anonymous users get the deterministic pass, connected users unlock hosted AI enrichment
 - 3-free-enrichments quota per signed-in user
 - Streaming with `max_tokens: 32-64K` (current spike caps at 16K and truncates rich brands like Linear)
 - Prompt caching on the 40 KB VoltAgent reference

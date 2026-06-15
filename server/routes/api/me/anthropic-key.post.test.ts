@@ -10,9 +10,9 @@ vi.mock("h3", async () => {
   };
 });
 
-const { default: handler } = await import("./key-status.get");
+const { default: handler } = await import("./anthropic-key.post");
 
-describe("GET /api/me/key-status", () => {
+describe("POST /api/me/anthropic-key", () => {
   it("returns 410 because hosted BYO keys are disabled", async () => {
     const event = {} as { _statusCode?: number };
     const result = await handler(event as never);

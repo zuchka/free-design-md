@@ -2,8 +2,8 @@ import { IconBolt } from "@tabler/icons-react";
 import { useCredits } from "@/lib/use-credits";
 
 export default function CreditsChip() {
-  const { credits, keyStatus } = useCredits();
-  if (!credits || !keyStatus || keyStatus.byoKeyConfigured) return null;
+  const { credits } = useCredits();
+  if (!credits) return null;
 
   const { remaining, allowed } = credits;
   const empty = remaining === 0;

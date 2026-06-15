@@ -77,7 +77,6 @@ export interface IterationInput {
   userPrompt: string;
   sectionTarget?: string;
   deterministicMarkdown?: string;
-  anthropicApiKey?: string;
 }
 
 const InputSchema = z.object({
@@ -88,7 +87,6 @@ const InputSchema = z.object({
     .regex(/^[a-z0-9-]{1,40}$/)
     .optional(),
   deterministicMarkdown: z.string().optional(),
-  anthropicApiKey: z.string().min(1).optional(),
 });
 
 export async function* iterateStream(
@@ -124,10 +122,10 @@ export async function* iterateStream(
     throw new Error(`blocked: ${blockHit}`);
   }
 
-  const apiKey = input.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error(
-      "ANTHROPIC_API_KEY is not set. Add it to .env.local or pass anthropicApiKey on the call.",
+      "ANTHROPIC_API_KEY is not set. Add it to the local or self-hosted environment.",
     );
   }
 

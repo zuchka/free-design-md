@@ -8,9 +8,15 @@ vi.mock("../../../actions/iterate-design-md", () => ({
 }));
 
 const mockResolveAnthropicKey = vi.hoisted(() => vi.fn());
-vi.mock("../../lib/anthropic-key", () => ({
-  resolveAnthropicKey: mockResolveAnthropicKey,
-}));
+vi.mock("../../lib/anthropic-key", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../lib/anthropic-key")
+  >("../../lib/anthropic-key");
+  return {
+    ...actual,
+    resolveAnthropicKey: mockResolveAnthropicKey,
+  };
+});
 
 const mockResolveConnectedBuilderOwner = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/builder-connection", () => ({
@@ -23,9 +29,7 @@ vi.mock("../../lib/owner", () => ({
   resolveAgentContextOwner: mockResolveAgentContextOwner,
   isAnonymousOwner: (owner: string | null | undefined) =>
     owner === "anonymous@free-design-md.local" ||
-    /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(
-      owner ?? "",
-    ),
+    /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(owner ?? ""),
 }));
 
 const mockGetPublicSavedEnrichment = vi.hoisted(() => vi.fn());
@@ -90,6 +94,8 @@ vi.mock("h3", async () => {
   return {
     ...actual,
     readBody: async (e: { _body: unknown }) => e._body,
+    getHeader: (e: { _requestHeaders?: Record<string, string> }, k: string) =>
+      e._requestHeaders?.[k.toLowerCase()],
     setResponseStatus: (e: { _statusCode?: number }, s: number) => {
       e._statusCode = s;
     },
@@ -476,6 +482,19 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     expect(mockIterateStream).not.toHaveBeenCalled();
   });
 
+  it("self-host missing ANTHROPIC_API_KEY → 503", async () => {
+    mockResolveAnthropicKey.mockRejectedValueOnce(
+      new Error("self_hosted_anthropic_key_missing"),
+    );
+    const event = happyBody("test-iter-matrix-self-host-missing");
+    const result = await routeHandler(event as never);
+    expect(statusOf(event as { _statusCode?: number })).toBe(503);
+    expect(result).toMatchObject({
+      error: "self_hosted_anthropic_key_missing",
+    });
+    expect(mockIterateStream).not.toHaveBeenCalled();
+  });
+
   it("server key without Builder Connect → 401", async () => {
     mockResolveAnthropicKey.mockResolvedValueOnce({
       apiKey: "sk-server",
@@ -490,10 +509,10 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     expect(mockIterateStream).not.toHaveBeenCalled();
   });
 
-  it("BYO key → streams, no quota touched", async () => {
+  it("self-host key → streams, no quota touched", async () => {
     mockResolveAnthropicKey.mockResolvedValueOnce({
-      apiKey: "sk-byo",
-      source: "byo",
+      apiKey: "sk-self-host",
+      source: "self-host",
       consumesQuota: false,
     });
     mockIterateStream.mockImplementation(async function* () {
@@ -505,7 +524,7 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     await readSse(result as ReadableStream<Uint8Array>);
     expect(await quotaCount(ANONYMOUS_OWNER)).toBe(before);
     expect(mockIterateStream).toHaveBeenCalledWith(
-      expect.objectContaining({ anthropicApiKey: "sk-byo" }),
+      expect.not.objectContaining({ anthropicApiKey: expect.anything() }),
     );
   });
 
@@ -526,22 +545,6 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     const result = await routeHandler(event as never);
     await readSse(result as ReadableStream<Uint8Array>);
     expect(await quotaCount()).toBe(before + 1);
-  });
-
-  it("BYO key + quota > 0 → BYO preferred, quota untouched", async () => {
-    mockResolveAnthropicKey.mockResolvedValueOnce({
-      apiKey: "sk-byo",
-      source: "byo",
-      consumesQuota: false,
-    });
-    mockIterateStream.mockImplementation(async function* () {
-      yield happyDone;
-    });
-    const before = await quotaCount(ANONYMOUS_OWNER);
-    const event = happyBody("test-iter-matrix-4");
-    const result = await routeHandler(event as never);
-    await readSse(result as ReadableStream<Uint8Array>);
-    expect(await quotaCount(ANONYMOUS_OWNER)).toBe(before);
   });
 
   it("server key + quota = 0 → 402 out_of_credits", async () => {
@@ -565,23 +568,15 @@ describe("POST /api/iterate-design-md — auth matrix", () => {
     expect(mockIterateStream).not.toHaveBeenCalled();
   });
 
-  it("BYO key + quota = 0 → BYO used, no 402", async () => {
-    mockResolveAnthropicKey.mockResolvedValueOnce({
-      apiKey: "sk-byo",
-      source: "byo",
-      consumesQuota: false,
-    });
-    mockIterateStream.mockImplementation(async function* () {
-      yield happyDone;
-    });
-    const exec = getDbExec();
-    await exec.execute({
-      sql: `UPDATE fdmd_quota SET enrich_count = bonus_credits WHERE user_id = ?`,
-      args: [ANONYMOUS_OWNER],
-    });
-    const event = happyBody("test-iter-matrix-6");
+  it("rejects request Anthropic keys", async () => {
+    const event = {
+      ...happyBody("test-iter-matrix-request-key"),
+      _requestHeaders: { "x-anthropic-api-key": "sk-request" },
+    };
     const result = await routeHandler(event as never);
-    expect(result).toBeInstanceOf(ReadableStream);
-    await readSse(result as ReadableStream<Uint8Array>);
+    expect(statusOf(event as { _statusCode?: number })).toBe(400);
+    expect(result).toMatchObject({ error: "user_keys_not_accepted" });
+    expect(mockResolveAnthropicKey).not.toHaveBeenCalled();
+    expect(mockIterateStream).not.toHaveBeenCalled();
   });
 });

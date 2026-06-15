@@ -8,9 +8,7 @@ vi.mock("../../lib/owner", () => ({
   resolveAgentContextOwner: mockResolveAgentContextOwner,
   isAnonymousOwner: (owner: string | null | undefined) =>
     owner === "anonymous@free-design-md.local" ||
-    /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(
-      owner ?? "",
-    ),
+    /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(owner ?? ""),
 }));
 
 const mockEnrichStream = vi.hoisted(() => vi.fn());
@@ -19,9 +17,15 @@ vi.mock("../../../actions/enrich-design-md", () => ({
 }));
 
 const mockResolveAnthropicKey = vi.hoisted(() => vi.fn());
-vi.mock("../../lib/anthropic-key", () => ({
-  resolveAnthropicKey: mockResolveAnthropicKey,
-}));
+vi.mock("../../lib/anthropic-key", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../lib/anthropic-key")
+  >("../../lib/anthropic-key");
+  return {
+    ...actual,
+    resolveAnthropicKey: mockResolveAnthropicKey,
+  };
+});
 
 const mockResolveConnectedBuilderOwner = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/builder-connection", () => ({
@@ -38,6 +42,10 @@ vi.mock("h3", async () => {
   return {
     ...actual,
     readBody: async (event: { _body: unknown }) => event._body,
+    getHeader: (
+      event: { _requestHeaders?: Record<string, string> },
+      key: string,
+    ) => event._requestHeaders?.[key.toLowerCase()],
     setResponseStatus: (event: { _statusCode?: number }, status: number) => {
       event._statusCode = status;
     },
@@ -186,14 +194,14 @@ describe("POST /api/enrich-design-md", () => {
       }),
     );
     expect(mockEnrichStream).toHaveBeenCalledWith(
-      expect.objectContaining({ anthropicApiKey: "sk-server" }),
+      expect.not.objectContaining({ anthropicApiKey: expect.anything() }),
     );
   });
 
-  it("allows BYO key calls without Builder Connect and does not spend quota", async () => {
+  it("allows self-host calls without Builder Connect and does not spend quota", async () => {
     mockResolveAnthropicKey.mockResolvedValueOnce({
-      apiKey: "sk-byo",
-      source: "byo",
+      apiKey: "sk-self-host",
+      source: "self-host",
       consumesQuota: false,
     });
     mockEnrichStream.mockImplementation(async function* () {
@@ -215,5 +223,54 @@ describe("POST /api/enrich-design-md", () => {
     expect(statusOf(event as { _statusCode?: number })).toBe(200);
     expect(await quotaCount(ANONYMOUS_OWNER)).toBe(before);
     expect(mockSaveEnrichmentSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("rejects request Anthropic keys in headers", async () => {
+    const event = {
+      ...validEvent(),
+      _requestHeaders: { "x-anthropic-api-key": "sk-request" },
+    };
+    const result = await routeHandler(event as never);
+
+    expect(statusOf(event as { _statusCode?: number })).toBe(400);
+    expect(result).toEqual(
+      expect.objectContaining({ error: "user_keys_not_accepted" }),
+    );
+    expect(mockResolveAnthropicKey).not.toHaveBeenCalled();
+    expect(mockEnrichStream).not.toHaveBeenCalled();
+  });
+
+  it("rejects request Anthropic keys in JSON bodies", async () => {
+    const event = {
+      ...validEvent(),
+      _body: {
+        ...(validEvent() as { _body: Record<string, unknown> })._body,
+        anthropicApiKey: "sk-request",
+      },
+    };
+
+    const result = await routeHandler(event as never);
+
+    expect(statusOf(event as { _statusCode?: number })).toBe(400);
+    expect(result).toEqual(
+      expect.objectContaining({ error: "user_keys_not_accepted" }),
+    );
+    expect(mockResolveAnthropicKey).not.toHaveBeenCalled();
+    expect(mockEnrichStream).not.toHaveBeenCalled();
+  });
+
+  it("returns a self-host setup error when self-host mode has no env key", async () => {
+    mockResolveAnthropicKey.mockRejectedValueOnce(
+      new Error("self_hosted_anthropic_key_missing"),
+    );
+
+    const event = validEvent();
+    const result = await routeHandler(event as never);
+
+    expect(statusOf(event as { _statusCode?: number })).toBe(503);
+    expect(result).toMatchObject({
+      error: "self_hosted_anthropic_key_missing",
+    });
+    expect(mockEnrichStream).not.toHaveBeenCalled();
   });
 });

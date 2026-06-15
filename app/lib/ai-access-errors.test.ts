@@ -23,7 +23,7 @@ describe("AI access error helpers", () => {
 
   it("formats known API errors as user-facing copy", () => {
     expect(formatAiAccessError({ error: "no_api_key_available" })).toContain(
-      "Anthropic key",
+      "not configured",
     );
   });
 

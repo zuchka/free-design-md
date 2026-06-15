@@ -12,13 +12,8 @@ export interface Credits {
   allowed: number;
 }
 
-interface KeyStatus {
-  byoKeyConfigured: boolean;
-}
-
 interface CreditsContextValue {
   credits: Credits | null;
-  keyStatus: KeyStatus | null;
   setRemaining: (n: number) => void;
   refresh: () => Promise<void>;
 }
@@ -37,30 +32,17 @@ function isPublicReadOnlyPath(): boolean {
 
 export function CreditsProvider({ children }: { children: ReactNode }) {
   const [credits, setCredits] = useState<Credits | null>(null);
-  const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null);
 
   const refresh = async () => {
-    const [creditsR, keyR] = await Promise.allSettled([
-      fetch("/api/me/credits"),
-      fetch("/api/me/key-status"),
-    ]);
-    if (creditsR.status === "fulfilled") {
-      if (creditsR.value.ok) {
-        try {
-          setCredits((await creditsR.value.json()) as Credits);
-        } catch {
-          /* swallow */
-        }
-      } else {
-        setCredits(null);
-      }
-    }
-    if (keyR.status === "fulfilled" && keyR.value.ok) {
+    const creditsR = await fetch("/api/me/credits").catch(() => null);
+    if (creditsR?.ok) {
       try {
-        setKeyStatus((await keyR.value.json()) as KeyStatus);
+        setCredits((await creditsR.json()) as Credits);
       } catch {
         /* swallow */
       }
+    } else {
+      setCredits(null);
     }
   };
 
@@ -72,12 +54,11 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<CreditsContextValue>(
     () => ({
       credits,
-      keyStatus,
       setRemaining: (n: number) =>
         setCredits((c) => (c ? { ...c, remaining: n } : c)),
       refresh,
     }),
-    [credits, keyStatus],
+    [credits],
   );
 
   return (

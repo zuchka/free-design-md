@@ -1,5 +1,6 @@
 import {
   defineEventHandler,
+  getHeader,
   readBody,
   setResponseHeader,
   setResponseStatus,
@@ -8,12 +9,12 @@ import {
   enrichStream,
   type EnrichInput,
 } from "../../../actions/enrich-design-md.js";
-import { resolveAnthropicKey } from "../../lib/anthropic-key.js";
-import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
 import {
-  isAnonymousOwner,
-  resolveAgentContextOwner,
-} from "../../lib/owner.js";
+  containsRequestAnthropicApiKey,
+  resolveAnthropicKey,
+} from "../../lib/anthropic-key.js";
+import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
+import { isAnonymousOwner, resolveAgentContextOwner } from "../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../lib/quota.js";
 import { saveEnrichmentSnapshot } from "../../lib/saved-enrichments.js";
 import { createSseSender } from "../../lib/sse.js";
@@ -21,9 +22,9 @@ import { createSseSender } from "../../lib/sse.js";
 /**
  * POST /api/enrich-design-md (SSE)
  *
- * Gated: anonymous callers must have a BYO Anthropic key (stored via the
- * fdmd_anon cookie). Signed-in users (Builder SSO) may use the server key
- * against their quota. Returns 401 otherwise.
+ * Gated: hosted calls use the deployment's server key and quota rules.
+ * Self-hosted calls may use ANTHROPIC_API_KEY from the deployment environment
+ * without Builder Connect or quota.
  *
  * Body: JSON payload from a prior /api/extract?format=json call.
  * Response: text/event-stream with delta/done/error events.
@@ -67,29 +68,54 @@ export default defineEventHandler(async (event) => {
   }
 
   const owner = await resolveAgentContextOwner(event);
+  const bodyRecord = body as Record<string, unknown>;
+
+  if (
+    containsRequestAnthropicApiKey(
+      bodyRecord,
+      getHeader(event, "x-anthropic-api-key"),
+    )
+  ) {
+    setResponseStatus(event, 400);
+    return {
+      error: "user_keys_not_accepted",
+      reason:
+        "Hosted API calls do not accept Anthropic keys. Use Free design.md credits or run a local/self-hosted deployment with ANTHROPIC_API_KEY.",
+    };
+  }
 
   let resolvedKey: { apiKey: string; source: string; consumesQuota: boolean };
   try {
     resolvedKey = await resolveAnthropicKey(event);
-  } catch {
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      err.message.includes("self_hosted_anthropic_key_missing")
+    ) {
+      setResponseStatus(event, 503);
+      return {
+        error: "self_hosted_anthropic_key_missing",
+        reason: "Set ANTHROPIC_API_KEY on this self-hosted deployment.",
+      };
+    }
     setResponseStatus(event, 402);
-    return { error: "no_api_key_available", reason: "byo-key-required" };
+    return { error: "no_api_key_available", reason: "server-key-required" };
   }
 
   let quotaOwner = owner;
-  let connectedBuilderOwner:
-    | Awaited<ReturnType<typeof resolveConnectedBuilderOwner>>
-    | null = null;
+  let connectedBuilderOwner: Awaited<
+    ReturnType<typeof resolveConnectedBuilderOwner>
+  > | null = null;
 
-  // Anonymous callers may use the server key only after Builder Connect has
+  // Hosted anonymous callers may use the server key only after Builder Connect has
   // stored a complete credential bundle under this browser's fdmd_anon owner.
-  if (isAnonymousOwner(owner) && resolvedKey.source !== "byo") {
+  if (isAnonymousOwner(owner) && resolvedKey.consumesQuota) {
     connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
     if (!connectedBuilderOwner) {
       setResponseStatus(event, 401);
       return {
         error: "sign_in_required",
-        reason: "add a BYO key or sign in with Builder",
+        reason: "connect Builder to use hosted AI credits",
       };
     }
     quotaOwner = connectedBuilderOwner.ownerId;
@@ -113,7 +139,6 @@ export default defineEventHandler(async (event) => {
     signals,
     screenshotDataUrl,
     deterministicMarkdown: md,
-    anthropicApiKey: resolvedKey.apiKey,
   };
 
   setResponseHeader(event, "Content-Type", "text/event-stream; charset=utf-8");

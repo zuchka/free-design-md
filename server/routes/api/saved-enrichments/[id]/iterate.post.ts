@@ -1,6 +1,7 @@
 import {
   defineEventHandler,
   getCookie,
+  getHeader,
   getRouterParam,
   readBody,
   setResponseHeader,
@@ -10,7 +11,10 @@ import {
   iterateStream,
   type IterationInput,
 } from "../../../../../actions/iterate-design-md.js";
-import { resolveAnthropicKey } from "../../../../lib/anthropic-key.js";
+import {
+  containsRequestAnthropicApiKey,
+  resolveAnthropicKey,
+} from "../../../../lib/anthropic-key.js";
 import { resolveConnectedBuilderOwner } from "../../../../lib/builder-connection.js";
 import { FDMD_ANON_COOKIE } from "../../../../lib/cookie-names.js";
 import {
@@ -84,13 +88,38 @@ export default defineEventHandler(async (event) => {
   }
 
   const owner = await resolveAgentContextOwner(event);
+  const bodyRecord = body as Record<string, unknown>;
+
+  if (
+    containsRequestAnthropicApiKey(
+      bodyRecord,
+      getHeader(event, "x-anthropic-api-key"),
+    )
+  ) {
+    setResponseStatus(event, 400);
+    return {
+      error: "user_keys_not_accepted",
+      reason:
+        "Hosted API calls do not accept Anthropic keys. Use Free design.md credits or run a local/self-hosted deployment with ANTHROPIC_API_KEY.",
+    };
+  }
 
   let resolvedKey: { apiKey: string; source: string; consumesQuota: boolean };
   try {
     resolvedKey = await resolveAnthropicKey(event);
-  } catch {
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      err.message.includes("self_hosted_anthropic_key_missing")
+    ) {
+      setResponseStatus(event, 503);
+      return {
+        error: "self_hosted_anthropic_key_missing",
+        reason: "Set ANTHROPIC_API_KEY on this self-hosted deployment.",
+      };
+    }
     setResponseStatus(event, 402);
-    return { error: "no_api_key_available", reason: "byo-key-required" };
+    return { error: "no_api_key_available", reason: "server-key-required" };
   }
 
   let connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
@@ -101,7 +130,7 @@ export default defineEventHandler(async (event) => {
         setResponseStatus(event, 401);
         return {
           error: "sign_in_required",
-          reason: "add a BYO key or connect Builder",
+          reason: "connect Builder to use hosted AI credits",
         };
       }
       quotaOwner = connectedBuilderOwner.ownerId;
@@ -129,7 +158,6 @@ export default defineEventHandler(async (event) => {
     userPrompt,
     sectionTarget: sectionTarget ?? undefined,
     deterministicMarkdown: parent.deterministicMarkdown,
-    anthropicApiKey: resolvedKey.apiKey,
   };
 
   setResponseHeader(event, "Content-Type", "text/event-stream; charset=utf-8");
