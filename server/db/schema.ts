@@ -99,9 +99,9 @@ export const enrichmentCache = table("enrichment_cache", {
 });
 
 /**
- * Per-visitor BYO Anthropic API key store.
- * The token is the value of the `fdmd_anon` cookie — a random UUID set
- * for every browser on first visit (anonymous and SSO'd alike).
+ * Legacy per-visitor BYO Anthropic API key store.
+ * Hosted BYO keys are no longer active; the table remains to avoid a
+ * destructive migration.
  */
 export const fdmdBYOKeys = table("fdmd_byo_keys", {
   token: text("token").primaryKey(),

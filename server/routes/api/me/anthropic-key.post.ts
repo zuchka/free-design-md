@@ -1,19 +1,16 @@
-import { defineEventHandler, readBody, setResponseStatus } from "h3";
-import { setBYOKeyForEvent } from "../../../lib/byo-key.js";
+import { defineEventHandler, setResponseStatus } from "h3";
 
 /**
  * POST /api/me/anthropic-key
- * Body: { apiKey: string }
- * Stores the user's BYO Anthropic key against their fdmd_anon session token.
- * Returns 400 if the key doesn't start with "sk-".
- * Returns 409 if the visitor has no fdmd_anon cookie (cookie middleware should prevent this).
+ *
+ * Disabled for the hosted product. Free design.md no longer accepts or stores
+ * user Anthropic keys on hosted deployments.
  */
 export default defineEventHandler(async (event) => {
-  const body = (await readBody(event).catch(() => null)) as { apiKey?: string } | null;
-  if (!body || typeof body.apiKey !== "string" || !body.apiKey.startsWith("sk-")) {
-    setResponseStatus(event, 400);
-    return { error: "bad_key" };
-  }
-  await setBYOKeyForEvent(event, body.apiKey);
-  return { ok: true };
+  setResponseStatus(event, 410);
+  return {
+    error: "user_keys_not_accepted",
+    reason:
+      "Hosted Free design.md does not accept Anthropic keys. Use hosted credits or run a local/self-hosted deployment with ANTHROPIC_API_KEY.",
+  };
 });

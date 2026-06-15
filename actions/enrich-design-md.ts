@@ -68,7 +68,6 @@ export interface EnrichInput {
   deterministicMarkdown: string;
   signals: unknown;
   screenshotDataUrl: string;
-  anthropicApiKey?: string;
 }
 
 /**
@@ -191,10 +190,10 @@ export async function* enrichStream(
     }
   }
 
-  const apiKey = input.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error(
-      "ANTHROPIC_API_KEY is not set. Add it to .env.local or pass anthropicApiKey on the call.",
+      "ANTHROPIC_API_KEY is not set. Add it to the local or self-hosted environment.",
     );
   }
 

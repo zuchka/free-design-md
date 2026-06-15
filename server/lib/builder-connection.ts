@@ -13,8 +13,8 @@ export interface ConnectedBuilderOwner {
 /**
  * Builder Connect is not the same thing as app auth: anonymous visitors can
  * connect Builder credentials that are stored under the anonymous owner used by
- * the framework routes. This helper checks that request-scoped credential
- * bucket and returns the app-local owner for user-scoped saved artifacts.
+ * the framework routes. This helper checks the framework credential bucket and
+ * returns the app-local owner for user-scoped saved artifacts.
  */
 export async function resolveConnectedBuilderOwner(
   owner: string,

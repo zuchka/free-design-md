@@ -74,8 +74,7 @@ export default function BuilderConnectCta({
           Connect Builder.io
         </div>
         <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[220px]">
-          Unlock 3 AI enrichment credits for this MVP. BYO Anthropic keeps going
-          after that.
+          Unlock 3 hosted AI enrichment credits for this MVP.
         </p>
         {error && <p className="mt-1 text-[10px] text-destructive">{error}</p>}
       </div>

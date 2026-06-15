@@ -56,10 +56,10 @@ export function formatAiAccessError(payload: ApiErrorPayload): string {
     return "You've used all available AI credits.";
   }
   if (payload.error === "no_api_key_available") {
-    return "Add an Anthropic key to use AI enrichment.";
+    return "AI enrichment is not configured for this deployment.";
   }
   if (payload.error === "sign_in_required") {
-    return "Connect Builder.io or add an Anthropic key to use AI enrichment.";
+    return "Connect Builder.io to use hosted AI enrichment credits.";
   }
   return payload.reason
     ? `${payload.error ?? "request_failed"}: ${payload.reason}`
