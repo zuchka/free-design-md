@@ -11,12 +11,22 @@ describe("auth plugin", () => {
   it("keeps SEO content routes public", () => {
     expect(mockCreateAuthPlugin).toHaveBeenCalledWith(
       expect.objectContaining({
-        publicPaths: expect.arrayContaining(["/", "/docs", "/quality"]),
+        publicPaths: expect.arrayContaining([
+          "/",
+          "/docs",
+          "/examples",
+          "/quality",
+        ]),
       }),
     );
     expect(pluginOptions).toEqual(
       expect.objectContaining({
-        publicPaths: expect.arrayContaining(["/", "/docs", "/quality"]),
+        publicPaths: expect.arrayContaining([
+          "/",
+          "/docs",
+          "/examples",
+          "/quality",
+        ]),
       }),
     );
   });

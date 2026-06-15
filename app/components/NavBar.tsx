@@ -1,6 +1,11 @@
 import { Link, useLocation } from "react-router";
 import { AgentToggleButton } from "@agent-native/core/client";
-import { IconBook2, IconChartBar, IconHome } from "@tabler/icons-react";
+import {
+  IconBook2,
+  IconChartBar,
+  IconHome,
+  IconLayoutGrid,
+} from "@tabler/icons-react";
 import CreditsChip from "@/components/CreditsChip";
 
 interface NavBarProps {
@@ -18,10 +23,12 @@ function navLinkClass(isActive: boolean) {
 export default function NavBar({ showAgentToggle = true }: NavBarProps) {
   const location = useLocation();
   const onWorkspace = location.pathname === "/";
+  const onExamples = location.pathname.startsWith("/examples");
   const onDocs = location.pathname.startsWith("/docs");
   const onQuality = location.pathname === "/quality";
   const onPublicSharedDesign = /^\/d\/[^/]+/.test(location.pathname);
-  const showCredits = !onPublicSharedDesign && !onDocs && !onQuality;
+  const showCredits =
+    !onPublicSharedDesign && !onExamples && !onDocs && !onQuality;
 
   return (
     <header className="border-b border-border bg-background">
@@ -65,6 +72,16 @@ export default function NavBar({ showAgentToggle = true }: NavBarProps) {
           >
             <IconBook2 size={14} />
             <span className="hidden sm:inline">Docs</span>
+          </Link>
+          <Link
+            to="/examples"
+            aria-label="Examples"
+            aria-current={onExamples ? "page" : undefined}
+            title="Examples"
+            className={navLinkClass(onExamples)}
+          >
+            <IconLayoutGrid size={14} />
+            <span className="hidden sm:inline">Examples</span>
           </Link>
           <Link
             to="/quality"
