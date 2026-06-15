@@ -25,9 +25,14 @@ interface CreditsContextValue {
 
 const CreditsContext = createContext<CreditsContextValue | null>(null);
 
-function isPublicSharedDesignPath(): boolean {
+function isPublicReadOnlyPath(): boolean {
   if (typeof window === "undefined") return false;
-  return /^\/d\/[^/]+/.test(window.location.pathname);
+  const { pathname } = window.location;
+  return (
+    /^\/d\/[^/]+/.test(pathname) ||
+    pathname.startsWith("/docs") ||
+    pathname === "/quality"
+  );
 }
 
 export function CreditsProvider({ children }: { children: ReactNode }) {
@@ -60,7 +65,7 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (isPublicSharedDesignPath()) return;
+    if (isPublicReadOnlyPath()) return;
     void refresh();
   }, []);
 
