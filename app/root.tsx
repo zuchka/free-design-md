@@ -1,4 +1,11 @@
-import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+import {
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+  useLocation,
+} from "react-router";
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,6 +35,10 @@ export const links: LinksFunction = () => [
 ];
 
 const THEME_INIT_SCRIPT = getThemeInitScript("light", true);
+
+function isPublicContentPath(pathname: string): boolean {
+  return pathname.startsWith("/docs") || pathname === "/quality";
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -65,6 +76,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function Root() {
+  const location = useLocation();
+  if (isPublicContentPath(location.pathname)) {
+    return (
+      <>
+        <NavBar showAgentToggle={false} />
+        <Outlet />
+      </>
+    );
+  }
+
+  return <ClientAppRoot />;
+}
+
+function ClientAppRoot() {
   const [queryClient] = useState(() => new QueryClient());
   return (
     <ClientOnly fallback={<DefaultSpinner />}>
