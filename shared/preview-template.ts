@@ -418,7 +418,11 @@ export function renderPreview(
   const firstLogo = data.logos[0];
   const logoUrl = firstLogo?.url ?? "";
   const safeLogoUrl =
-    logoUrl && /^https?:\/\/[^\s"<>]+$/.test(logoUrl) ? logoUrl : "";
+    logoUrl &&
+    (/^https?:\/\/[^\s"<>]+$/.test(logoUrl) ||
+      /^\/[A-Za-z0-9/_:.-]+$/.test(logoUrl))
+      ? logoUrl
+      : "";
 
   const brandMark = safeLogoUrl
     ? `<img class="brand-mark" src="${escapeHtml(safeLogoUrl)}" alt="${safeTitle} logo">`

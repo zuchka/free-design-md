@@ -37,7 +37,11 @@ export const links: LinksFunction = () => [
 const THEME_INIT_SCRIPT = getThemeInitScript("light", true);
 
 function isPublicContentPath(pathname: string): boolean {
-  return pathname.startsWith("/docs") || pathname === "/quality";
+  return (
+    pathname.startsWith("/docs") ||
+    pathname.startsWith("/examples") ||
+    pathname === "/quality"
+  );
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {

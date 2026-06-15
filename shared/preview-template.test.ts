@@ -92,6 +92,18 @@ describe("renderPreview", () => {
     expect(html).toMatch(/<img[^>]+src="https:\/\/example\.com\/logo\.png"/);
   });
 
+  it("allows root-local logo asset paths", () => {
+    const data = fullData();
+    data.logos = [
+      { url: "/assets/examples/logos/stripe.svg", name: "Stripe", variant: "auto" },
+    ];
+
+    const html = renderPreview(data);
+
+    expect(html).toContain("/assets/examples/logos/stripe.svg");
+    expect(html).toMatch(/<img[^>]+src="\/assets\/examples\/logos\/stripe\.svg"/);
+  });
+
   it("renders an initials fallback when no logo is present", () => {
     const html = renderPreview(emptyData(), { title: "Acme Co" });
     // No <img> tag in the header

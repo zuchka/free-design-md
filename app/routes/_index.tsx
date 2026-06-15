@@ -38,11 +38,13 @@ import {
 import BuilderConnectCta from "@/components/auth/BuilderConnectCta";
 import CreditsRecoveryBanner from "@/components/CreditsRecoveryBanner";
 import ArtifactActions from "@/components/ArtifactActions";
+import HomepageLanding from "@/components/HomepageLanding";
 import {
   classifyAiAccessErrorMessage,
   readAiAccessErrorResponse,
   type AiAccessRecoveryReason,
 } from "@/lib/ai-access-errors";
+import { getHomepageExamples } from "@/lib/example-library";
 import { readCache, writeCache } from "@/lib/extraction-cache";
 import SideBySideMemo from "@/components/SideBySideMemo";
 import {
@@ -115,6 +117,8 @@ const LOADING_LABELS = [
   "Extracting tokens…",
   "Rendering preview…",
 ];
+
+const HOMEPAGE_EXAMPLES = getHomepageExamples();
 
 function formatSectionLabel(section: string): string {
   const knownLabels: Record<string, string> = {
@@ -411,6 +415,11 @@ export default function IndexRoute() {
     if (trimmed) void extractUrl(trimmed);
   }
 
+  function handleSampleSelect(sampleUrl: string) {
+    setUrl(sampleUrl);
+    void extractUrl(sampleUrl);
+  }
+
   async function handleEnrich() {
     if (!result) return;
     setIsEnriching(true);
@@ -563,7 +572,7 @@ export default function IndexRoute() {
 
   const hasEnrichedContent = enriched !== null || streamingMarkdown.length > 0;
   const showEnrichBanner =
-    !isLoading && !hasEnrichedContent && (!configured || result !== null);
+    !isLoading && result !== null && !hasEnrichedContent;
   const currentMarkdown =
     view === "enriched"
       ? enriched
@@ -801,33 +810,46 @@ export default function IndexRoute() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-6 py-12">
-        <header className="mb-6">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Extract a design system from any URL
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Type a URL. We headlessly load the page, capture its colors, fonts,
-            and shapes, and render a portable design.md spec. No sign-in
-            required for the deterministic pass.
-          </p>
-        </header>
-
-        <form
-          onSubmit={handleSubmit}
-          className="mb-6 flex flex-col gap-3 sm:flex-row"
-        >
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="stripe.com"
-            disabled={isLoading}
-            className="flex-1"
-            autoFocus
+        {!result && !isLoading ? (
+          <HomepageLanding
+            url={url}
+            isLoading={isLoading}
+            examples={HOMEPAGE_EXAMPLES}
+            onUrlChange={setUrl}
+            onSubmit={handleSubmit}
+            onSampleSelect={handleSampleSelect}
           />
-          <Button type="submit" disabled={isLoading || !url.trim()}>
-            {isLoading ? "Extracting…" : "Extract"}
-          </Button>
-        </form>
+        ) : (
+          <>
+            <header className="mb-6">
+              <h1 className="text-3xl font-semibold tracking-tight">
+                Extract a design system from any URL
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                Type a URL. We headlessly load the page, capture its colors,
+                fonts, and shapes, and render a portable design.md spec. No
+                sign-in required for the deterministic pass.
+              </p>
+            </header>
+
+            <form
+              onSubmit={handleSubmit}
+              className="mb-6 flex flex-col gap-3 sm:flex-row"
+            >
+              <Input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="stripe.com"
+                disabled={isLoading}
+                className="flex-1"
+                autoFocus
+              />
+              <Button type="submit" disabled={isLoading || !url.trim()}>
+                {isLoading ? "Extracting…" : "Extract"}
+              </Button>
+            </form>
+          </>
+        )}
 
         {showEnrichBanner && (
           <div className="mb-8">
