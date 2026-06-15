@@ -1,10 +1,11 @@
 import { useState } from "react";
 import {
+  IconBraces,
   IconCheck,
+  IconCopy,
   IconDeviceFloppy,
   IconHtml,
   IconMarkdown,
-  IconCopy,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,12 +19,14 @@ import {
 interface ArtifactActionsProps {
   markdown: string;
   html: string;
+  mdx?: string;
   baseFilename: string;
 }
 
 export default function ArtifactActions({
   markdown,
   html,
+  mdx = "",
   baseFilename,
 }: ArtifactActionsProps) {
   const [copied, setCopied] = useState(false);
@@ -44,6 +47,10 @@ export default function ArtifactActions({
     downloadText(`${filename}.html`, html, "text/html;charset=utf-8");
   }
 
+  function saveMdx() {
+    downloadText(`${filename}.mdx`, mdx, "text/mdx;charset=utf-8");
+  }
+
   return (
     <div className="flex items-center gap-2">
       <Button
@@ -62,7 +69,7 @@ export default function ArtifactActions({
           <Button
             size="sm"
             variant="outline"
-            disabled={!markdown && !html}
+            disabled={!markdown && !html && !mdx}
             aria-label="Save artifact"
             title="Save"
             className="size-8 p-0"
@@ -79,6 +86,10 @@ export default function ArtifactActions({
             <DropdownMenuItem disabled={!html} onClick={saveHtml}>
               <IconHtml />
               <span>Save HTML</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!mdx} onClick={saveMdx}>
+              <IconBraces />
+              <span>Save MDX</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>

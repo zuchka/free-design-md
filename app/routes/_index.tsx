@@ -6,6 +6,7 @@ import {
   useBuilderConnectFlow,
 } from "@agent-native/core/client";
 import { renderPreview } from "../../shared/preview-template";
+import { designArtifactToMdx } from "../../shared/design-mdx";
 import {
   extractSectionList,
   parseEnrichedFrontmatter,
@@ -778,6 +779,24 @@ export default function IndexRoute() {
       : view === "enriched"
         ? "AI-enriched"
         : "Deterministic";
+  const artifactPreviewHtml = currentPreviewHtml;
+  const artifactVariant = view === "enriched" ? "AI-enriched" : "Deterministic";
+  const artifactMdx = useMemo(() => {
+    if (!currentMarkdown) return "";
+    return designArtifactToMdx({
+      title: result?.signals?.title ?? result?.url ?? "Design System",
+      sourceUrl: result?.url,
+      variant: artifactVariant,
+      markdown: currentMarkdown,
+      previewHtml: artifactPreviewHtml,
+    });
+  }, [
+    artifactPreviewHtml,
+    artifactVariant,
+    currentMarkdown,
+    result?.signals?.title,
+    result?.url,
+  ]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -943,7 +962,8 @@ export default function IndexRoute() {
                     )}
                     <ArtifactActions
                       markdown={currentMarkdown}
-                      html={activePreviewHtml}
+                      html={artifactPreviewHtml}
+                      mdx={artifactMdx}
                       baseFilename={result.signals?.title ?? result.url}
                     />
                     {enriched?.savedDesignUrl && (
