@@ -24,6 +24,7 @@ import {
 import { announceAgentActivity } from "@/lib/agent-activity";
 import { publishDesignContext } from "@/lib/agent-design-context";
 import { renderPreview } from "../../shared/preview-template";
+import { designArtifactToMdx } from "../../shared/design-mdx";
 import {
   extractSectionList,
   parseEnrichedFrontmatter,
@@ -202,6 +203,18 @@ export default function SavedDesignRoute() {
       : view === "enriched"
         ? "AI-enriched"
         : "Deterministic";
+  const artifactPreviewHtml = currentPreviewHtml;
+  const artifactVariant = view === "enriched" ? "AI-enriched" : "Deterministic";
+  const artifactMdx = useMemo(() => {
+    if (!currentMarkdown || !saved) return "";
+    return designArtifactToMdx({
+      title: saved.signals?.title ?? saved.title,
+      sourceUrl: saved.sourceUrl,
+      variant: artifactVariant,
+      markdown: currentMarkdown,
+      previewHtml: artifactPreviewHtml,
+    });
+  }, [artifactPreviewHtml, artifactVariant, currentMarkdown, saved]);
   const previewAvailable = activePreviewHtml.length > 0;
   const candidatePreviewFailed =
     previewSource === "candidate" &&
@@ -476,7 +489,8 @@ export default function SavedDesignRoute() {
                   </div>
                   <ArtifactActions
                     markdown={currentMarkdown}
-                    html={activePreviewHtml}
+                    html={artifactPreviewHtml}
+                    mdx={artifactMdx}
                     baseFilename={saved.title}
                   />
                 </div>
