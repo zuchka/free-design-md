@@ -57,7 +57,7 @@ export default function NavBar({ showAgentToggle = true }: NavBarProps) {
             <span className="hidden sm:inline">My workspace</span>
           </Link>
           <Link
-            to="/docs/what-is-design-md"
+            to="/docs"
             aria-label="Docs"
             aria-current={onDocs ? "page" : undefined}
             title="Docs"
@@ -66,8 +66,6 @@ export default function NavBar({ showAgentToggle = true }: NavBarProps) {
             <IconBook2 size={14} />
             <span className="hidden sm:inline">Docs</span>
           </Link>
-          {showCredits && <CreditsChip />}
-          {showAgentToggle && <AgentToggleButton />}
           <Link
             to="/quality"
             aria-label="Quality"
@@ -78,6 +76,8 @@ export default function NavBar({ showAgentToggle = true }: NavBarProps) {
             <IconChartBar size={14} />
             <span className="hidden sm:inline">Quality</span>
           </Link>
+          {showCredits && <CreditsChip />}
+          {showAgentToggle && <AgentToggleButton />}
         </nav>
       </div>
     </header>

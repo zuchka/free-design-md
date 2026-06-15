@@ -7,6 +7,8 @@ import {
   IconMarkdown,
   IconSearch,
 } from "@tabler/icons-react";
+import { DocsPageLayout } from "@/components/DocsPageLayout";
+import { DocsRelatedArticles } from "@/components/DocsRelatedArticles";
 import { Button } from "@/components/ui/button";
 
 const SITE_URL = "https://free-design-md.agent-native.com";
@@ -219,15 +221,9 @@ function SectionHeading({
 
 export default function WhatIsDesignMdRoute() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(STRUCTURED_DATA),
-        }}
-      />
+    <DocsPageLayout structuredData={STRUCTURED_DATA}>
       <section className="border-b border-border bg-muted/25">
-        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:py-16">
+        <div className="grid gap-10 px-6 py-14 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:py-16">
           <div>
             <Link
               to="/"
@@ -282,7 +278,7 @@ export default function WhatIsDesignMdRoute() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 py-14">
+      <section className="px-6 py-14">
         <SectionHeading eyebrow="Definition" title="The short version">
           A design.md turns a website's observed design system into a structured
           Markdown artifact. It is not just documentation and it is not only a
@@ -303,7 +299,7 @@ export default function WhatIsDesignMdRoute() {
       </section>
 
       <section className="border-y border-border bg-muted/25">
-        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <div className="grid gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <SectionHeading eyebrow="Contents" title="What belongs in the file">
             The best design.md files combine deterministic evidence with
             designer-readable judgment. They name reusable pieces, preserve
@@ -330,7 +326,7 @@ export default function WhatIsDesignMdRoute() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-10 px-6 py-14 lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)]">
+      <section className="grid gap-10 px-6 py-14 lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)]">
         <div>
           <SectionHeading eyebrow="Example" title="A design.md is plain text">
             Because it is Markdown, a design.md can live in a repo, travel in a
@@ -361,7 +357,7 @@ export default function WhatIsDesignMdRoute() {
       </section>
 
       <section id="faq" className="border-t border-border bg-muted/25">
-        <div className="mx-auto max-w-7xl px-6 py-14">
+        <div className="px-6 py-14">
           <SectionHeading eyebrow="FAQ" title="Common design.md questions">
             Short answers for teams evaluating design.md as a portable design
             system format for AI-assisted product work.
@@ -383,8 +379,10 @@ export default function WhatIsDesignMdRoute() {
         </div>
       </section>
 
+      <DocsRelatedArticles currentPath={PAGE_PATH} />
+
       <section className="border-t border-border bg-foreground text-background">
-        <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="grid gap-8 px-6 py-12 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div>
             <div className="mb-4 flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <IconSearch size={20} />
@@ -406,6 +404,6 @@ export default function WhatIsDesignMdRoute() {
           </Button>
         </div>
       </section>
-    </main>
+    </DocsPageLayout>
   );
 }
