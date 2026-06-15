@@ -5,7 +5,7 @@ vi.mock("@agent-native/core/server", () => ({
   createAuthPlugin: mockCreateAuthPlugin,
 }));
 
-const { default: pluginOptions } = await import("./auth.js");
+const { default: pluginOptions } = await import("../plugins/auth.js");
 
 describe("auth plugin", () => {
   it("keeps SEO content routes public", () => {
