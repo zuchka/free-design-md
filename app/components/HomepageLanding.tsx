@@ -87,7 +87,7 @@ export default function HomepageLanding({
             Free deterministic extraction. Optional AI enrichment.
           </div>
           <h1 className="max-w-none text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-            Turn any public website into a portable design.md.
+            Turn any public website into a portable design.md
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground">
             Paste a URL to capture colors, typography, spacing, radii,
