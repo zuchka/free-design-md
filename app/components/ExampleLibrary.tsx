@@ -4,6 +4,7 @@ import type { ExampleDesignArtifact } from "@/lib/example-library";
 interface ExampleCardGridProps {
   examples: ExampleDesignArtifact[];
   compact?: boolean;
+  mutedCards?: boolean;
 }
 
 export function ExampleColorSwatches({
@@ -42,7 +43,11 @@ export function ExampleLogoMark({
   const sizeClass =
     size === "lg" ? "size-14" : size === "sm" ? "size-9" : "size-11";
   const imgSizeClass =
-    size === "lg" ? "max-h-8 max-w-8" : size === "sm" ? "max-h-5 max-w-5" : "max-h-6 max-w-6";
+    size === "lg"
+      ? "max-h-8 max-w-8"
+      : size === "sm"
+        ? "max-h-5 max-w-5"
+        : "max-h-6 max-w-6";
 
   return (
     <span
@@ -62,6 +67,7 @@ export function ExampleLogoMark({
 export function ExampleCardGrid({
   examples,
   compact = false,
+  mutedCards = false,
 }: ExampleCardGridProps) {
   return (
     <div
@@ -75,7 +81,11 @@ export function ExampleCardGrid({
         <Link
           key={example.slug}
           to={`/examples/${example.slug}`}
-          className="group flex min-h-[210px] flex-col justify-between rounded-md border bg-background p-4 text-left no-underline transition-colors hover:border-primary/50 hover:bg-secondary/35"
+          className={`group flex min-h-[210px] flex-col justify-between rounded-md border p-4 text-left no-underline transition-colors hover:border-primary/50 ${
+            mutedCards
+              ? "bg-secondary/25 hover:bg-secondary/35"
+              : "bg-background hover:bg-secondary/35"
+          }`}
         >
           <span className="flex items-start justify-between gap-3">
             <span className="flex min-w-0 items-start gap-3">

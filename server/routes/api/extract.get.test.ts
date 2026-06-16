@@ -11,6 +11,14 @@ vi.mock("../../../actions/extract-design-md", () => ({
   },
 }));
 
+vi.mock("../../../shared/design-mdx", () => ({
+  designArtifactToMdx: vi.fn(() => "MDX_EXPORT"),
+}));
+
+vi.mock("../../../shared/preview-template", () => ({
+  renderPreview: vi.fn(() => "<html>preview</html>"),
+}));
+
 vi.mock("h3", async () => {
   const actual = await vi.importActual<typeof import("h3")>("h3");
   return {
@@ -49,14 +57,72 @@ describe("GET /api/extract metrics", () => {
 
     const event = {
       _query: { url: "https://example.com", format: "json" },
-    } as { _query: Record<string, unknown>; _statusCode?: number };
-    await routeHandler(event as never);
+    } as {
+      _headers?: Record<string, string>;
+      _query: Record<string, unknown>;
+      _statusCode?: number;
+    };
+    const result = await routeHandler(event as never);
 
     expect(event._statusCode ?? 200).toBe(200);
+    expect(event._headers?.["Content-Type"]).toContain("application/json");
+    expect(result).toMatchObject({ markdown: "# design" });
     expect(renderPrometheusMetrics()).toContain(
       'fdmd_extract_requests_total{status="success",format="json"} 1',
     );
     expect(renderPrometheusMetrics()).not.toContain("https://example.com");
+  });
+
+  it("returns raw markdown by default", async () => {
+    mockExtractRun.mockResolvedValueOnce({
+      url: "https://example.com/",
+      markdown: "# design",
+      designSystemData: {},
+      signals: { title: "Example" },
+      screenshotDataUrl: "data:image/png;base64,abc",
+    });
+
+    const event = {
+      _query: { url: "https://example.com" },
+    } as {
+      _headers?: Record<string, string>;
+      _query: Record<string, unknown>;
+      _statusCode?: number;
+    };
+    const result = await routeHandler(event as never);
+
+    expect(event._statusCode ?? 200).toBe(200);
+    expect(event._headers?.["Content-Type"]).toContain("text/markdown");
+    expect(result).toBe("# design");
+    expect(renderPrometheusMetrics()).toContain(
+      'fdmd_extract_requests_total{status="success",format="markdown"} 1',
+    );
+  });
+
+  it("returns deterministic MDX exports", async () => {
+    mockExtractRun.mockResolvedValueOnce({
+      url: "https://example.com/",
+      markdown: "# design",
+      designSystemData: {},
+      signals: { title: "Example" },
+      screenshotDataUrl: "data:image/png;base64,abc",
+    });
+
+    const event = {
+      _query: { url: "https://example.com", format: "mdx" },
+    } as {
+      _headers?: Record<string, string>;
+      _query: Record<string, unknown>;
+      _statusCode?: number;
+    };
+    const result = await routeHandler(event as never);
+
+    expect(event._statusCode ?? 200).toBe(200);
+    expect(event._headers?.["Content-Type"]).toContain("text/mdx");
+    expect(result).toBe("MDX_EXPORT");
+    expect(renderPrometheusMetrics()).toContain(
+      'fdmd_extract_requests_total{status="success",format="mdx"} 1',
+    );
   });
 
   it("records deterministic extraction bad requests", async () => {
@@ -69,6 +135,25 @@ describe("GET /api/extract metrics", () => {
     expect(event._statusCode).toBe(400);
     expect(renderPrometheusMetrics()).toContain(
       'fdmd_extract_requests_total{status="bad_request",format="markdown"} 1',
+    );
+  });
+
+  it("rejects unknown response formats", async () => {
+    const event = {
+      _query: { url: "https://example.com", format: "xml" },
+    } as {
+      _headers?: Record<string, string>;
+      _query: Record<string, unknown>;
+      _statusCode?: number;
+    };
+    const result = await routeHandler(event as never);
+
+    expect(event._statusCode).toBe(400);
+    expect(event._headers?.["Content-Type"]).toContain("text/plain");
+    expect(result).toContain("format must be one of");
+    expect(mockExtractRun).not.toHaveBeenCalled();
+    expect(renderPrometheusMetrics()).toContain(
+      'fdmd_extract_requests_total{status="bad_request",format="invalid"} 1',
     );
   });
 });

@@ -31,11 +31,11 @@ export const DOCS_ARTICLES = [
     title: "Free design.md API and CLI: Extract design.md from a URL",
     seoTitle: "Free design.md API and CLI: Extract design.md from a URL",
     description:
-      "Use Free design.md from HTTP APIs, the command line, or the public Docker image. Learn how hosted extraction, hosted AI credits, local Anthropic environment keys, SSE responses, and CLI actions work.",
+      "Use Free design.md from HTTP APIs, the command line, or the public Docker image. Learn JSON, Markdown, and MDX outputs plus hosted credits, local keys, SSE responses, and CLI actions.",
     intent: "Developer guide",
     topic: "API",
     summary:
-      "Use hosted keyless extraction, hosted AI credits, and the public Docker image or self-hosted environment keys for private AI enrichment.",
+      "Use hosted keyless extraction with JSON, Markdown, or MDX outputs, plus hosted AI credits and Docker/self-hosted environment keys for private AI enrichment.",
   },
   {
     path: "/docs/markdown-vs-mdx",

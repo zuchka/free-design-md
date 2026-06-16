@@ -19,7 +19,7 @@ const PAGE_PATH = "/docs/api-and-cli";
 const PAGE_URL = docsUrl(PAGE_PATH);
 const PAGE_TITLE = "Free design.md API and CLI: Extract design.md from a URL";
 const PAGE_DESCRIPTION =
-  "Use Free design.md from HTTP APIs, the command line, or the public Docker image. Learn keyless hosted extraction, hosted AI credits, local Anthropic environment keys, SSE responses, and CLI actions.";
+  "Use Free design.md from HTTP APIs, the command line, or the public Docker image. Learn keyless hosted extraction, JSON, Markdown, and MDX outputs, hosted AI credits, local Anthropic environment keys, SSE responses, and CLI actions.";
 
 export const links: LinksFunction = () => [
   { rel: "canonical", href: PAGE_URL },
@@ -46,10 +46,21 @@ export function meta() {
 
 const HTTP_EXAMPLE = `# Hosted deterministic extraction: no Anthropic key required.
 curl "https://free-design-md.agent-native.com/api/extract?url=https://stripe.com&format=json" \\
-  -o extract.json`;
+  -o extract.json
+
+# Raw design.md Markdown. You can also omit format or use format=md.
+curl "https://free-design-md.agent-native.com/api/extract?url=https://stripe.com&format=markdown" \\
+  -o design.md
+
+# Export-ready MDX with designMd, previewHtml, and a TokenPreview component.
+curl "https://free-design-md.agent-native.com/api/extract?url=https://stripe.com&format=mdx" \\
+  -o design.mdx`;
 
 const LOCAL_EXAMPLE = `# Deterministic extraction from a local checkout.
-pnpm action extract-design-md --url stripe.com
+pnpm action extract-design-md --url stripe.com > extract.json
+
+# The action returns JSON. Save only the design.md text with jq.
+pnpm action extract-design-md --url stripe.com | jq -r '.markdown' > design.md
 
 # For AI enrichment, load ANTHROPIC_API_KEY into your local environment first.
 pnpm action enrich-design-md \\
@@ -95,9 +106,9 @@ scrape_configs:
 const API_SURFACE = [
   {
     method: "GET",
-    path: "/api/extract?url=...&format=json",
+    path: "/api/extract?url=...&format=json|markdown|mdx",
     key: "No Anthropic key",
-    body: "Loads the URL in headless Chromium and returns deterministic design.md, designSystemData, page signals, and a screenshot data URL.",
+    body: "Loads the URL in headless Chromium. Return JSON for the full payload, raw Markdown for design.md, or MDX for an export-ready docs artifact.",
   },
   {
     method: "POST",
@@ -121,9 +132,28 @@ const API_SURFACE = [
 
 const KEY_RULES = [
   "Deterministic extraction does not call an LLM and does not need an Anthropic key.",
+  "HTTP extraction can return JSON, raw design.md Markdown, or deterministic MDX.",
   "Hosted AI enrichment runs on Free design.md credits and the deployment's server key.",
   "The hosted service does not accept or store user Anthropic keys.",
   "Use your own Anthropic key only in a local checkout or self-hosted deployment via ANTHROPIC_API_KEY.",
+];
+
+const RESPONSE_FORMATS = [
+  {
+    label: "JSON",
+    query: "format=json",
+    body: "Use this when another tool needs the complete extraction payload: design.md text, token tree, page signals, and screenshot data URL.",
+  },
+  {
+    label: "Markdown",
+    query: "format=markdown, format=md, or omit format",
+    body: "Use this when you only want the portable design.md document as text. The response content type is text/markdown.",
+  },
+  {
+    label: "MDX",
+    query: "format=mdx",
+    body: "Use this when a docs site wants an .mdx export with metadata, the designMd string, previewHtml, and a TokenPreview component.",
+  },
 ];
 
 const FAQS = [
@@ -131,6 +161,11 @@ const FAQS = [
     question: "Can I use Free design.md without the browser UI?",
     answer:
       "Yes. Use GET /api/extract for deterministic extraction, or run pnpm action extract-design-md from a local checkout.",
+  },
+  {
+    question: "Can the extract API return JSON, Markdown, or MDX?",
+    answer:
+      "Yes. Set format=json for the full payload, format=markdown or format=md for raw design.md Markdown, or format=mdx for an export-ready MDX artifact. Omitting format returns Markdown.",
   },
   {
     question: "Does basic design.md extraction require an API key?",
@@ -286,7 +321,8 @@ export default function ApiAndCliRoute() {
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground sm:text-lg">
               You can use Free design.md without the browser UI. The
-              deterministic extractor works over HTTP and CLI with no AI key.
+              deterministic extractor works over HTTP and CLI with no AI key,
+              and the HTTP API can return JSON, raw design.md Markdown, or MDX.
               Hosted AI enrichment runs on Free design.md credits, while local
               Docker and self-hosted deployments can use your own environment
               key.
@@ -362,11 +398,32 @@ export default function ApiAndCliRoute() {
 
       <section id="http-api" className="border-y border-border bg-muted/25">
         <div className="grid min-w-0 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
-          <SectionHeading eyebrow="HTTP" title="Hosted extraction is keyless">
-            Use the hosted API for deterministic design.md extraction. Hosted AI
-            routes are available through the web app's Builder-connected credit
-            flow, not by sending your Anthropic key to Free design.md.
-          </SectionHeading>
+          <div>
+            <SectionHeading eyebrow="HTTP" title="Hosted extraction is keyless">
+              Use the hosted API for deterministic design.md extraction. The
+              same endpoint can return structured JSON, raw Markdown, or MDX.
+              Hosted AI routes are available through the web app's
+              Builder-connected credit flow, not by sending your Anthropic key
+              to Free design.md.
+            </SectionHeading>
+
+            <div className="mt-8 grid gap-4">
+              {RESPONSE_FORMATS.map((format) => (
+                <article
+                  key={format.label}
+                  className="rounded-lg border bg-background p-4"
+                >
+                  <h3 className="text-sm font-semibold">{format.label}</h3>
+                  <p className="mt-1 font-mono text-xs text-primary">
+                    {format.query}
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    {format.body}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
 
           <pre className="min-w-0 overflow-auto rounded-lg border bg-[#111111] p-5 text-xs leading-6 text-white shadow-sm">
             <code>{HTTP_EXAMPLE}</code>
@@ -381,8 +438,10 @@ export default function ApiAndCliRoute() {
         <div>
           <SectionHeading eyebrow="CLI" title="Use your key locally">
             The action layer is the same core surface the UI wraps. In local or
-            private deployments, set ANTHROPIC_API_KEY in the environment so the
-            key never passes through the hosted Free design.md service.
+            private deployments, extraction returns structured JSON on stdout;
+            pipe `.markdown` into a file when you want only design.md text. Set
+            ANTHROPIC_API_KEY in the environment for AI enrichment so the key
+            never passes through the hosted Free design.md service.
           </SectionHeading>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {[
@@ -549,10 +608,10 @@ export default function ApiAndCliRoute() {
               <code>{METRICS_EXAMPLE}</code>
             </pre>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              When PROMETHEUS_METRICS_TOKEN is set, /api/metrics requires
-              either an Authorization: Bearer token or an x-prometheus-token
-              header. If you run multiple app processes, scrape each process or
-              aggregate metrics at the platform layer.
+              When PROMETHEUS_METRICS_TOKEN is set, /api/metrics requires either
+              an Authorization: Bearer token or an x-prometheus-token header. If
+              you run multiple app processes, scrape each process or aggregate
+              metrics at the platform layer.
             </p>
           </div>
         </div>

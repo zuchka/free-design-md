@@ -97,7 +97,7 @@ export default function HomepageLanding({
 
           <form
             onSubmit={onSubmit}
-            className="mt-7 flex max-w-4xl flex-col gap-3 rounded-md border bg-background p-3 shadow-sm sm:flex-row"
+            className="mt-7 flex max-w-4xl flex-col gap-3 rounded-md border bg-secondary/25 p-3 shadow-sm sm:flex-row"
           >
             <Input
               value={url}
@@ -143,7 +143,7 @@ export default function HomepageLanding({
         <PopularExamplesPanel examples={examples.slice(0, 6)} />
       </section>
 
-      <section className="grid min-w-0 gap-6 rounded-md border bg-background p-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start">
+      <section className="grid min-w-0 gap-6 rounded-md border bg-secondary/25 p-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
             Use it from code
@@ -172,7 +172,10 @@ export default function HomepageLanding({
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {PROOF_CARDS.map((card) => (
-          <div key={card.title} className="rounded-md border bg-background p-4">
+          <div
+            key={card.title}
+            className="rounded-md border bg-secondary/25 p-4"
+          >
             <h3 className="text-sm font-semibold text-foreground">
               {card.title}
             </h3>
@@ -183,7 +186,7 @@ export default function HomepageLanding({
         ))}
       </section>
 
-      <section className="flex flex-col gap-5 rounded-md border bg-background p-5">
+      <section className="flex flex-col gap-5 rounded-md border bg-secondary/25 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">
@@ -203,7 +206,7 @@ export default function HomepageLanding({
             <Link to="/examples">View all examples</Link>
           </Button>
         </div>
-        <ExampleCardGrid examples={examples} />
+        <ExampleCardGrid examples={examples} mutedCards />
       </section>
 
       <footer className="border-t py-8">
@@ -310,7 +313,7 @@ function CopyCodeBlock({
   }
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-md border bg-background">
+    <div className="min-w-0 overflow-hidden rounded-md border bg-secondary/25">
       <div className="flex items-center justify-between border-b px-3 py-2">
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
           <Icon size={16} className="text-primary" />
@@ -319,7 +322,7 @@ function CopyCodeBlock({
         <button
           type="button"
           onClick={copyCode}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
           aria-label={`Copy ${snippet.label} example`}
         >
           {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}

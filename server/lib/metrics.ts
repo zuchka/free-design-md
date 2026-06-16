@@ -42,10 +42,7 @@ function renderLabelsWithExtra(
   return renderLabels(mergedNames, merged);
 }
 
-export function safeMetricLabel(
-  value: unknown,
-  fallback = "unknown",
-): string {
+export function safeMetricLabel(value: unknown, fallback = "unknown"): string {
   if (typeof value !== "string") return fallback;
   const cleaned = value
     .trim()
@@ -56,7 +53,10 @@ export function safeMetricLabel(
 }
 
 class CounterMetric {
-  private readonly values = new Map<string, { labels: Labels; value: number }>();
+  private readonly values = new Map<
+    string,
+    { labels: Labels; value: number }
+  >();
 
   constructor(
     readonly name: string,
@@ -84,7 +84,9 @@ class CounterMetric {
       `# TYPE ${this.name} counter`,
     ];
     for (const { labels, value } of this.values.values()) {
-      lines.push(`${this.name}${renderLabels(this.labelNames, labels)} ${value}`);
+      lines.push(
+        `${this.name}${renderLabels(this.labelNames, labels)} ${value}`,
+      );
     }
     return lines.join("\n");
   }
@@ -146,7 +148,9 @@ class HistogramMetric {
           le: "+Inf",
         })} ${count}`,
       );
-      lines.push(`${this.name}_sum${renderLabels(this.labelNames, labels)} ${sum}`);
+      lines.push(
+        `${this.name}_sum${renderLabels(this.labelNames, labels)} ${sum}`,
+      );
       lines.push(
         `${this.name}_count${renderLabels(this.labelNames, labels)} ${count}`,
       );
@@ -219,12 +223,15 @@ export function keySourceLabel(source: string | null | undefined): string {
 
 export function recordExtractRequest(input: {
   status: string;
-  format: "json" | "markdown";
+  format: "json" | "markdown" | "mdx" | "invalid";
   startedAt: number;
 }): void {
   const status = safeMetricLabel(input.status);
   extractRequests.inc({ status, format: input.format });
-  extractDuration.observe({ status }, Math.max(0, nowSeconds() - input.startedAt));
+  extractDuration.observe(
+    { status },
+    Math.max(0, nowSeconds() - input.startedAt),
+  );
 }
 
 export function recordEnrichRequest(input: {
@@ -260,7 +267,10 @@ export function recordIterateRequest(input: {
     key_source: safeMetricLabel(input.keySource, "none"),
     quota: safeMetricLabel(input.quota, "not_applicable"),
   });
-  aiStreamDuration.observe({ route, status }, Math.max(0, nowSeconds() - input.startedAt));
+  aiStreamDuration.observe(
+    { route, status },
+    Math.max(0, nowSeconds() - input.startedAt),
+  );
 }
 
 export function recordBuilderConnectResolution(input: {
