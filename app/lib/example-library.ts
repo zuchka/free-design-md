@@ -761,6 +761,69 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       },
     }),
   },
+  {
+    slug: "supabase",
+    title: "Supabase",
+    sourceUrl: "https://supabase.com",
+    category: "Developer platform",
+    description:
+      "A code-first backend system with dark technical surfaces, emerald actions, and dashboard-ready component patterns.",
+    bestFor: "Developer tools, database dashboards, API products, auth flows, and technical docs.",
+    data: buildDesignData({
+      colors: {
+        primary: "#3ECF8E",
+        secondary: "#0B1614",
+        accent: "#1F8F63",
+        background: "#0B0F0E",
+        surface: "#111827",
+        text: "#F8FAFC",
+        textMuted: "#94A3B8",
+      },
+      typography: {
+        headingFont: "Circular",
+        bodyFont: "Circular",
+        headingFontStack: "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
+        bodyFontStack: "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
+        headingWeight: "600",
+        headingSizes: { h1: "56px", h2: "36px", h3: "22px" },
+      },
+      spacing: {
+        slidePadding: "48px",
+        elementGap: "20px",
+      },
+      borders: {
+        radius: "10px",
+        accentWidth: "1px",
+        radii: { button: "8px", card: "12px", pill: "999px" },
+      },
+      components: {
+        button: {
+          primary: {
+            background: "#3ECF8E",
+            color: "#06251A",
+            radius: "8px",
+            padding: "10px 16px",
+            fontSize: "14px",
+            fontWeight: "700",
+            border: "1px solid #3ECF8E",
+          },
+        },
+        card: {
+          background: "#111827",
+          color: "#F8FAFC",
+          radius: "12px",
+          padding: "24px",
+          border: "1px solid rgba(148, 163, 184, 0.18)",
+          shadow: "0 18px 44px rgba(0, 0, 0, 0.28)",
+        },
+        link: {
+          color: "#3ECF8E",
+          textDecoration: "none",
+          fontWeight: "600",
+        },
+      },
+    }),
+  },
 ];
 
 export const EXAMPLE_DESIGNS: ExampleDesignArtifact[] =

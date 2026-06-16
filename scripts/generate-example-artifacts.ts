@@ -46,6 +46,7 @@ const TARGETS = [
   { slug: "figma", sourceUrl: "https://www.figma.com" },
   { slug: "linear", sourceUrl: "https://linear.app" },
   { slug: "notion", sourceUrl: "https://www.notion.com" },
+  { slug: "supabase", sourceUrl: "https://supabase.com" },
 ] as const;
 
 const OUTPUT_PATH = join("app", "lib", "generated-example-artifacts.ts");
