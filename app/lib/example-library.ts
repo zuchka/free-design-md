@@ -887,6 +887,70 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       },
     }),
   },
+  {
+    slug: "bmw",
+    title: "BMW",
+    sourceUrl: "https://www.bmwusa.com",
+    category: "Automotive",
+    description:
+      "A premium automotive system with crisp blue actions, high-contrast model imagery, and engineered layout precision.",
+    bestFor: "Luxury product pages, configurators, automotive retail, and premium commerce experiences.",
+    data: buildDesignData({
+      colors: {
+        primary: "#1C69D4",
+        secondary: "#111111",
+        accent: "#0066B1",
+        background: "#F5F5F5",
+        surface: "#FFFFFF",
+        text: "#161616",
+        textMuted: "#646464",
+      },
+      typography: {
+        headingFont: "BMW Type Next",
+        bodyFont: "BMW Type Next",
+        headingFontStack: "BMW Type Next, Helvetica Neue, Arial, sans-serif",
+        bodyFontStack: "BMW Type Next, Helvetica Neue, Arial, sans-serif",
+        headingWeight: "400",
+        bodyWeight: "400",
+        headingSizes: { h1: "58px", h2: "38px", h3: "24px" },
+      },
+      spacing: {
+        slidePadding: "56px",
+        elementGap: "24px",
+      },
+      borders: {
+        radius: "0px",
+        accentWidth: "2px",
+        radii: { button: "0px", card: "2px", pill: "999px" },
+      },
+      components: {
+        button: {
+          primary: {
+            background: "#1C69D4",
+            color: "#FFFFFF",
+            radius: "0px",
+            padding: "14px 24px",
+            fontSize: "16px",
+            fontWeight: "700",
+            border: "1px solid #1C69D4",
+          },
+        },
+        card: {
+          background: "#FFFFFF",
+          color: "#161616",
+          radius: "2px",
+          padding: "28px",
+          border: "1px solid #D9D9D9",
+          shadow: "0 12px 30px rgba(0, 0, 0, 0.10)",
+        },
+        link: {
+          color: "#1C69D4",
+          textDecoration: "none",
+          fontWeight: "700",
+        },
+      },
+    }),
+  },
 ];
 
 export const EXAMPLE_DESIGNS: ExampleDesignArtifact[] =

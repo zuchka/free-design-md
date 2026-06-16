@@ -48,6 +48,7 @@ const TARGETS = [
   { slug: "notion", sourceUrl: "https://www.notion.com" },
   { slug: "supabase", sourceUrl: "https://supabase.com" },
   { slug: "github", sourceUrl: "https://github.com/features" },
+  { slug: "bmw", sourceUrl: "https://www.bmwusa.com" },
 ] as const;
 
 const OUTPUT_PATH = join("app", "lib", "generated-example-artifacts.ts");
