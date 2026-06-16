@@ -10,7 +10,11 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ExampleCardGrid } from "@/components/ExampleLibrary";
+import {
+  ExampleCardGrid,
+  ExampleColorSwatches,
+  ExampleLogoMark,
+} from "@/components/ExampleLibrary";
 import type { ExampleDesignArtifact } from "@/lib/example-library";
 
 interface HomepageLandingProps {
@@ -77,63 +81,67 @@ export default function HomepageLanding({
 }: HomepageLandingProps) {
   return (
     <div className="flex flex-col gap-10 pb-10">
-      <section className="py-4">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-secondary/60 px-4 py-2 text-sm font-medium text-muted-foreground">
-          <IconRocket size={16} />
-          Free deterministic extraction. Optional AI enrichment.
-        </div>
-        <h1 className="max-w-none text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-          Turn any public website into a portable design.md.
-        </h1>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground">
-          Paste a URL to capture colors, typography, spacing, radii, components,
-          and a token preview. Then export the artifact for agents, docs, repos,
-          or local workflows.
-        </p>
+      <section className="grid gap-8 py-4 min-[1800px]:grid-cols-[minmax(0,1fr)_420px] min-[1800px]:items-start">
+        <div className="min-w-0">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-secondary/60 px-4 py-2 text-sm font-medium text-muted-foreground">
+            <IconRocket size={16} />
+            Free deterministic extraction. Optional AI enrichment.
+          </div>
+          <h1 className="max-w-none text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+            Turn any public website into a portable design.md.
+          </h1>
+          <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground">
+            Paste a URL to capture colors, typography, spacing, radii,
+            components, and a token preview. Then export the artifact for
+            agents, docs, repos, or local workflows.
+          </p>
 
-        <form
-          onSubmit={onSubmit}
-          className="mt-7 flex max-w-4xl flex-col gap-3 rounded-md border bg-background p-3 shadow-sm sm:flex-row"
-        >
-          <Input
-            value={url}
-            onChange={(event) => onUrlChange(event.target.value)}
-            placeholder="stripe.com"
-            disabled={isLoading}
-            className="h-11 flex-1 border-0 bg-secondary/50 shadow-none focus-visible:ring-1"
-            autoFocus
-          />
-          <Button
-            type="submit"
-            size="lg"
-            disabled={isLoading || !url.trim()}
-            className="shrink-0"
+          <form
+            onSubmit={onSubmit}
+            className="mt-7 flex max-w-4xl flex-col gap-3 rounded-md border bg-background p-3 shadow-sm sm:flex-row"
           >
-            {isLoading ? "Extracting..." : "Extract design.md"}
-          </Button>
-        </form>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Try
-          </span>
-          {examples.slice(0, 5).map((example) => (
-            <button
-              key={example.slug}
-              type="button"
-              onClick={() => onSampleSelect(example.sourceUrl)}
-              className="rounded-full border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-secondary"
+            <Input
+              value={url}
+              onChange={(event) => onUrlChange(event.target.value)}
+              placeholder="stripe.com"
+              disabled={isLoading}
+              className="h-11 flex-1 border-0 bg-secondary/50 shadow-none focus-visible:ring-1"
+              autoFocus
+            />
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isLoading || !url.trim()}
+              className="shrink-0"
             >
-              {example.title}
-            </button>
-          ))}
-          <Link
-            to="/examples"
-            className="rounded-full border border-primary/30 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-          >
-            Browse library
-          </Link>
+              {isLoading ? "Extracting..." : "Extract design.md"}
+            </Button>
+          </form>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+              Try
+            </span>
+            {examples.slice(0, 5).map((example) => (
+              <button
+                key={example.slug}
+                type="button"
+                onClick={() => onSampleSelect(example.sourceUrl)}
+                className="rounded-full border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-secondary"
+              >
+                {example.title}
+              </button>
+            ))}
+            <Link
+              to="/examples"
+              className="rounded-full border border-primary/30 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+            >
+              Browse library
+            </Link>
+          </div>
         </div>
+
+        <PopularExamplesPanel examples={examples.slice(0, 6)} />
       </section>
 
       <section className="flex flex-col gap-5 rounded-md border bg-background p-5">
@@ -234,6 +242,57 @@ export default function HomepageLanding({
         </div>
       </footer>
     </div>
+  );
+}
+
+function PopularExamplesPanel({
+  examples,
+}: {
+  examples: ExampleDesignArtifact[];
+}) {
+  return (
+    <aside className="hidden rounded-md border bg-secondary/25 p-4 min-[1800px]:block">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Popular examples
+          </p>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight">
+            Browse ready-made design.md files.
+          </h2>
+        </div>
+        <Link
+          to="/examples"
+          className="shrink-0 text-sm font-medium text-primary hover:underline"
+        >
+          View all
+        </Link>
+      </div>
+      <div className="mt-4 grid gap-1">
+        {examples.map((example) => (
+          <Link
+            key={example.slug}
+            to={`/examples/${example.slug}`}
+            className="group flex items-center justify-between gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-background"
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <ExampleLogoMark example={example} size="sm" />
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-foreground">
+                  {example.title}
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {example.domain}
+                </span>
+              </span>
+            </span>
+            <span className="hidden shrink-0 sm:block">
+              <ExampleColorSwatches example={example} />
+            </span>
+          </Link>
+        ))}
+      </div>
+    </aside>
   );
 }
 
