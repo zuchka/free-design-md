@@ -47,6 +47,7 @@ import {
 import { getHomepageExamples } from "@/lib/example-library";
 import { readCache, writeCache } from "@/lib/extraction-cache";
 import SideBySideMemo from "@/components/SideBySideMemo";
+import TokenPreviewFrame from "@/components/TokenPreviewFrame";
 import {
   advanceSession,
   getOrCreateSession,
@@ -157,7 +158,6 @@ export default function IndexRoute() {
   const streamAccumRef = useRef("");
   const enrichDeltaAnnouncedRef = useRef(false);
   const markdownPreRef = useRef<HTMLPreElement>(null);
-  const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
   const [savedDesigns, setSavedDesigns] = useState<SavedDesignItem[]>([]);
   const [savedDesignsError, setSavedDesignsError] = useState<string | null>(
@@ -371,7 +371,6 @@ export default function IndexRoute() {
     setIterSession(null);
     setPreviewSource("current");
     setView("deterministic");
-    setPreviewExpanded(false);
     setScreenshotHeight(null);
     try {
       const endpoint = `${appBasePath()}/api/extract?url=${encodeURIComponent(trimmed)}&format=json`;
@@ -571,8 +570,7 @@ export default function IndexRoute() {
   }
 
   const hasEnrichedContent = enriched !== null || streamingMarkdown.length > 0;
-  const showEnrichBanner =
-    !isLoading && result !== null && !hasEnrichedContent;
+  const showEnrichBanner = !isLoading && result !== null && !hasEnrichedContent;
   const currentMarkdown =
     view === "enriched"
       ? enriched
@@ -1227,24 +1225,13 @@ export default function IndexRoute() {
                 className="rounded-md border overflow-hidden"
                 style={{ boxShadow: "var(--intuit-card-shadow)" }}
               >
-                <div
-                  className="relative overflow-hidden"
-                  style={{
-                    height: previewExpanded ? "900px" : "260px",
-                    transition: "height 0.3s ease",
-                  }}
-                >
-                  <div style={{ height: "900px" }}>
-                    <iframe
-                      srcDoc={activePreviewHtml}
-                      title="Synthetic preview"
-                      sandbox="allow-same-origin"
-                      className="block h-full w-full"
-                    />
-                  </div>
-                  {!previewExpanded && (
-                    <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
-                  )}
+                <div className="relative overflow-hidden">
+                  <TokenPreviewFrame
+                    html={activePreviewHtml}
+                    title="Synthetic preview"
+                    unavailableMessage="Preview unavailable for this design."
+                    minHeight={260}
+                  />
                   {isEnriching && view === "enriched" && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
                       <Spinner className="size-6 text-foreground" />
@@ -1288,17 +1275,6 @@ export default function IndexRoute() {
                       </p>
                     </div>
                   )}
-                </div>
-                <div className="flex justify-center border-t py-2">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewExpanded((v) => !v)}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-                  >
-                    {previewExpanded
-                      ? "Collapse preview ↑"
-                      : "Expand full preview ↓"}
-                  </button>
                 </div>
               </div>
             </Pane>

@@ -16,6 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import CreditsRecoveryBanner from "@/components/CreditsRecoveryBanner";
 import SideBySideMemo from "@/components/SideBySideMemo";
 import ArtifactActions from "@/components/ArtifactActions";
+import TokenPreviewFrame from "@/components/TokenPreviewFrame";
 import {
   classifyAiAccessErrorMessage,
   readAiAccessErrorResponse,
@@ -82,7 +83,6 @@ export default function SavedDesignRoute() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"enriched" | "deterministic">("enriched");
   const [copiedLink, setCopiedLink] = useState(false);
-  const [previewExpanded, setPreviewExpanded] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
   const [iterationPrompt, setIterationPrompt] = useState("");
   const [iterationSectionTarget, setIterationSectionTarget] = useState("");
@@ -215,7 +215,6 @@ export default function SavedDesignRoute() {
       previewHtml: artifactPreviewHtml,
     });
   }, [artifactPreviewHtml, artifactVariant, currentMarkdown, saved]);
-  const previewAvailable = activePreviewHtml.length > 0;
   const candidatePreviewFailed =
     previewSource === "candidate" &&
     candidateMarkdown.length > 0 &&
@@ -680,30 +679,13 @@ export default function SavedDesignRoute() {
               className="rounded-md border overflow-hidden"
               style={{ boxShadow: "var(--intuit-card-shadow)" }}
             >
-              <div
-                className="relative overflow-hidden"
-                style={{
-                  height: previewExpanded ? "900px" : "260px",
-                  transition: "height 0.3s ease",
-                }}
-              >
-                {previewAvailable ? (
-                  <div style={{ height: "900px" }}>
-                    <iframe
-                      srcDoc={activePreviewHtml}
-                      title="Synthetic preview"
-                      sandbox="allow-same-origin"
-                      className="block h-full w-full"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-                    Preview unavailable for this saved design.
-                  </div>
-                )}
-                {!previewExpanded && (
-                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
-                )}
+              <div className="relative overflow-hidden">
+                <TokenPreviewFrame
+                  html={activePreviewHtml}
+                  title="Synthetic preview"
+                  unavailableMessage="Preview unavailable for this saved design."
+                  minHeight={260}
+                />
                 {isIterating && previewSource === "candidate" && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
                     <Spinner className="size-6 text-foreground" />
@@ -724,17 +706,6 @@ export default function SavedDesignRoute() {
                     </p>
                   </div>
                 )}
-              </div>
-              <div className="flex justify-center border-t py-2">
-                <button
-                  type="button"
-                  onClick={() => setPreviewExpanded((v) => !v)}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-                >
-                  {previewExpanded
-                    ? "Collapse preview ↑"
-                    : "Expand full preview ↓"}
-                </button>
               </div>
             </div>
           </Pane>

@@ -302,14 +302,12 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
   border: 1px solid var(--ds-border);
   border-radius: 8px;
   padding: 24px;
-  overflow-x: auto;
   font-size: 12px;
   line-height: 1.7;
   font-family: "Fira Code", "Cascadia Code", ui-monospace, monospace;
   color: var(--ds-text);
-  white-space: pre;
-  max-height: 480px;
-  overflow-y: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 </style>
 <section class="sc-section">

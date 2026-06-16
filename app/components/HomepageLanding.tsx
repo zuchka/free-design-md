@@ -43,8 +43,7 @@ const CODE_SNIPPETS = [
     id: "docker",
     label: "Docker",
     icon: IconBrandDocker,
-    code:
-      "docker run --rm -p 3000:3000 -e FREE_DESIGN_MD_SELF_HOSTED=1 -e ANTHROPIC_API_KEY ghcr.io/zuchka/free-design-md:latest",
+    code: "docker run --rm -p 3000:3000 -e FREE_DESIGN_MD_SELF_HOSTED=1 -e ANTHROPIC_API_KEY ghcr.io/zuchka/free-design-md:latest",
   },
 ];
 
@@ -144,29 +143,6 @@ export default function HomepageLanding({
         <PopularExamplesPanel examples={examples.slice(0, 6)} />
       </section>
 
-      <section className="flex flex-col gap-5 rounded-md border bg-background p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-              Free example library
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-              Start from curated design.md artifacts.
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Each example includes deterministic and AI-enriched design.md
-              views, seeded from public websites and shown with a small
-              source-site mark for identification. Generate a fresh version any
-              time from the source URL.
-            </p>
-          </div>
-          <Button asChild variant="outline">
-            <Link to="/examples">View all examples</Link>
-          </Button>
-        </div>
-        <ExampleCardGrid examples={examples} />
-      </section>
-
       <section className="grid min-w-0 gap-6 rounded-md border bg-background p-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
@@ -205,6 +181,29 @@ export default function HomepageLanding({
             </p>
           </div>
         ))}
+      </section>
+
+      <section className="flex flex-col gap-5 rounded-md border bg-background p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+              Free example library
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+              Start from curated design.md artifacts.
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Each example includes deterministic and AI-enriched design.md
+              views, seeded from public websites and shown with a small
+              source-site mark for identification. Generate a fresh version any
+              time from the source URL.
+            </p>
+          </div>
+          <Button asChild variant="outline">
+            <Link to="/examples">View all examples</Link>
+          </Button>
+        </div>
+        <ExampleCardGrid examples={examples} />
       </section>
 
       <footer className="border-t py-8">

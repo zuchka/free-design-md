@@ -386,7 +386,7 @@ html, body { margin: 0; padding: 0; background: var(--eds-bg); color: var(--eds-
 .eds-token-prop { font-weight: 600; color: var(--eds-text); }
 .eds-token-resolved { color: var(--eds-text); }
 .eds-token-ref { color: var(--eds-muted); }
-.eds-source-block { background: color-mix(in srgb, var(--eds-text) 4%, var(--eds-bg)); border: 1px solid var(--eds-border); border-radius: 8px; padding: 20px; overflow-x: auto; font-size: 11px; line-height: 1.7; font-family: ui-monospace, monospace; white-space: pre; max-height: 480px; overflow-y: auto; }
+.eds-source-block { background: color-mix(in srgb, var(--eds-text) 4%, var(--eds-bg)); border: 1px solid var(--eds-border); border-radius: 8px; padding: 20px; font-size: 11px; line-height: 1.7; font-family: ui-monospace, monospace; overflow-wrap: anywhere; white-space: pre-wrap; }
 </style>
 </head>
 <body>

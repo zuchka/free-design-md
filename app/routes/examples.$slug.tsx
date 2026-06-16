@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { IconArrowLeft, IconExternalLink } from "@tabler/icons-react";
 import ArtifactActions from "@/components/ArtifactActions";
+import TokenPreviewFrame from "@/components/TokenPreviewFrame";
 import {
   ExampleColorSwatches,
   ExampleLogoMark,
@@ -28,7 +29,6 @@ export default function ExampleDetailRoute() {
   const { slug } = useParams();
   const example = getExampleDesignBySlug(slug);
   const [view, setView] = useState<"deterministic" | "enriched">("enriched");
-  const [previewExpanded, setPreviewExpanded] = useState(false);
 
   const deterministicPreviewHtml = useMemo(() => {
     if (!example) return "";
@@ -92,8 +92,6 @@ export default function ExampleDetailRoute() {
     markdown: currentMarkdown,
     previewHtml: currentPreviewHtml,
   });
-  const previewAvailable = currentPreviewHtml.length > 0;
-
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-6 py-12">
@@ -222,41 +220,13 @@ export default function ExampleDetailRoute() {
               className="overflow-hidden rounded-md border"
               style={{ boxShadow: "var(--intuit-card-shadow)" }}
             >
-              <div
-                className="relative overflow-hidden"
-                style={{
-                  height: previewExpanded ? "900px" : "320px",
-                  transition: "height 0.3s ease",
-                }}
-              >
-                {previewAvailable ? (
-                  <div style={{ height: "900px" }}>
-                    <iframe
-                      srcDoc={currentPreviewHtml}
-                      title={`${example.title} synthetic preview`}
-                      sandbox="allow-same-origin"
-                      className="block h-full w-full"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-                    Preview unavailable for this curated example.
-                  </div>
-                )}
-                {!previewExpanded && (
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent" />
-                )}
-              </div>
-              <div className="flex justify-center border-t py-2">
-                <button
-                  type="button"
-                  onClick={() => setPreviewExpanded((value) => !value)}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {previewExpanded
-                    ? "Collapse preview ↑"
-                    : "Expand full preview ↓"}
-                </button>
+              <div className="relative overflow-hidden">
+                <TokenPreviewFrame
+                  html={currentPreviewHtml}
+                  title={`${example.title} synthetic preview`}
+                  unavailableMessage="Preview unavailable for this curated example."
+                  minHeight={320}
+                />
               </div>
             </div>
           </Pane>
