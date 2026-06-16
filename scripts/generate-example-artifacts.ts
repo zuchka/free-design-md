@@ -42,6 +42,7 @@ const TARGETS = [
   { slug: "vercel", sourceUrl: "https://vercel.com" },
   { slug: "airbnb", sourceUrl: "https://www.airbnb.com" },
   { slug: "nike", sourceUrl: "https://www.nike.com" },
+  { slug: "claude", sourceUrl: "https://www.anthropic.com/claude" },
 ] as const;
 
 const OUTPUT_PATH = join("app", "lib", "generated-example-artifacts.ts");

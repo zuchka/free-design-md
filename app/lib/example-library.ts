@@ -509,6 +509,69 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       },
     }),
   },
+  {
+    slug: "claude",
+    title: "Claude",
+    sourceUrl: "https://www.anthropic.com/claude",
+    category: "AI platform",
+    description:
+      "A warm AI-product system with terracotta accents, editorial whitespace, and calm problem-solving copy.",
+    bestFor: "AI assistants, knowledge tools, chat interfaces, and thoughtful editorial product pages.",
+    data: buildDesignData({
+      colors: {
+        primary: "#C96442",
+        secondary: "#141413",
+        accent: "#E7D7C8",
+        background: "#F7F1EA",
+        surface: "#FFFFFF",
+        text: "#141413",
+        textMuted: "#6F665F",
+      },
+      typography: {
+        headingFont: "Styrene",
+        bodyFont: "Styrene",
+        headingFontStack: "Styrene, Inter, ui-sans-serif, system-ui, sans-serif",
+        bodyFontStack: "Styrene, Inter, ui-sans-serif, system-ui, sans-serif",
+        headingWeight: "500",
+        headingSizes: { h1: "58px", h2: "36px", h3: "22px" },
+      },
+      spacing: {
+        slidePadding: "56px",
+        elementGap: "24px",
+      },
+      borders: {
+        radius: "12px",
+        accentWidth: "2px",
+        radii: { button: "8px", card: "16px", pill: "999px" },
+      },
+      components: {
+        button: {
+          primary: {
+            background: "#C96442",
+            color: "#FFFFFF",
+            radius: "8px",
+            padding: "12px 20px",
+            fontSize: "16px",
+            fontWeight: "500",
+            border: "1px solid #C96442",
+          },
+        },
+        card: {
+          background: "#FFFFFF",
+          color: "#141413",
+          radius: "16px",
+          padding: "28px",
+          border: "1px solid #E7D7C8",
+          shadow: "0 12px 30px rgba(20, 20, 19, 0.08)",
+        },
+        link: {
+          color: "#C96442",
+          textDecoration: "none",
+          fontWeight: "500",
+        },
+      },
+    }),
+  },
 ];
 
 export const EXAMPLE_DESIGNS: ExampleDesignArtifact[] =
