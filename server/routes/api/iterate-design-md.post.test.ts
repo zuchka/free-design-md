@@ -41,6 +41,10 @@ vi.mock("../../lib/saved-enrichments", () => ({
 
 import { getDbExec } from "@agent-native/core/db";
 import { ANONYMOUS_OWNER } from "../../lib/owner.js";
+import {
+  renderPrometheusMetrics,
+  resetMetricsForTests,
+} from "../../lib/metrics.js";
 
 const BUILDER_OWNER = "builder:user-123";
 const CONNECTED_BUILDER_OWNER = {
@@ -83,6 +87,7 @@ beforeEach(async () => {
   mockGetPublicSavedEnrichment.mockReset();
   mockGetPublicSavedEnrichment.mockResolvedValue(null);
   mockSaveEnrichmentSnapshot.mockReset();
+  resetMetricsForTests();
   await resetDb();
 });
 afterEach(resetDb);
@@ -230,6 +235,9 @@ describe("POST /api/iterate-design-md", () => {
     ).toMatch(/^blocklist:/);
 
     expect(mockIterateStream).not.toHaveBeenCalled();
+    expect(renderPrometheusMetrics()).toContain(
+      'fdmd_iterate_requests_total{route="iterate",status="blocked",key_source="hosted_server",quota="blocked"} 1',
+    );
   });
 
   it("402 when out of credits", async () => {
@@ -319,6 +327,14 @@ describe("POST /api/iterate-design-md", () => {
     expect(
       (rows.rows[0] as { rejected_reason: string | null }).rejected_reason,
     ).toBeFalsy();
+    const metrics = renderPrometheusMetrics();
+    expect(metrics).toContain(
+      'fdmd_iterate_requests_total{route="iterate",status="success",key_source="hosted_server",quota="consumed"} 1',
+    );
+    expect(metrics).toContain(
+      'fdmd_quota_events_total{route="iterate",event="decremented"} 1',
+    );
+    expect(metrics).not.toContain("Make the headline more energetic.");
   });
 
   it("saves a public snapshot when connected Builder ownership and snapshot inputs are present", async () => {

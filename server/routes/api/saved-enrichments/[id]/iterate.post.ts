@@ -33,25 +33,53 @@ import {
   checkBlocklist,
 } from "../../../../../shared/iteration-security.js";
 import { applyDeterministicRadiusFidelity } from "../../../../../shared/radius-fidelity.js";
+import {
+  keySourceLabel,
+  metricsStartedAt,
+  recordIterateRequest,
+  recordQuotaEvent,
+} from "../../../../lib/metrics.js";
 
 const SECTION_RE = /^[a-z0-9-]{1,40}$/;
 
 export default defineEventHandler(async (event) => {
+  const startedAt = metricsStartedAt();
   const id = getRouterParam(event, "id");
   if (!id) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "saved_iterate",
+      status: "missing_saved_id",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "saved enrichment id is required" };
   }
 
   const parent = await getPublicSavedEnrichment(id);
   if (!parent) {
     setResponseStatus(event, 404);
+    recordIterateRequest({
+      route: "saved_iterate",
+      status: "not_found",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "saved enrichment not found" };
   }
 
   const body = await readBody(event).catch(() => null);
   if (!body || typeof body !== "object") {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "saved_iterate",
+      status: "bad_body",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "bad_body" };
   }
 
@@ -66,24 +94,59 @@ export default defineEventHandler(async (event) => {
 
   if (!userPrompt) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "saved_iterate",
+      status: "missing_fields",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "missing_fields" };
   }
   if (userPrompt.length > INPUT_CAPS.userPrompt) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "saved_iterate",
+      status: "user_prompt_too_long",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "userPrompt_too_long" };
   }
   if (parent.enrichedMarkdown.length > INPUT_CAPS.parentMarkdown) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "saved_iterate",
+      status: "previous_markdown_too_long",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "previousMarkdown_too_long" };
   }
   if (sectionTarget && !SECTION_RE.test(sectionTarget)) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "saved_iterate",
+      status: "bad_section_target",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "bad_section_target" };
   }
 
   const blockHit = checkBlocklist(userPrompt);
   if (blockHit) {
     setResponseStatus(event, 422);
+    recordIterateRequest({
+      route: "saved_iterate",
+      status: "blocked",
+      keySource: "none",
+      quota: "blocked",
+      startedAt,
+    });
     return { error: "blocked", reason: blockHit };
   }
 
@@ -97,6 +160,13 @@ export default defineEventHandler(async (event) => {
     )
   ) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "saved_iterate",
+      status: "user_key_rejected",
+      keySource: "none",
+      quota: "blocked",
+      startedAt,
+    });
     return {
       error: "user_keys_not_accepted",
       reason:
@@ -113,14 +183,29 @@ export default defineEventHandler(async (event) => {
       err.message.includes("self_hosted_anthropic_key_missing")
     ) {
       setResponseStatus(event, 503);
+      recordIterateRequest({
+        route: "saved_iterate",
+        status: "self_hosted_key_missing",
+        keySource: "none",
+        quota: "not_applicable",
+        startedAt,
+      });
       return {
         error: "self_hosted_anthropic_key_missing",
         reason: "Set ANTHROPIC_API_KEY on this self-hosted deployment.",
       };
     }
     setResponseStatus(event, 402);
+    recordIterateRequest({
+      route: "saved_iterate",
+      status: "no_api_key",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "no_api_key_available", reason: "server-key-required" };
   }
+  const keySource = keySourceLabel(resolvedKey.source);
 
   let connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
   let quotaOwner = owner;
@@ -128,6 +213,13 @@ export default defineEventHandler(async (event) => {
     if (isAnonymousOwner(owner)) {
       if (!connectedBuilderOwner) {
         setResponseStatus(event, 401);
+        recordIterateRequest({
+          route: "saved_iterate",
+          status: "sign_in_required",
+          keySource,
+          quota: "blocked",
+          startedAt,
+        });
         return {
           error: "sign_in_required",
           reason: "connect Builder to use hosted AI credits",
@@ -146,11 +238,20 @@ export default defineEventHandler(async (event) => {
     dec = await decrementCredits(quotaOwner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
+      recordQuotaEvent({ route: "saved_iterate", event: "exhausted" });
+      recordIterateRequest({
+        route: "saved_iterate",
+        status: "out_of_credits",
+        keySource,
+        quota: "exhausted",
+        startedAt,
+      });
       return {
         error: "out_of_credits",
         reason: "signed-in-and-out-of-credits",
       };
     }
+    recordQuotaEvent({ route: "saved_iterate", event: "decremented" });
   }
 
   const input: IterationInput = {
@@ -206,13 +307,29 @@ export default defineEventHandler(async (event) => {
               rootId: parent.rootId ?? parent.id,
               remaining: dec?.remaining ?? null,
             });
+            recordIterateRequest({
+              route: "saved_iterate",
+              status: "success",
+              keySource,
+              quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
+              startedAt,
+            });
           }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
           await refundCredit(quotaOwner).catch(() => {});
+          recordQuotaEvent({ route: "saved_iterate", event: "refunded" });
         }
+        recordIterateRequest({
+          route: "saved_iterate",
+          status: "stream_error",
+          keySource,
+          quota:
+            resolvedKey.consumesQuota && dec?.ok ? "refunded" : "not_consumed",
+          startedAt,
+        });
         sse.send("error", { message });
       } finally {
         sse.stop();

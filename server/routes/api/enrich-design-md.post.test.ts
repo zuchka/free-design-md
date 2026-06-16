@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDbExec } from "@agent-native/core/db";
 import { ANONYMOUS_OWNER } from "../../lib/owner.js";
+import {
+  renderPrometheusMetrics,
+  resetMetricsForTests,
+} from "../../lib/metrics.js";
 
 const mockResolveAgentContextOwner = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/owner", () => ({
@@ -125,6 +129,7 @@ beforeEach(async () => {
   mockResolveAnthropicKey.mockReset();
   mockResolveConnectedBuilderOwner.mockReset();
   mockSaveEnrichmentSnapshot.mockReset();
+  resetMetricsForTests();
   await resetQuota(ANONYMOUS_OWNER);
   await resetQuota(BUILDER_OWNER);
 });
@@ -196,6 +201,14 @@ describe("POST /api/enrich-design-md", () => {
     expect(mockEnrichStream).toHaveBeenCalledWith(
       expect.not.objectContaining({ anthropicApiKey: expect.anything() }),
     );
+    const metrics = renderPrometheusMetrics();
+    expect(metrics).toContain(
+      'fdmd_enrich_requests_total{status="success",key_source="hosted_server",quota="consumed"} 1',
+    );
+    expect(metrics).toContain(
+      'fdmd_quota_events_total{route="enrich",event="decremented"} 1',
+    );
+    expect(metrics).not.toContain("https://example.com");
   });
 
   it("allows self-host calls without Builder Connect and does not spend quota", async () => {
@@ -238,6 +251,9 @@ describe("POST /api/enrich-design-md", () => {
     );
     expect(mockResolveAnthropicKey).not.toHaveBeenCalled();
     expect(mockEnrichStream).not.toHaveBeenCalled();
+    expect(renderPrometheusMetrics()).toContain(
+      'fdmd_enrich_requests_total{status="user_key_rejected",key_source="none",quota="blocked"} 1',
+    );
   });
 
   it("rejects request Anthropic keys in JSON bodies", async () => {

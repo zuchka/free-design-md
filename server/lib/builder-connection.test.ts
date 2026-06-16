@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  renderPrometheusMetrics,
+  resetMetricsForTests,
+} from "./metrics.js";
 
 const mockResolveBuilderCredentials = vi.hoisted(() => vi.fn());
 const mockRunWithRequestContext = vi.hoisted(
@@ -17,6 +21,7 @@ describe("Builder Connect owner resolution", () => {
   beforeEach(() => {
     mockResolveBuilderCredentials.mockReset();
     mockRunWithRequestContext.mockClear();
+    resetMetricsForTests();
   });
 
   it("returns a user-level owner for complete Builder credentials", async () => {
@@ -36,6 +41,13 @@ describe("Builder Connect owner resolution", () => {
       orgName: "Builder",
       orgKind: "team",
     });
+    const metrics = renderPrometheusMetrics();
+    expect(metrics).toContain(
+      'fdmd_builder_connect_resolutions_total{status="connected",org_kind="team"} 1',
+    );
+    expect(metrics).not.toContain("user-123");
+    expect(metrics).not.toContain("builder:user-123");
+    expect(metrics).not.toContain('org_name="Builder"');
   });
 
   it("requires a Builder user id", async () => {
@@ -46,6 +58,9 @@ describe("Builder Connect owner resolution", () => {
     });
 
     await expect(resolveConnectedBuilderOwner("owner")).resolves.toBeNull();
+    expect(renderPrometheusMetrics()).toContain(
+      'fdmd_builder_connect_resolutions_total{status="missing_credentials",org_kind="unknown"} 1',
+    );
   });
 
   it("keeps the quota helper on the same owner id", async () => {
