@@ -572,6 +572,67 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       },
     }),
   },
+  {
+    slug: "figma",
+    title: "Figma",
+    sourceUrl: "https://www.figma.com",
+    category: "Design tool",
+    description:
+      "A collaborative design-tool system with bright product color, clean work surfaces, and playful geometric accents.",
+    bestFor: "Design tools, collaboration products, creative workflows, and feature-led SaaS pages.",
+    data: buildDesignData({
+      colors: {
+        primary: "#5551FF",
+        secondary: "#0D0D0D",
+        accent: "#0ACF83",
+        background: "#F7F7F8",
+        surface: "#FFFFFF",
+        text: "#0D0D0D",
+        textMuted: "#6B7280",
+      },
+      typography: {
+        headingFont: "Inter",
+        bodyFont: "Inter",
+        headingWeight: "700",
+        headingSizes: { h1: "60px", h2: "38px", h3: "24px" },
+      },
+      spacing: {
+        slidePadding: "56px",
+        elementGap: "24px",
+      },
+      borders: {
+        radius: "12px",
+        accentWidth: "4px",
+        radii: { button: "10px", card: "18px", pill: "999px" },
+      },
+      components: {
+        button: {
+          primary: {
+            background: "#5551FF",
+            color: "#FFFFFF",
+            radius: "10px",
+            padding: "12px 20px",
+            fontSize: "16px",
+            fontWeight: "700",
+            border: "1px solid #5551FF",
+          },
+        },
+        card: {
+          background: "#FFFFFF",
+          color: "#0D0D0D",
+          radius: "18px",
+          padding: "28px",
+          border: "1px solid #E5E7EB",
+          shadow: "0 14px 35px rgba(13, 13, 13, 0.08)",
+        },
+        link: {
+          color: "#5551FF",
+          textDecoration: "none",
+          fontWeight: "700",
+        },
+      },
+    }),
+  },
 ];
 
 export const EXAMPLE_DESIGNS: ExampleDesignArtifact[] =

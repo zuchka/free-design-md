@@ -43,6 +43,7 @@ const TARGETS = [
   { slug: "airbnb", sourceUrl: "https://www.airbnb.com" },
   { slug: "nike", sourceUrl: "https://www.nike.com" },
   { slug: "claude", sourceUrl: "https://www.anthropic.com/claude" },
+  { slug: "figma", sourceUrl: "https://www.figma.com" },
 ] as const;
 
 const OUTPUT_PATH = join("app", "lib", "generated-example-artifacts.ts");
