@@ -18,6 +18,12 @@ import { isAnonymousOwner, resolveAgentContextOwner } from "../../lib/owner.js";
 import { decrementCredits, refundCredit } from "../../lib/quota.js";
 import { saveEnrichmentSnapshot } from "../../lib/saved-enrichments.js";
 import { createSseSender } from "../../lib/sse.js";
+import {
+  keySourceLabel,
+  metricsStartedAt,
+  recordEnrichRequest,
+  recordQuotaEvent,
+} from "../../lib/metrics.js";
 
 /**
  * POST /api/enrich-design-md (SSE)
@@ -30,11 +36,18 @@ import { createSseSender } from "../../lib/sse.js";
  * Response: text/event-stream with delta/done/error events.
  */
 export default defineEventHandler(async (event) => {
+  const startedAt = metricsStartedAt();
   const body = await readBody(event);
 
   if (!body || typeof body !== "object") {
     setResponseStatus(event, 400);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
+    recordEnrichRequest({
+      status: "bad_body",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return "POST a JSON body with the extract payload";
   }
 
@@ -64,6 +77,12 @@ export default defineEventHandler(async (event) => {
   ) {
     setResponseStatus(event, 400);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
+    recordEnrichRequest({
+      status: "missing_fields",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return "missing one of: url, designSystemData, signals, screenshotDataUrl, deterministicMarkdown/markdown";
   }
 
@@ -77,6 +96,12 @@ export default defineEventHandler(async (event) => {
     )
   ) {
     setResponseStatus(event, 400);
+    recordEnrichRequest({
+      status: "user_key_rejected",
+      keySource: "none",
+      quota: "blocked",
+      startedAt,
+    });
     return {
       error: "user_keys_not_accepted",
       reason:
@@ -93,14 +118,27 @@ export default defineEventHandler(async (event) => {
       err.message.includes("self_hosted_anthropic_key_missing")
     ) {
       setResponseStatus(event, 503);
+      recordEnrichRequest({
+        status: "self_hosted_key_missing",
+        keySource: "none",
+        quota: "not_applicable",
+        startedAt,
+      });
       return {
         error: "self_hosted_anthropic_key_missing",
         reason: "Set ANTHROPIC_API_KEY on this self-hosted deployment.",
       };
     }
     setResponseStatus(event, 402);
+    recordEnrichRequest({
+      status: "no_api_key",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "no_api_key_available", reason: "server-key-required" };
   }
+  const keySource = keySourceLabel(resolvedKey.source);
 
   let quotaOwner = owner;
   let connectedBuilderOwner: Awaited<
@@ -113,6 +151,12 @@ export default defineEventHandler(async (event) => {
     connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
     if (!connectedBuilderOwner) {
       setResponseStatus(event, 401);
+      recordEnrichRequest({
+        status: "sign_in_required",
+        keySource,
+        quota: "blocked",
+        startedAt,
+      });
       return {
         error: "sign_in_required",
         reason: "connect Builder to use hosted AI credits",
@@ -126,11 +170,19 @@ export default defineEventHandler(async (event) => {
     dec = await decrementCredits(quotaOwner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
+      recordQuotaEvent({ route: "enrich", event: "exhausted" });
+      recordEnrichRequest({
+        status: "out_of_credits",
+        keySource,
+        quota: "exhausted",
+        startedAt,
+      });
       return {
         error: "out_of_credits",
         reason: "signed-in-and-out-of-credits",
       };
     }
+    recordQuotaEvent({ route: "enrich", event: "decremented" });
   }
 
   const inputWithKey: EnrichInput = {
@@ -189,6 +241,12 @@ export default defineEventHandler(async (event) => {
                   saveErr instanceof Error ? saveErr.message : String(saveErr),
               };
             }
+            recordEnrichRequest({
+              status: "success",
+              keySource,
+              quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
+              startedAt,
+            });
             sse.send("done", { ...result, ...(saveResult ?? {}) });
           }
         }
@@ -196,7 +254,15 @@ export default defineEventHandler(async (event) => {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
           await refundCredit(quotaOwner).catch(() => {});
+          recordQuotaEvent({ route: "enrich", event: "refunded" });
         }
+        recordEnrichRequest({
+          status: "stream_error",
+          keySource,
+          quota:
+            resolvedKey.consumesQuota && dec?.ok ? "refunded" : "not_consumed",
+          startedAt,
+        });
         sse.send("error", { message });
       } finally {
         sse.stop();

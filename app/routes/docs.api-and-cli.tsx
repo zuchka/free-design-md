@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   IconArrowRight,
   IconBrandDocker,
+  IconChartBar,
   IconCode,
   IconKey,
   IconShieldCheck,
@@ -77,6 +78,20 @@ docker run --rm \\
 const DOCKER_BUILD_EXAMPLE = `# Optional: build locally from a repository checkout.
 docker build -t free-design-md:local .`;
 
+const METRICS_EXAMPLE = `# Optional endpoint protection.
+PROMETHEUS_METRICS_TOKEN=replace-with-a-long-random-token
+
+# Prometheus scrape config.
+scrape_configs:
+  - job_name: free-design-md
+    metrics_path: /api/metrics
+    authorization:
+      type: Bearer
+      credentials: replace-with-a-long-random-token
+    static_configs:
+      - targets:
+          - free-design-md.agent-native.com`;
+
 const API_SURFACE = [
   {
     method: "GET",
@@ -95,6 +110,12 @@ const API_SURFACE = [
     path: "/api/iterate-design-md",
     key: "Hosted credits",
     body: "Streams a revised design.md from previousMarkdown and userPrompt. The hosted route uses Builder-connected credits, not user Anthropic keys.",
+  },
+  {
+    method: "GET",
+    path: "/api/metrics",
+    key: "Prometheus",
+    body: "Exposes low-cardinality counters and histograms for extraction, AI enrichment, AI iteration, quota outcomes, and Builder Connect credential resolution.",
   },
 ];
 
@@ -477,6 +498,61 @@ export default function ApiAndCliRoute() {
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Build locally only when you are developing from a checkout or need
               to test unreleased changes.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="metrics" className="border-t border-border bg-background">
+        <div className="grid min-w-0 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
+          <div>
+            <SectionHeading
+              eyebrow="Observability"
+              title="Scrape Prometheus metrics"
+            >
+              Free design.md exposes process-local Prometheus metrics for the
+              hosted API wrapper. Metrics use bounded labels only: route,
+              status, key source, quota outcome, format, and Builder org kind.
+              They never include URLs, prompts, user IDs, org names, saved
+              design IDs, or API keys.
+            </SectionHeading>
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  title: "Request counters",
+                  body: "Track deterministic extraction, AI enrichment, AI iteration, saved-design iteration, and Builder credential resolution outcomes.",
+                  icon: IconChartBar,
+                },
+                {
+                  title: "Duration histograms",
+                  body: "Measure extraction and AI stream latency with Prometheus histogram buckets.",
+                  icon: IconShieldCheck,
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <article key={item.title} className="rounded-lg border p-5">
+                    <Icon size={20} className="text-primary" />
+                    <h3 className="mt-4 text-sm font-semibold">{item.title}</h3>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                      {item.body}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <pre className="min-w-0 overflow-auto rounded-lg border bg-[#111111] p-5 text-xs leading-6 text-white shadow-sm">
+              <code>{METRICS_EXAMPLE}</code>
+            </pre>
+            <p className="mt-4 text-sm leading-6 text-muted-foreground">
+              When PROMETHEUS_METRICS_TOKEN is set, /api/metrics requires
+              either an Authorization: Bearer token or an x-prometheus-token
+              header. If you run multiple app processes, scrape each process or
+              aggregate metrics at the platform layer.
             </p>
           </div>
         </div>

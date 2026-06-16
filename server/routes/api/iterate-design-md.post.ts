@@ -28,6 +28,12 @@ import {
 } from "../../../shared/iteration-security.js";
 import { createSseSender } from "../../lib/sse.js";
 import { applyDeterministicRadiusFidelity } from "../../../shared/radius-fidelity.js";
+import {
+  keySourceLabel,
+  metricsStartedAt,
+  recordIterateRequest,
+  recordQuotaEvent,
+} from "../../lib/metrics.js";
 
 const SECTION_RE = /^[a-z0-9-]{1,40}$/;
 
@@ -43,9 +49,17 @@ const SECTION_RE = /^[a-z0-9-]{1,40}$/;
  * Response: text/event-stream with delta/done/error events.
  */
 export default defineEventHandler(async (event) => {
+  const startedAt = metricsStartedAt();
   const body = await readBody(event).catch(() => null);
   if (!body || typeof body !== "object") {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "iterate",
+      status: "bad_body",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "bad_body" };
   }
 
@@ -86,18 +100,46 @@ export default defineEventHandler(async (event) => {
 
   if (!previousMarkdown || !userPrompt || !sessionId) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "iterate",
+      status: "missing_fields",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "missing_fields" };
   }
   if (previousMarkdown.length > INPUT_CAPS.parentMarkdown) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "iterate",
+      status: "previous_markdown_too_long",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "previousMarkdown_too_long" };
   }
   if (userPrompt.length > INPUT_CAPS.userPrompt) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "iterate",
+      status: "user_prompt_too_long",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "userPrompt_too_long" };
   }
   if (sectionTarget && !SECTION_RE.test(sectionTarget)) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "iterate",
+      status: "bad_section_target",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "bad_section_target" };
   }
 
@@ -112,6 +154,13 @@ export default defineEventHandler(async (event) => {
     )
   ) {
     setResponseStatus(event, 400);
+    recordIterateRequest({
+      route: "iterate",
+      status: "user_key_rejected",
+      keySource: "none",
+      quota: "blocked",
+      startedAt,
+    });
     return {
       error: "user_keys_not_accepted",
       reason:
@@ -128,14 +177,29 @@ export default defineEventHandler(async (event) => {
       err.message.includes("self_hosted_anthropic_key_missing")
     ) {
       setResponseStatus(event, 503);
+      recordIterateRequest({
+        route: "iterate",
+        status: "self_hosted_key_missing",
+        keySource: "none",
+        quota: "not_applicable",
+        startedAt,
+      });
       return {
         error: "self_hosted_anthropic_key_missing",
         reason: "Set ANTHROPIC_API_KEY on this self-hosted deployment.",
       };
     }
     setResponseStatus(event, 402);
+    recordIterateRequest({
+      route: "iterate",
+      status: "no_api_key",
+      keySource: "none",
+      quota: "not_applicable",
+      startedAt,
+    });
     return { error: "no_api_key_available", reason: "server-key-required" };
   }
+  const keySource = keySourceLabel(resolvedKey.source);
 
   // Pre-flight blocklist BEFORE any quota spend — jailbreaks are free to attempt
   // and free to record, but never cost a credit.
@@ -151,6 +215,13 @@ export default defineEventHandler(async (event) => {
       rejectedReason: `blocklist:${blockHit}`,
     });
     setResponseStatus(event, 422);
+    recordIterateRequest({
+      route: "iterate",
+      status: "blocked",
+      keySource,
+      quota: "blocked",
+      startedAt,
+    });
     return { error: "blocked", reason: blockHit };
   }
 
@@ -161,6 +232,13 @@ export default defineEventHandler(async (event) => {
     if (isAnonymousOwner(owner)) {
       if (!connectedBuilderOwner) {
         setResponseStatus(event, 401);
+        recordIterateRequest({
+          route: "iterate",
+          status: "sign_in_required",
+          keySource,
+          quota: "blocked",
+          startedAt,
+        });
         return {
           error: "sign_in_required",
           reason: "connect Builder to use hosted AI credits",
@@ -172,11 +250,20 @@ export default defineEventHandler(async (event) => {
     dec = await decrementCredits(quotaOwner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
+      recordQuotaEvent({ route: "iterate", event: "exhausted" });
+      recordIterateRequest({
+        route: "iterate",
+        status: "out_of_credits",
+        keySource,
+        quota: "exhausted",
+        startedAt,
+      });
       return {
         error: "out_of_credits",
         reason: "signed-in-and-out-of-credits",
       };
     }
+    recordQuotaEvent({ route: "iterate", event: "decremented" });
   }
 
   setResponseHeader(event, "Content-Type", "text/event-stream; charset=utf-8");
@@ -264,6 +351,13 @@ export default defineEventHandler(async (event) => {
                 };
               }
             }
+            recordIterateRequest({
+              route: "iterate",
+              status: "success",
+              keySource,
+              quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
+              startedAt,
+            });
             sse.send("done", {
               id,
               ...result,
@@ -276,6 +370,7 @@ export default defineEventHandler(async (event) => {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
           await refundCredit(quotaOwner).catch(() => {});
+          recordQuotaEvent({ route: "iterate", event: "refunded" });
         }
         await insertRejected({
           sessionId,
@@ -286,6 +381,14 @@ export default defineEventHandler(async (event) => {
           sectionTarget,
           rejectedReason: message.slice(0, 200),
         }).catch(() => {});
+        recordIterateRequest({
+          route: "iterate",
+          status: "stream_error",
+          keySource,
+          quota:
+            resolvedKey.consumesQuota && dec?.ok ? "refunded" : "not_consumed",
+          startedAt,
+        });
         sse.send("error", { message });
       } finally {
         sse.stop();

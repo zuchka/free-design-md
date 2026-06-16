@@ -3,19 +3,18 @@ import { Link } from "react-router";
 import {
   IconApi,
   IconBrandDocker,
-  IconBraces,
   IconCheck,
   IconCopy,
-  IconFileCode,
-  IconFileTypeHtml,
   IconRocket,
-  IconMarkdown,
-  IconSparkles,
   IconTerminal2,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ExampleCardGrid } from "@/components/ExampleLibrary";
+import {
+  ExampleCardGrid,
+  ExampleColorSwatches,
+  ExampleLogoMark,
+} from "@/components/ExampleLibrary";
 import type { ExampleDesignArtifact } from "@/lib/example-library";
 
 interface HomepageLandingProps {
@@ -46,29 +45,6 @@ const CODE_SNIPPETS = [
     icon: IconBrandDocker,
     code:
       "docker run --rm -p 3000:3000 -e FREE_DESIGN_MD_SELF_HOSTED=1 -e ANTHROPIC_API_KEY ghcr.io/zuchka/free-design-md:latest",
-  },
-];
-
-const WORKFLOW_STEPS = [
-  "Paste URL",
-  "Extract tokens",
-  "Enrich with AI",
-  "Export Markdown, HTML, or MDX",
-  "Use in an agent",
-];
-
-const HERO_DETAIL_CARDS = [
-  {
-    title: "Structured tokens",
-    body: "Colors, type, spacing, radii, and component anatomy in one Markdown file.",
-  },
-  {
-    title: "Agent context",
-    body: "Portable design instructions that can move through chat, Git, docs, and local tools.",
-  },
-  {
-    title: "Export-ready",
-    body: "Download Markdown, HTML, or MDX without changing the live preview path.",
   },
 ];
 
@@ -104,17 +80,17 @@ export default function HomepageLanding({
   onSampleSelect,
 }: HomepageLandingProps) {
   return (
-    <div className="flex flex-col gap-10">
-      <section className="grid gap-8 py-4 lg:grid-cols-[minmax(0,1fr)_440px] lg:items-start">
+    <div className="flex flex-col gap-10 pb-10">
+      <section className="grid gap-8 py-4 min-[1800px]:grid-cols-[minmax(0,1fr)_420px] min-[1800px]:items-start">
         <div className="min-w-0">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-secondary/60 px-3 py-1 text-xs font-medium text-muted-foreground">
-            <IconRocket size={14} />
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-secondary/60 px-4 py-2 text-sm font-medium text-muted-foreground">
+            <IconRocket size={16} />
             Free deterministic extraction. Optional AI enrichment.
           </div>
-          <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+          <h1 className="max-w-none text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
             Turn any public website into a portable design.md.
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
+          <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground">
             Paste a URL to capture colors, typography, spacing, radii,
             components, and a token preview. Then export the artifact for
             agents, docs, repos, or local workflows.
@@ -122,7 +98,7 @@ export default function HomepageLanding({
 
           <form
             onSubmit={onSubmit}
-            className="mt-7 flex flex-col gap-3 rounded-md border bg-background p-3 shadow-sm sm:flex-row"
+            className="mt-7 flex max-w-4xl flex-col gap-3 rounded-md border bg-background p-3 shadow-sm sm:flex-row"
           >
             <Input
               value={url}
@@ -143,7 +119,7 @@ export default function HomepageLanding({
           </form>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
               Try
             </span>
             {examples.slice(0, 5).map((example) => (
@@ -151,88 +127,21 @@ export default function HomepageLanding({
                 key={example.slug}
                 type="button"
                 onClick={() => onSampleSelect(example.sourceUrl)}
-                className="rounded-full border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-secondary"
+                className="rounded-full border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-secondary"
               >
                 {example.title}
               </button>
             ))}
             <Link
               to="/examples"
-              className="rounded-full border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+              className="rounded-full border border-primary/30 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
             >
               Browse library
             </Link>
           </div>
-
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Button asChild variant="outline">
-              <Link to="/docs/api-and-cli">API and CLI docs</Link>
-            </Button>
-            <Button asChild variant="ghost">
-              <Link to="/quality">See quality report</Link>
-            </Button>
-          </div>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {HERO_DETAIL_CARDS.map((card) => (
-              <div key={card.title} className="rounded-md border bg-muted/25 p-4">
-                <h2 className="text-sm font-semibold text-foreground">
-                  {card.title}
-                </h2>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  {card.body}
-                </p>
-              </div>
-            ))}
-          </div>
         </div>
 
-        <ArtifactPreviewPanel />
-      </section>
-
-      <section className="rounded-md border bg-muted/25 p-4 sm:p-5">
-        <div className="grid gap-3 md:grid-cols-5">
-          {WORKFLOW_STEPS.map((step, index) => (
-            <div
-              key={step}
-              className="flex min-h-24 flex-col justify-between rounded-md border bg-background p-4 sm:min-h-28"
-            >
-              <span className="text-xs font-semibold text-primary">
-                0{index + 1}
-              </span>
-              <span className="mt-4 text-sm font-semibold text-foreground">
-                {step}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid gap-6 rounded-md border bg-background p-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Use it from code
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-            The browser UI is only one entry point.
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Hosted extraction does not need an Anthropic key. Local and
-            self-hosted AI flows keep keys in environment variables instead of
-            request bodies.
-          </p>
-          <Link
-            to="/docs/api-and-cli"
-            className="mt-5 inline-flex text-sm font-medium text-primary hover:underline"
-          >
-            Read the API and Docker guide
-          </Link>
-        </div>
-        <div className="grid gap-3">
-          {CODE_SNIPPETS.map((snippet) => (
-            <CopyCodeBlock key={snippet.id} snippet={snippet} />
-          ))}
-        </div>
+        <PopularExamplesPanel examples={examples.slice(0, 6)} />
       </section>
 
       <section className="flex flex-col gap-5 rounded-md border bg-background p-5">
@@ -255,7 +164,34 @@ export default function HomepageLanding({
             <Link to="/examples">View all examples</Link>
           </Button>
         </div>
-        <ExampleCardGrid examples={examples.slice(0, 4)} />
+        <ExampleCardGrid examples={examples} />
+      </section>
+
+      <section className="grid min-w-0 gap-6 rounded-md border bg-background p-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Use it from code
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+            The browser UI is only one entry point.
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Hosted extraction does not need an Anthropic key. Local and
+            self-hosted AI flows keep keys in environment variables instead of
+            request bodies.
+          </p>
+          <Link
+            to="/docs/api-and-cli"
+            className="mt-5 inline-flex text-sm font-medium text-primary hover:underline"
+          >
+            Read the API and Docker guide
+          </Link>
+        </div>
+        <div className="grid min-w-0 gap-3">
+          {CODE_SNIPPETS.map((snippet) => (
+            <CopyCodeBlock key={snippet.id} snippet={snippet} />
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -270,100 +206,93 @@ export default function HomepageLanding({
           </div>
         ))}
       </section>
+
+      <footer className="border-t py-8">
+        <div className="flex flex-col gap-5 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+          <div>
+            <Link
+              to="/"
+              className="inline-flex text-base font-semibold text-foreground"
+              aria-label="free design.md home"
+            >
+              free design<span className="text-primary">.md</span>
+            </Link>
+            <p className="mt-2 max-w-xl leading-6">
+              Portable design system artifacts for agents, docs, repos, and
+              local workflows.
+            </p>
+          </div>
+          <nav
+            aria-label="Footer"
+            className="flex flex-wrap items-center gap-x-5 gap-y-2 font-medium"
+          >
+            <Link to="/examples" className="hover:text-foreground">
+              Examples
+            </Link>
+            <Link to="/docs" className="hover:text-foreground">
+              Docs
+            </Link>
+            <Link to="/docs/api-and-cli" className="hover:text-foreground">
+              API and Docker
+            </Link>
+            <Link to="/quality" className="hover:text-foreground">
+              Quality
+            </Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }
 
-function ArtifactPreviewPanel() {
-  return (
-    <aside className="rounded-md border bg-background shadow-sm">
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <IconFileCode size={16} className="text-primary" />
-          Artifact preview
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <IconSparkles size={14} />
-          Agent-ready
-        </div>
-      </div>
-      <div className="grid gap-4 p-4">
-        <div className="rounded-md border bg-muted/35 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              design.md
-            </span>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              Portable spec
-            </span>
-          </div>
-          <pre className="overflow-hidden text-xs leading-6 text-muted-foreground">
-{`---
-name: Stripe
-colors:
-  primary: "#635BFF"
-typography:
-  heading-1:
-    fontFamily: Inter
----
-
-## Components
-- Button radius: 18px
-- Card shadow: soft depth`}
-          </pre>
-        </div>
-
-        <div className="rounded-md border p-4">
-          <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Token preview
-          </div>
-          <div className="flex gap-2">
-            {["#635BFF", "#0A2540", "#00D4FF", "#FFFFFF"].map((color) => (
-              <span
-                key={color}
-                className="h-9 flex-1 rounded-md border"
-                style={{ backgroundColor: color }}
-              />
-            ))}
-          </div>
-          <div className="mt-4 rounded-md bg-[#F6F9FC] p-4">
-            <div className="text-xl font-semibold text-[#0A2540]">
-              Checkout components
-            </div>
-            <p className="mt-2 text-sm text-[#425466]">
-              Extracted tokens render a synthetic UI preview before export.
-            </p>
-            <button
-              type="button"
-              className="mt-4 rounded-full bg-[#635BFF] px-4 py-2 text-sm font-semibold text-white"
-            >
-              Primary action
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 text-sm">
-          <ExportBadge icon={IconMarkdown} label="Markdown" />
-          <ExportBadge icon={IconFileTypeHtml} label="HTML" />
-          <ExportBadge icon={IconBraces} label="MDX" />
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function ExportBadge({
-  icon: Icon,
-  label,
+function PopularExamplesPanel({
+  examples,
 }: {
-  icon: typeof IconMarkdown;
-  label: string;
+  examples: ExampleDesignArtifact[];
 }) {
   return (
-    <div className="flex items-center justify-center gap-1.5 rounded-md border bg-secondary/50 px-2 py-2 font-medium">
-      <Icon size={15} className="text-primary" />
-      <span>{label}</span>
-    </div>
+    <aside className="hidden rounded-md border bg-secondary/25 p-4 min-[1800px]:block">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Popular examples
+          </p>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight">
+            Browse ready-made design.md files.
+          </h2>
+        </div>
+        <Link
+          to="/examples"
+          className="shrink-0 text-sm font-medium text-primary hover:underline"
+        >
+          View all
+        </Link>
+      </div>
+      <div className="mt-4 grid gap-1">
+        {examples.map((example) => (
+          <Link
+            key={example.slug}
+            to={`/examples/${example.slug}`}
+            className="group flex items-center justify-between gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-background"
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <ExampleLogoMark example={example} size="sm" />
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-foreground">
+                  {example.title}
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {example.domain}
+                </span>
+              </span>
+            </span>
+            <span className="hidden shrink-0 sm:block">
+              <ExampleColorSwatches example={example} />
+            </span>
+          </Link>
+        ))}
+      </div>
+    </aside>
   );
 }
 
@@ -382,23 +311,23 @@ function CopyCodeBlock({
   }
 
   return (
-    <div className="rounded-md border bg-background">
+    <div className="min-w-0 overflow-hidden rounded-md border bg-background">
       <div className="flex items-center justify-between border-b px-3 py-2">
-        <div className="flex items-center gap-2 text-sm font-semibold">
+        <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
           <Icon size={16} className="text-primary" />
-          {snippet.label}
+          <span className="truncate">{snippet.label}</span>
         </div>
         <button
           type="button"
           onClick={copyCode}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           aria-label={`Copy ${snippet.label} example`}
         >
           {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre className="overflow-x-auto p-3 text-xs leading-6 text-muted-foreground">
+      <pre className="w-full overflow-x-auto p-3 text-xs leading-6 text-muted-foreground">
         <code>{snippet.code}</code>
       </pre>
     </div>

@@ -40,7 +40,7 @@ function DocsSidebar() {
   const currentPath = location.pathname;
 
   return (
-    <aside className="min-w-0 border-b border-border bg-background lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:self-start lg:overflow-auto lg:border-b-0">
+    <aside className="min-w-0 border-b border-border bg-background lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:self-start lg:overflow-auto lg:border-b-0">
       <nav aria-label="Docs" className="px-4 py-4 lg:px-5 lg:py-8">
         <Link
           to="/docs"
