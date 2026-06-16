@@ -47,6 +47,7 @@ const TARGETS = [
   { slug: "linear", sourceUrl: "https://linear.app" },
   { slug: "notion", sourceUrl: "https://www.notion.com" },
   { slug: "supabase", sourceUrl: "https://supabase.com" },
+  { slug: "github", sourceUrl: "https://github.com/features" },
 ] as const;
 
 const OUTPUT_PATH = join("app", "lib", "generated-example-artifacts.ts");

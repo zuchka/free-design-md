@@ -824,6 +824,69 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       },
     }),
   },
+  {
+    slug: "github",
+    title: "GitHub",
+    sourceUrl: "https://github.com/features",
+    category: "Developer platform",
+    description:
+      "A developer collaboration system with dark code surfaces, blue actions, and dense repository-style information hierarchy.",
+    bestFor: "Developer portals, code collaboration, dashboards, issue flows, and technical product marketing.",
+    data: buildDesignData({
+      colors: {
+        primary: "#0969DA",
+        secondary: "#0D1117",
+        accent: "#8250DF",
+        background: "#F6F8FA",
+        surface: "#FFFFFF",
+        text: "#24292F",
+        textMuted: "#57606A",
+      },
+      typography: {
+        headingFont: "Mona Sans",
+        bodyFont: "Mona Sans",
+        headingFontStack: "Mona Sans, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+        bodyFontStack: "Mona Sans, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+        headingWeight: "700",
+        headingSizes: { h1: "58px", h2: "36px", h3: "22px" },
+      },
+      spacing: {
+        slidePadding: "48px",
+        elementGap: "20px",
+      },
+      borders: {
+        radius: "6px",
+        accentWidth: "1px",
+        radii: { button: "6px", card: "8px", pill: "999px" },
+      },
+      components: {
+        button: {
+          primary: {
+            background: "#0969DA",
+            color: "#FFFFFF",
+            radius: "6px",
+            padding: "10px 16px",
+            fontSize: "14px",
+            fontWeight: "600",
+            border: "1px solid #0969DA",
+          },
+        },
+        card: {
+          background: "#FFFFFF",
+          color: "#24292F",
+          radius: "8px",
+          padding: "24px",
+          border: "1px solid #D0D7DE",
+          shadow: "0 8px 24px rgba(140, 149, 159, 0.16)",
+        },
+        link: {
+          color: "#0969DA",
+          textDecoration: "none",
+          fontWeight: "600",
+        },
+      },
+    }),
+  },
 ];
 
 export const EXAMPLE_DESIGNS: ExampleDesignArtifact[] =
