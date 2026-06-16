@@ -49,6 +49,7 @@ const TARGETS = [
   { slug: "supabase", sourceUrl: "https://supabase.com" },
   { slug: "github", sourceUrl: "https://github.com/features" },
   { slug: "bmw", sourceUrl: "https://www.bmwusa.com" },
+  { slug: "spotify", sourceUrl: "https://www.spotify.com" },
 ] as const;
 
 const OUTPUT_PATH = join("app", "lib", "generated-example-artifacts.ts");

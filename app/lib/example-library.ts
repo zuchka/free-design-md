@@ -951,6 +951,70 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       },
     }),
   },
+  {
+    slug: "spotify",
+    title: "Spotify",
+    sourceUrl: "https://www.spotify.com",
+    category: "Media platform",
+    description:
+      "A music-product system with black immersive surfaces, green conversion cues, and bold entertainment typography.",
+    bestFor: "Media apps, audio products, subscription flows, creator tools, and consumer dashboards.",
+    data: buildDesignData({
+      colors: {
+        primary: "#1DB954",
+        secondary: "#121212",
+        accent: "#1ED760",
+        background: "#121212",
+        surface: "#181818",
+        text: "#FFFFFF",
+        textMuted: "#B3B3B3",
+      },
+      typography: {
+        headingFont: "Circular",
+        bodyFont: "Circular",
+        headingFontStack: "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
+        bodyFontStack: "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
+        headingWeight: "800",
+        bodyWeight: "400",
+        headingSizes: { h1: "64px", h2: "40px", h3: "24px" },
+      },
+      spacing: {
+        slidePadding: "56px",
+        elementGap: "24px",
+      },
+      borders: {
+        radius: "12px",
+        accentWidth: "2px",
+        radii: { button: "999px", card: "12px", pill: "999px" },
+      },
+      components: {
+        button: {
+          primary: {
+            background: "#1DB954",
+            color: "#121212",
+            radius: "999px",
+            padding: "13px 28px",
+            fontSize: "16px",
+            fontWeight: "700",
+            border: "1px solid #1DB954",
+          },
+        },
+        card: {
+          background: "#181818",
+          color: "#FFFFFF",
+          radius: "12px",
+          padding: "24px",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          shadow: "0 18px 45px rgba(0, 0, 0, 0.32)",
+        },
+        link: {
+          color: "#1DB954",
+          textDecoration: "none",
+          fontWeight: "700",
+        },
+      },
+    }),
+  },
 ];
 
 export const EXAMPLE_DESIGNS: ExampleDesignArtifact[] =
