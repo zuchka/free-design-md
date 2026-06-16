@@ -633,6 +633,70 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       },
     }),
   },
+  {
+    slug: "linear",
+    title: "Linear",
+    sourceUrl: "https://linear.app",
+    category: "Productivity SaaS",
+    description:
+      "A precision SaaS system with dark glass surfaces, purple accents, and dense keyboard-first product rhythm.",
+    bestFor: "Issue trackers, planning tools, operational dashboards, and developer productivity apps.",
+    data: buildDesignData({
+      colors: {
+        primary: "#5E6AD2",
+        secondary: "#0B0B10",
+        accent: "#8A63FF",
+        background: "#08090C",
+        surface: "#111218",
+        text: "#F7F8F8",
+        textMuted: "#A1A1AA",
+      },
+      typography: {
+        headingFont: "Inter Variable",
+        bodyFont: "Inter Variable",
+        headingFontStack: "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif",
+        bodyFontStack: "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif",
+        headingWeight: "510",
+        bodyWeight: "400",
+        headingSizes: { h1: "56px", h2: "36px", h3: "22px" },
+      },
+      spacing: {
+        slidePadding: "48px",
+        elementGap: "20px",
+      },
+      borders: {
+        radius: "10px",
+        accentWidth: "1px",
+        radii: { button: "8px", card: "14px", pill: "999px" },
+      },
+      components: {
+        button: {
+          primary: {
+            background: "#5E6AD2",
+            color: "#FFFFFF",
+            radius: "8px",
+            padding: "10px 16px",
+            fontSize: "14px",
+            fontWeight: "510",
+            border: "1px solid rgba(255,255,255,0.12)",
+          },
+        },
+        card: {
+          background: "#111218",
+          color: "#F7F8F8",
+          radius: "14px",
+          padding: "24px",
+          border: "1px solid rgba(255,255,255,0.1)",
+          shadow: "0 18px 45px rgba(0, 0, 0, 0.28)",
+        },
+        link: {
+          color: "#A997FF",
+          textDecoration: "none",
+          fontWeight: "510",
+        },
+      },
+    }),
+  },
 ];
 
 export const EXAMPLE_DESIGNS: ExampleDesignArtifact[] =

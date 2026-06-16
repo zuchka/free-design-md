@@ -44,6 +44,7 @@ const TARGETS = [
   { slug: "nike", sourceUrl: "https://www.nike.com" },
   { slug: "claude", sourceUrl: "https://www.anthropic.com/claude" },
   { slug: "figma", sourceUrl: "https://www.figma.com" },
+  { slug: "linear", sourceUrl: "https://linear.app" },
 ] as const;
 
 const OUTPUT_PATH = join("app", "lib", "generated-example-artifacts.ts");
