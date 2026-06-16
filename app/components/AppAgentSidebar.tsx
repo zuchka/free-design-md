@@ -112,14 +112,15 @@ export default function AppAgentSidebar({
     }
     return {
       width: SIDEBAR_WIDTH,
-      maxHeight: "100vh",
+      height: "100%",
+      maxHeight: "100%",
       borderLeft: "1px solid hsl(var(--border))",
       display: open ? "flex" : "none",
     };
   }, [isMobile, open]);
 
   return (
-    <div className="flex h-screen min-w-0 flex-1 overflow-hidden">
+    <div className="flex h-[calc(100vh-4rem)] min-w-0 flex-1 overflow-hidden">
       {isMobile && open ? (
         <button
           type="button"

@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import HomepageLanding from "./HomepageLanding";
@@ -33,12 +39,19 @@ describe("HomepageLanding", () => {
     expect(screen.getByText("Docker")).toBeTruthy();
     expect(screen.getByText(/ghcr\.io\/zuchka\/free-design-md:latest/))
       .toBeTruthy();
-    expect(screen.getByText("Markdown")).toBeTruthy();
-    expect(screen.getByText("HTML")).toBeTruthy();
-    expect(screen.getByText("MDX")).toBeTruthy();
-    expect(screen.getByText("Enrich with AI")).toBeTruthy();
+    expect(screen.getByText(/optional AI enrichment/i)).toBeTruthy();
     expect(screen.getByText("Free example library")).toBeTruthy();
+    expect(screen.queryByText("Artifact preview")).toBeNull();
+    expect(screen.queryByText("Structured tokens")).toBeNull();
+    expect(screen.queryByText("Paste URL")).toBeNull();
+    expect(screen.queryByText("API and CLI docs")).toBeNull();
     expect(screen.getAllByText("Stripe").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: /nike/i })).toBeTruthy();
+    const footerNav = screen.getByRole("navigation", { name: /footer/i });
+    expect(footerNav).toBeTruthy();
+    expect(
+      within(footerNav).getByRole("link", { name: /api and docker/i }),
+    ).toBeTruthy();
   });
 
   it("launches extraction when a curated sample chip is selected", () => {

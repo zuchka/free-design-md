@@ -542,5 +542,5 @@ export function getExampleDesignBySlug(
 }
 
 export function getHomepageExamples(): ExampleDesignArtifact[] {
-  return EXAMPLE_DESIGNS.slice(0, 5);
+  return EXAMPLE_DESIGNS;
 }

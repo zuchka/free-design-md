@@ -13,9 +13,9 @@ interface NavBarProps {
 }
 
 function navLinkClass(isActive: boolean) {
-  return `inline-flex items-center gap-1.5 rounded-md px-1 py-1.5 text-sm font-medium transition-colors ${
+  return `inline-flex items-center gap-2 rounded-md px-1.5 py-2 text-base font-semibold transition-colors ${
     isActive
-      ? "text-foreground underline decoration-primary decoration-2 underline-offset-8"
+      ? "text-foreground underline decoration-primary decoration-2 underline-offset-10"
       : "text-muted-foreground hover:text-foreground"
   }`;
 }
@@ -31,28 +31,32 @@ export default function NavBar({ showAgentToggle = true }: NavBarProps) {
     !onPublicSharedDesign && !onExamples && !onDocs && !onQuality;
 
   return (
-    <header className="border-b border-border bg-background">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-0 z-50 border-b border-border bg-background">
+      <div className="flex h-16 w-full items-center justify-between px-5 sm:px-8 lg:px-12">
         <div className="flex min-w-0 items-center">
           <Link
             to="/"
             aria-label="free design.md"
             className="flex shrink-0 items-center"
           >
-            <span className="font-semibold text-foreground">free design</span>
-            <span className="font-semibold text-primary">.md</span>
+            <span className="text-xl font-semibold leading-none text-foreground sm:text-2xl">
+              free design
+            </span>
+            <span className="text-xl font-semibold leading-none text-primary sm:text-2xl">
+              .md
+            </span>
           </Link>
           <span className="mx-2 hidden text-muted-foreground md:inline">·</span>
           <a
             href="https://agent-native.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden text-xs text-muted-foreground transition-colors hover:text-foreground md:inline"
+            className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:inline"
           >
             powered by Agent Native ↗
           </a>
         </div>
-        <nav aria-label="Main" className="flex items-center gap-2 sm:gap-4">
+        <nav aria-label="Main" className="flex items-center gap-2 sm:gap-5">
           <Link
             to="/"
             aria-label="My workspace"
@@ -60,7 +64,7 @@ export default function NavBar({ showAgentToggle = true }: NavBarProps) {
             title="My workspace"
             className={navLinkClass(onWorkspace)}
           >
-            <IconHome size={14} />
+            <IconHome size={16} />
             <span className="hidden sm:inline">My workspace</span>
           </Link>
           <Link
@@ -70,7 +74,7 @@ export default function NavBar({ showAgentToggle = true }: NavBarProps) {
             title="Docs"
             className={navLinkClass(onDocs)}
           >
-            <IconBook2 size={14} />
+            <IconBook2 size={16} />
             <span className="hidden sm:inline">Docs</span>
           </Link>
           <Link
@@ -80,7 +84,7 @@ export default function NavBar({ showAgentToggle = true }: NavBarProps) {
             title="Examples"
             className={navLinkClass(onExamples)}
           >
-            <IconLayoutGrid size={14} />
+            <IconLayoutGrid size={16} />
             <span className="hidden sm:inline">Examples</span>
           </Link>
           <Link
@@ -90,7 +94,7 @@ export default function NavBar({ showAgentToggle = true }: NavBarProps) {
             title="Quality"
             className={navLinkClass(onQuality)}
           >
-            <IconChartBar size={14} />
+            <IconChartBar size={16} />
             <span className="hidden sm:inline">Quality</span>
           </Link>
           {showCredits && <CreditsChip />}
