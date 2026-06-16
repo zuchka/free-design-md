@@ -697,6 +697,70 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       },
     }),
   },
+  {
+    slug: "notion",
+    title: "Notion",
+    sourceUrl: "https://www.notion.com",
+    category: "Productivity SaaS",
+    description:
+      "A warm workspace system with paper-like surfaces, restrained typography, and document-first product patterns.",
+    bestFor: "Docs tools, workspace apps, knowledge bases, project hubs, and editorial SaaS pages.",
+    data: buildDesignData({
+      colors: {
+        primary: "#111111",
+        secondary: "#FFFFFF",
+        accent: "#A67C52",
+        background: "#F7F6F3",
+        surface: "#FFFFFF",
+        text: "#111111",
+        textMuted: "#6B625A",
+      },
+      typography: {
+        headingFont: "Inter",
+        bodyFont: "Inter",
+        headingFontStack: "Inter, ui-sans-serif, system-ui, sans-serif",
+        bodyFontStack: "Inter, ui-sans-serif, system-ui, sans-serif",
+        headingWeight: "650",
+        bodyWeight: "400",
+        headingSizes: { h1: "60px", h2: "38px", h3: "24px" },
+      },
+      spacing: {
+        slidePadding: "56px",
+        elementGap: "22px",
+      },
+      borders: {
+        radius: "10px",
+        accentWidth: "1px",
+        radii: { button: "6px", card: "12px", pill: "999px" },
+      },
+      components: {
+        button: {
+          primary: {
+            background: "#111111",
+            color: "#FFFFFF",
+            radius: "6px",
+            padding: "10px 16px",
+            fontSize: "15px",
+            fontWeight: "600",
+            border: "1px solid #111111",
+          },
+        },
+        card: {
+          background: "#FFFFFF",
+          color: "#111111",
+          radius: "12px",
+          padding: "24px",
+          border: "1px solid #E5E2DC",
+          shadow: "0 8px 20px rgba(17, 17, 17, 0.06)",
+        },
+        link: {
+          color: "#111111",
+          textDecoration: "underline",
+          fontWeight: "600",
+        },
+      },
+    }),
+  },
 ];
 
 export const EXAMPLE_DESIGNS: ExampleDesignArtifact[] =
