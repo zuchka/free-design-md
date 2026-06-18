@@ -15,12 +15,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  recordDesignArtifactEvent,
+  type DesignArtifactEventFormat,
+  type DesignArtifactTrackingContext,
+} from "@/lib/design-artifact-events";
 
 interface ArtifactActionsProps {
   markdown: string;
   html: string;
   mdx?: string;
   baseFilename: string;
+  tracking?: DesignArtifactTrackingContext;
 }
 
 export default function ArtifactActions({
@@ -28,6 +34,7 @@ export default function ArtifactActions({
   html,
   mdx = "",
   baseFilename,
+  tracking,
 }: ArtifactActionsProps) {
   const [copied, setCopied] = useState(false);
   const filename = safeFilename(baseFilename);
@@ -35,20 +42,37 @@ export default function ArtifactActions({
   async function copyMarkdown() {
     if (!markdown) return;
     await navigator.clipboard.writeText(markdown);
+    trackArtifactEvent("copy", "markdown");
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
 
   function saveMarkdown() {
-    downloadText(`${filename}.md`, markdown, "text/markdown;charset=utf-8");
+    if (
+      downloadText(`${filename}.md`, markdown, "text/markdown;charset=utf-8")
+    ) {
+      trackArtifactEvent("download", "markdown");
+    }
   }
 
   function saveHtml() {
-    downloadText(`${filename}.html`, html, "text/html;charset=utf-8");
+    if (downloadText(`${filename}.html`, html, "text/html;charset=utf-8")) {
+      trackArtifactEvent("download", "html");
+    }
   }
 
   function saveMdx() {
-    downloadText(`${filename}.mdx`, mdx, "text/mdx;charset=utf-8");
+    if (downloadText(`${filename}.mdx`, mdx, "text/mdx;charset=utf-8")) {
+      trackArtifactEvent("download", "mdx");
+    }
+  }
+
+  function trackArtifactEvent(
+    action: "copy" | "download",
+    format: DesignArtifactEventFormat,
+  ) {
+    if (!tracking) return;
+    recordDesignArtifactEvent({ ...tracking, action, format });
   }
 
   return (
@@ -109,8 +133,8 @@ function safeFilename(value: string): string {
   return cleaned || "design";
 }
 
-function downloadText(filename: string, text: string, type: string) {
-  if (!text) return;
+function downloadText(filename: string, text: string, type: string): boolean {
+  if (!text) return false;
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -120,4 +144,5 @@ function downloadText(filename: string, text: string, type: string) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+  return true;
 }

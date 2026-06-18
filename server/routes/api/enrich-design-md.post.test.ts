@@ -208,6 +208,9 @@ describe("POST /api/enrich-design-md", () => {
     expect(metrics).toContain(
       'fdmd_quota_events_total{route="enrich",event="decremented"} 1',
     );
+    expect(metrics).toContain(
+      'fdmd_design_artifact_events_total{action="public_snapshot_saved",source="home",variant="enriched",format="snapshot"} 1',
+    );
     expect(metrics).not.toContain("https://example.com");
   });
 

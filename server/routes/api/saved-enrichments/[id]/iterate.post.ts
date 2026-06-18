@@ -36,6 +36,7 @@ import { applyDeterministicRadiusFidelity } from "../../../../../shared/radius-f
 import {
   keySourceLabel,
   metricsStartedAt,
+  recordDesignArtifactEvent,
   recordIterateRequest,
   recordQuotaEvent,
 } from "../../../../lib/metrics.js";
@@ -298,6 +299,12 @@ export default defineEventHandler(async (event) => {
               model: result.model,
               usage: result.usage,
               stopReason: result.stopReason,
+            });
+            await recordDesignArtifactEvent({
+              action: "public_snapshot_saved",
+              source: "saved_design",
+              variant: "iteration",
+              format: "snapshot",
             });
             await recordIterateRequest({
               route: "saved_iterate",

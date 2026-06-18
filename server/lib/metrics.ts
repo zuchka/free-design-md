@@ -233,6 +233,11 @@ const quotaEvents = new CounterMetric(
   ["route", "event"],
 );
 
+const designArtifactEvents = new CounterMetric(
+  "fdmd_design_artifact_events_total",
+  "Design artifact copy, download, share, and saved snapshot events.",
+  ["action", "source", "variant", "format"],
+);
 
 const metrics = [
   extractRequests,
@@ -242,6 +247,7 @@ const metrics = [
   aiStreamDuration,
   builderConnectResolutions,
   quotaEvents,
+  designArtifactEvents,
 ];
 
 const counterMetrics = [
@@ -442,6 +448,19 @@ export function recordQuotaEvent(input: {
   return quotaEvents.record({ route: input.route, event: input.event });
 }
 
+export function recordDesignArtifactEvent(input: {
+  action: string;
+  source: string;
+  variant: string;
+  format: string;
+}): Promise<void> {
+  return designArtifactEvents.record({
+    action: safeMetricLabel(input.action),
+    source: safeMetricLabel(input.source),
+    variant: safeMetricLabel(input.variant),
+    format: safeMetricLabel(input.format),
+  });
+}
 
 export async function renderPrometheusMetrics(): Promise<string> {
   let renderedCounters: string[];

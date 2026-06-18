@@ -45,6 +45,7 @@ import {
   type AiAccessRecoveryReason,
 } from "@/lib/ai-access-errors";
 import { getHomepageExamples } from "@/lib/example-library";
+import { recordDesignArtifactEvent } from "@/lib/design-artifact-events";
 import { readCache, writeCache } from "@/lib/extraction-cache";
 import SideBySideMemo from "@/components/SideBySideMemo";
 import TokenPreviewFrame from "@/components/TokenPreviewFrame";
@@ -597,6 +598,12 @@ export default function IndexRoute() {
     if (!enriched?.savedDesignUrl) return;
     const shareUrl = `${window.location.origin}${appBasePath()}${enriched.savedDesignUrl}`;
     await navigator.clipboard.writeText(shareUrl);
+    recordDesignArtifactEvent({
+      action: "share_link_copy",
+      source: "home",
+      variant: "enriched",
+      format: "link",
+    });
     setCopiedShareUrl(true);
     setTimeout(() => setCopiedShareUrl(false), 1500);
   }
@@ -985,6 +992,11 @@ export default function IndexRoute() {
                       html={artifactPreviewHtml}
                       mdx={artifactMdx}
                       baseFilename={result.signals?.title ?? result.url}
+                      tracking={{
+                        source: "home",
+                        variant:
+                          view === "enriched" ? "enriched" : "deterministic",
+                      }}
                     />
                     {enriched?.savedDesignUrl && (
                       <Button
@@ -1393,10 +1405,16 @@ function SavedDesignsList({
   }, [items, query]);
   const publicLinksLabel = `${items.length} public link${items.length === 1 ? "" : "s"}`;
 
-  function copyPublicLink(id: string) {
-    void navigator.clipboard.writeText(
+  async function copyPublicLink(id: string) {
+    await navigator.clipboard.writeText(
       `${window.location.origin}${appBasePath()}/d/${id}`,
     );
+    recordDesignArtifactEvent({
+      action: "share_link_copy",
+      source: "saved_library",
+      variant: "enriched",
+      format: "link",
+    });
   }
 
   return (

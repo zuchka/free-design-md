@@ -198,6 +198,7 @@ export default function ExampleDetailRoute() {
                     html={currentPreviewHtml}
                     mdx={artifactMdx}
                     baseFilename={`${example.title}-${view}`}
+                    tracking={{ source: "example", variant: view }}
                   />
                 </div>
               }

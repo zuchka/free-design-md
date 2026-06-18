@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   metricsStartedAt,
   recordBuilderConnectResolution,
+  recordDesignArtifactEvent,
   recordEnrichRequest,
   recordExtractRequest,
   recordIterateRequest,
@@ -42,6 +43,12 @@ describe("metrics registry", () => {
       status: "connected",
       orgKind: "Team Plan / US",
     });
+    await recordDesignArtifactEvent({
+      action: "download",
+      source: "example",
+      variant: "enriched",
+      format: "mdx",
+    });
 
     const output = await renderPrometheusMetrics();
 
@@ -60,6 +67,9 @@ describe("metrics registry", () => {
     );
     expect(output).toContain(
       'fdmd_builder_connect_resolutions_total{status="connected",org_kind="team_plan_us"} 1',
+    );
+    expect(output).toContain(
+      'fdmd_design_artifact_events_total{action="download",source="example",variant="enriched",format="mdx"} 1',
     );
     expect(output).toContain("fdmd_ai_stream_duration_seconds_bucket");
     expect(output).not.toContain("https://example.com");

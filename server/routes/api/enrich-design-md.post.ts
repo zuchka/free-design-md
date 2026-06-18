@@ -21,6 +21,7 @@ import { createSseSender } from "../../lib/sse.js";
 import {
   keySourceLabel,
   metricsStartedAt,
+  recordDesignArtifactEvent,
   recordEnrichRequest,
   recordQuotaEvent,
 } from "../../lib/metrics.js";
@@ -229,6 +230,12 @@ export default defineEventHandler(async (event) => {
                   model: result.model,
                   usage: result.usage,
                   stopReason: result.stopReason,
+                });
+                await recordDesignArtifactEvent({
+                  action: "public_snapshot_saved",
+                  source: "home",
+                  variant: "enriched",
+                  format: "snapshot",
                 });
                 saveResult = {
                   savedDesignId: saved.id,

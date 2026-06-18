@@ -24,6 +24,7 @@ import {
 } from "@/lib/ai-access-errors";
 import { announceAgentActivity } from "@/lib/agent-activity";
 import { publishDesignContext } from "@/lib/agent-design-context";
+import { recordDesignArtifactEvent } from "@/lib/design-artifact-events";
 import { renderPreview } from "../../shared/preview-template";
 import { designArtifactToMdx } from "../../shared/design-mdx";
 import {
@@ -236,6 +237,12 @@ export default function SavedDesignRoute() {
 
   async function copyLink() {
     await navigator.clipboard.writeText(window.location.href);
+    recordDesignArtifactEvent({
+      action: "share_link_copy",
+      source: "saved_design",
+      variant: "enriched",
+      format: "link",
+    });
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 1500);
   }
@@ -491,6 +498,7 @@ export default function SavedDesignRoute() {
                     html={artifactPreviewHtml}
                     mdx={artifactMdx}
                     baseFilename={saved.title}
+                    tracking={{ source: "saved_design", variant: view }}
                   />
                 </div>
               }

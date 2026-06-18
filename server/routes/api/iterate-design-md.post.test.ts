@@ -405,6 +405,9 @@ describe("POST /api/iterate-design-md", () => {
         iterationPrompt: "Make the headline more energetic.",
       }),
     );
+    expect(await renderPrometheusMetrics()).toContain(
+      'fdmd_design_artifact_events_total{action="public_snapshot_saved",source="home",variant="iteration",format="snapshot"} 1',
+    );
   });
 
   it("streams error event + refunds credit when iterateStream throws", async () => {
