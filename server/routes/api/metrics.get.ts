@@ -16,7 +16,7 @@ function hasMetricsAccess(event: Parameters<typeof getHeader>[0]): boolean {
   return getHeader(event, "x-prometheus-token") === token;
 }
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   if (!hasMetricsAccess(event)) {
     setResponseStatus(event, 401);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
@@ -29,5 +29,5 @@ export default defineEventHandler((event) => {
     "text/plain; version=0.0.4; charset=utf-8",
   );
   setResponseHeader(event, "Cache-Control", "no-cache, no-store");
-  return renderPrometheusMetrics();
+  return await renderPrometheusMetrics();
 });

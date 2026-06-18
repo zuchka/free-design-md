@@ -1,3 +1,5 @@
+import { getDbExec } from "@agent-native/core/db";
+
 type LabelValue = string | number | boolean | null | undefined;
 type Labels = Record<string, LabelValue>;
 
@@ -22,6 +24,12 @@ function labelKey(labelNames: string[], labels: Labels): string {
   return labelNames
     .map((name) => `${name}:${String(labels[name] ?? "")}`)
     .join("|");
+}
+
+function labelsForNames(labelNames: string[], labels: Labels): Labels {
+  return Object.fromEntries(
+    labelNames.map((name) => [name, String(labels[name] ?? "")]),
+  );
 }
 
 function renderLabels(labelNames: string[], labels: Labels): string {
@@ -65,13 +73,24 @@ class CounterMetric {
   ) {}
 
   inc(labels: Labels, value = 1): void {
-    const key = labelKey(this.labelNames, labels);
+    const normalizedLabels = labelsForNames(this.labelNames, labels);
+    const key = labelKey(this.labelNames, normalizedLabels);
     const current = this.values.get(key);
     if (current) {
       current.value += value;
       return;
     }
-    this.values.set(key, { labels, value });
+    this.values.set(key, { labels: normalizedLabels, value });
+  }
+
+  async record(labels: Labels, value = 1): Promise<void> {
+    const normalizedLabels = labelsForNames(this.labelNames, labels);
+    this.inc(normalizedLabels, value);
+    try {
+      await persistCounterIncrement(this, normalizedLabels, value);
+    } catch (err) {
+      logPersistentMetricsError(err);
+    }
   }
 
   reset(): void {
@@ -84,6 +103,19 @@ class CounterMetric {
       `# TYPE ${this.name} counter`,
     ];
     for (const { labels, value } of this.values.values()) {
+      lines.push(
+        `${this.name}${renderLabels(this.labelNames, labels)} ${value}`,
+      );
+    }
+    return lines.join("\n");
+  }
+
+  renderPersisted(rows: PersistedCounterRow[]): string {
+    const lines = [
+      `# HELP ${this.name} ${escapeHelp(this.help)}`,
+      `# TYPE ${this.name} counter`,
+    ];
+    for (const { labels, value } of rows) {
       lines.push(
         `${this.name}${renderLabels(this.labelNames, labels)} ${value}`,
       );
@@ -201,6 +233,7 @@ const quotaEvents = new CounterMetric(
   ["route", "event"],
 );
 
+
 const metrics = [
   extractRequests,
   extractDuration,
@@ -210,6 +243,125 @@ const metrics = [
   builderConnectResolutions,
   quotaEvents,
 ];
+
+const counterMetrics = [
+  extractRequests,
+  enrichRequests,
+  iterateRequests,
+  builderConnectResolutions,
+  quotaEvents,
+  designArtifactEvents,
+];
+
+const histogramMetrics = [extractDuration, aiStreamDuration];
+
+interface PersistedCounterRow {
+  labels: Labels;
+  value: number;
+}
+
+interface RawCounterRow {
+  name: string;
+  labels_json: string;
+  value: number | bigint;
+}
+
+let ensureCountersTablePromise: Promise<void> | null = null;
+let loggedPersistentMetricsError = false;
+
+async function ensurePersistentCountersTable(): Promise<void> {
+  if (!ensureCountersTablePromise) {
+    ensureCountersTablePromise = (async () => {
+      const exec = getDbExec();
+      await exec.execute({
+        sql: `CREATE TABLE IF NOT EXISTS fdmd_metric_counters (
+          name TEXT NOT NULL,
+          label_key TEXT NOT NULL,
+          labels_json TEXT NOT NULL,
+          value INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          PRIMARY KEY (name, label_key)
+        )`,
+        args: [],
+      });
+    })().catch((err) => {
+      ensureCountersTablePromise = null;
+      throw err;
+    });
+  }
+  await ensureCountersTablePromise;
+}
+
+function logPersistentMetricsError(err: unknown): void {
+  if (loggedPersistentMetricsError) return;
+  loggedPersistentMetricsError = true;
+  console.warn("[metrics] persistent counter write failed", err);
+}
+
+async function persistCounterIncrement(
+  metric: CounterMetric,
+  labels: Labels,
+  value: number,
+): Promise<void> {
+  await ensurePersistentCountersTable();
+  const exec = getDbExec();
+  const key = labelKey(Object.keys(labels), labels);
+  await exec.execute({
+    sql: `INSERT INTO fdmd_metric_counters (name, label_key, labels_json, value)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(name, label_key) DO UPDATE SET
+            labels_json = excluded.labels_json,
+            value = fdmd_metric_counters.value + excluded.value,
+            updated_at = datetime('now')`,
+    args: [metric.name, key, JSON.stringify(labels), value],
+  });
+}
+
+async function loadPersistedCounters(): Promise<
+  Map<string, PersistedCounterRow[]>
+> {
+  await ensurePersistentCountersTable();
+  const names = counterMetrics.map((metric) => metric.name);
+  const placeholders = names.map(() => "?").join(", ");
+  const exec = getDbExec();
+  const result = await exec.execute({
+    sql: `SELECT name, labels_json, value
+          FROM fdmd_metric_counters
+          WHERE name IN (${placeholders})
+          ORDER BY name, label_key`,
+    args: names,
+  });
+  const rowsByMetric = new Map<string, PersistedCounterRow[]>();
+  for (const row of result.rows as unknown as RawCounterRow[]) {
+    let labels: Labels;
+    try {
+      labels = JSON.parse(row.labels_json) as Labels;
+    } catch {
+      continue;
+    }
+    const rows = rowsByMetric.get(row.name) ?? [];
+    rows.push({
+      labels,
+      value: typeof row.value === "bigint" ? Number(row.value) : row.value,
+    });
+    rowsByMetric.set(row.name, rows);
+  }
+  return rowsByMetric;
+}
+
+async function resetPersistedCountersForTests(): Promise<void> {
+  try {
+    await ensurePersistentCountersTable();
+    const exec = getDbExec();
+    await exec.execute({
+      sql: `DELETE FROM fdmd_metric_counters`,
+      args: [],
+    });
+  } catch {
+    // Some unit tests import metrics before the framework DB is available.
+    // In-memory reset still keeps those tests isolated.
+  }
+}
 
 export function metricsStartedAt(): number {
   return nowSeconds();
@@ -225,13 +377,11 @@ export function recordExtractRequest(input: {
   status: string;
   format: "json" | "markdown" | "mdx" | "invalid";
   startedAt: number;
-}): void {
+}): Promise<void> {
   const status = safeMetricLabel(input.status);
-  extractRequests.inc({ status, format: input.format });
-  extractDuration.observe(
-    { status },
-    Math.max(0, nowSeconds() - input.startedAt),
-  );
+  const duration = Math.max(0, nowSeconds() - input.startedAt);
+  extractDuration.observe({ status }, duration);
+  return extractRequests.record({ status, format: input.format });
 }
 
 export function recordEnrichRequest(input: {
@@ -239,17 +389,18 @@ export function recordEnrichRequest(input: {
   keySource: string;
   quota: string;
   startedAt: number;
-}): void {
+}): Promise<void> {
   const status = safeMetricLabel(input.status);
-  enrichRequests.inc({
+  const labels = {
     status,
     key_source: safeMetricLabel(input.keySource, "none"),
     quota: safeMetricLabel(input.quota, "not_applicable"),
-  });
+  };
   aiStreamDuration.observe(
     { route: "enrich", status },
     Math.max(0, nowSeconds() - input.startedAt),
   );
+  return enrichRequests.record(labels);
 }
 
 export function recordIterateRequest(input: {
@@ -258,26 +409,27 @@ export function recordIterateRequest(input: {
   keySource: string;
   quota: string;
   startedAt: number;
-}): void {
+}): Promise<void> {
   const status = safeMetricLabel(input.status);
   const route = safeMetricLabel(input.route);
-  iterateRequests.inc({
+  const labels = {
     route,
     status,
     key_source: safeMetricLabel(input.keySource, "none"),
     quota: safeMetricLabel(input.quota, "not_applicable"),
-  });
+  };
   aiStreamDuration.observe(
     { route, status },
     Math.max(0, nowSeconds() - input.startedAt),
   );
+  return iterateRequests.record(labels);
 }
 
 export function recordBuilderConnectResolution(input: {
   status: "connected" | "missing_credentials" | "error";
   orgKind?: string | null;
-}): void {
-  builderConnectResolutions.inc({
+}): Promise<void> {
+  return builderConnectResolutions.record({
     status: input.status,
     org_kind: safeMetricLabel(input.orgKind, "unknown"),
   });
@@ -286,15 +438,33 @@ export function recordBuilderConnectResolution(input: {
 export function recordQuotaEvent(input: {
   route: "enrich" | "iterate" | "saved_iterate";
   event: "decremented" | "exhausted" | "refunded";
-}): void {
-  quotaEvents.inc({ route: input.route, event: input.event });
+}): Promise<void> {
+  return quotaEvents.record({ route: input.route, event: input.event });
 }
 
-export function renderPrometheusMetrics(): string {
-  const rendered = metrics.map((metric) => metric.render()).join("\n\n");
+
+export async function renderPrometheusMetrics(): Promise<string> {
+  let renderedCounters: string[];
+  try {
+    const rowsByMetric = await loadPersistedCounters();
+    renderedCounters = counterMetrics.map((metric) =>
+      metric.renderPersisted(rowsByMetric.get(metric.name) ?? []),
+    );
+  } catch {
+    renderedCounters = counterMetrics.map((metric) => metric.render());
+  }
+  const rendered = [
+    ...renderedCounters,
+    ...histogramMetrics.map((metric) => metric.render()),
+  ].join("\n\n");
   return `${rendered}\n`;
 }
 
-export function resetMetricsForTests(): void {
+export function resetInMemoryMetricsForTests(): void {
   for (const metric of metrics) metric.reset();
+}
+
+export async function resetMetricsForTests(): Promise<void> {
+  resetInMemoryMetricsForTests();
+  await resetPersistedCountersForTests();
 }

@@ -131,3 +131,11 @@ export const fdmdSavedEnrichments = table("fdmd_saved_enrichments", {
   createdAt: text("created_at").notNull().default(now()),
   updatedAt: text("updated_at").notNull().default(now()),
 });
+
+export const fdmdMetricCounters = table("fdmd_metric_counters", {
+  name: text("name").notNull(),
+  labelKey: text("label_key").notNull(),
+  labelsJson: text("labels_json").notNull(),
+  value: integer("value").notNull().default(0),
+  updatedAt: text("updated_at").notNull().default(now()),
+});

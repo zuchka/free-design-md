@@ -129,7 +129,7 @@ beforeEach(async () => {
   mockResolveAnthropicKey.mockReset();
   mockResolveConnectedBuilderOwner.mockReset();
   mockSaveEnrichmentSnapshot.mockReset();
-  resetMetricsForTests();
+  await resetMetricsForTests();
   await resetQuota(ANONYMOUS_OWNER);
   await resetQuota(BUILDER_OWNER);
 });
@@ -201,7 +201,7 @@ describe("POST /api/enrich-design-md", () => {
     expect(mockEnrichStream).toHaveBeenCalledWith(
       expect.not.objectContaining({ anthropicApiKey: expect.anything() }),
     );
-    const metrics = renderPrometheusMetrics();
+    const metrics = await renderPrometheusMetrics();
     expect(metrics).toContain(
       'fdmd_enrich_requests_total{status="success",key_source="hosted_server",quota="consumed"} 1',
     );
@@ -251,7 +251,7 @@ describe("POST /api/enrich-design-md", () => {
     );
     expect(mockResolveAnthropicKey).not.toHaveBeenCalled();
     expect(mockEnrichStream).not.toHaveBeenCalled();
-    expect(renderPrometheusMetrics()).toContain(
+    expect(await renderPrometheusMetrics()).toContain(
       'fdmd_enrich_requests_total{status="user_key_rejected",key_source="none",quota="blocked"} 1',
     );
   });

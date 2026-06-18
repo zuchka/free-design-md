@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
   if (!format) {
     setResponseStatus(event, 400);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
-    recordExtractRequest({
+    await recordExtractRequest({
       status: "bad_request",
       format: "invalid",
       startedAt,
@@ -42,13 +42,13 @@ export default defineEventHandler(async (event) => {
   if (typeof url !== "string" || !url.trim()) {
     setResponseStatus(event, 400);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
-    recordExtractRequest({ status: "bad_request", format, startedAt });
+    await recordExtractRequest({ status: "bad_request", format, startedAt });
     return "missing url query param";
   }
 
   try {
     const result = await extractAction.run({ url });
-    recordExtractRequest({ status: "success", format, startedAt });
+    await recordExtractRequest({ status: "success", format, startedAt });
     if (format === "json") {
       setResponseHeader(
         event,
@@ -82,7 +82,7 @@ export default defineEventHandler(async (event) => {
       message.includes("Invalid URL");
     setResponseStatus(event, isBadUrl ? 400 : 500);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
-    recordExtractRequest({
+    await recordExtractRequest({
       status: isBadUrl ? "bad_request" : "error",
       format,
       startedAt,

@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  recordExtractRequest,
-  resetMetricsForTests,
-} from "../../lib/metrics";
+import { recordExtractRequest, resetMetricsForTests } from "../../lib/metrics";
 
 vi.mock("h3", async () => {
   const actual = await vi.importActual<typeof import("h3")>("h3");
@@ -31,8 +28,8 @@ const { default: routeHandler } = await import("./metrics.get");
 const ORIGINAL_TOKEN = process.env.PROMETHEUS_METRICS_TOKEN;
 
 describe("GET /api/metrics", () => {
-  beforeEach(() => {
-    resetMetricsForTests();
+  beforeEach(async () => {
+    await resetMetricsForTests();
     delete process.env.PROMETHEUS_METRICS_TOKEN;
   });
 
@@ -45,7 +42,7 @@ describe("GET /api/metrics", () => {
   });
 
   it("returns Prometheus text", async () => {
-    recordExtractRequest({
+    await recordExtractRequest({
       status: "success",
       format: "json",
       startedAt: Date.now() / 1000,

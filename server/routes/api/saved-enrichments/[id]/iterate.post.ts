@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id");
   if (!id) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "saved_iterate",
       status: "missing_saved_id",
       keySource: "none",
@@ -60,7 +60,7 @@ export default defineEventHandler(async (event) => {
   const parent = await getPublicSavedEnrichment(id);
   if (!parent) {
     setResponseStatus(event, 404);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "saved_iterate",
       status: "not_found",
       keySource: "none",
@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event).catch(() => null);
   if (!body || typeof body !== "object") {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "saved_iterate",
       status: "bad_body",
       keySource: "none",
@@ -94,7 +94,7 @@ export default defineEventHandler(async (event) => {
 
   if (!userPrompt) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "saved_iterate",
       status: "missing_fields",
       keySource: "none",
@@ -105,7 +105,7 @@ export default defineEventHandler(async (event) => {
   }
   if (userPrompt.length > INPUT_CAPS.userPrompt) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "saved_iterate",
       status: "user_prompt_too_long",
       keySource: "none",
@@ -116,7 +116,7 @@ export default defineEventHandler(async (event) => {
   }
   if (parent.enrichedMarkdown.length > INPUT_CAPS.parentMarkdown) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "saved_iterate",
       status: "previous_markdown_too_long",
       keySource: "none",
@@ -127,7 +127,7 @@ export default defineEventHandler(async (event) => {
   }
   if (sectionTarget && !SECTION_RE.test(sectionTarget)) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "saved_iterate",
       status: "bad_section_target",
       keySource: "none",
@@ -140,7 +140,7 @@ export default defineEventHandler(async (event) => {
   const blockHit = checkBlocklist(userPrompt);
   if (blockHit) {
     setResponseStatus(event, 422);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "saved_iterate",
       status: "blocked",
       keySource: "none",
@@ -160,7 +160,7 @@ export default defineEventHandler(async (event) => {
     )
   ) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "saved_iterate",
       status: "user_key_rejected",
       keySource: "none",
@@ -183,7 +183,7 @@ export default defineEventHandler(async (event) => {
       err.message.includes("self_hosted_anthropic_key_missing")
     ) {
       setResponseStatus(event, 503);
-      recordIterateRequest({
+      await recordIterateRequest({
         route: "saved_iterate",
         status: "self_hosted_key_missing",
         keySource: "none",
@@ -196,7 +196,7 @@ export default defineEventHandler(async (event) => {
       };
     }
     setResponseStatus(event, 402);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "saved_iterate",
       status: "no_api_key",
       keySource: "none",
@@ -213,7 +213,7 @@ export default defineEventHandler(async (event) => {
     if (isAnonymousOwner(owner)) {
       if (!connectedBuilderOwner) {
         setResponseStatus(event, 401);
-        recordIterateRequest({
+        await recordIterateRequest({
           route: "saved_iterate",
           status: "sign_in_required",
           keySource,
@@ -238,8 +238,8 @@ export default defineEventHandler(async (event) => {
     dec = await decrementCredits(quotaOwner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
-      recordQuotaEvent({ route: "saved_iterate", event: "exhausted" });
-      recordIterateRequest({
+      await recordQuotaEvent({ route: "saved_iterate", event: "exhausted" });
+      await recordIterateRequest({
         route: "saved_iterate",
         status: "out_of_credits",
         keySource,
@@ -251,7 +251,7 @@ export default defineEventHandler(async (event) => {
         reason: "signed-in-and-out-of-credits",
       };
     }
-    recordQuotaEvent({ route: "saved_iterate", event: "decremented" });
+    await recordQuotaEvent({ route: "saved_iterate", event: "decremented" });
   }
 
   const input: IterationInput = {
@@ -299,6 +299,13 @@ export default defineEventHandler(async (event) => {
               usage: result.usage,
               stopReason: result.stopReason,
             });
+            await recordIterateRequest({
+              route: "saved_iterate",
+              status: "success",
+              keySource,
+              quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
+              startedAt,
+            });
             sse.send("done", {
               ...result,
               savedDesignId: saved.id,
@@ -307,22 +314,15 @@ export default defineEventHandler(async (event) => {
               rootId: parent.rootId ?? parent.id,
               remaining: dec?.remaining ?? null,
             });
-            recordIterateRequest({
-              route: "saved_iterate",
-              status: "success",
-              keySource,
-              quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
-              startedAt,
-            });
           }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
           await refundCredit(quotaOwner).catch(() => {});
-          recordQuotaEvent({ route: "saved_iterate", event: "refunded" });
+          await recordQuotaEvent({ route: "saved_iterate", event: "refunded" });
         }
-        recordIterateRequest({
+        await recordIterateRequest({
           route: "saved_iterate",
           status: "stream_error",
           keySource,

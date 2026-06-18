@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
   if (!body || typeof body !== "object") {
     setResponseStatus(event, 400);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
-    recordEnrichRequest({
+    await recordEnrichRequest({
       status: "bad_body",
       keySource: "none",
       quota: "not_applicable",
@@ -77,7 +77,7 @@ export default defineEventHandler(async (event) => {
   ) {
     setResponseStatus(event, 400);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
-    recordEnrichRequest({
+    await recordEnrichRequest({
       status: "missing_fields",
       keySource: "none",
       quota: "not_applicable",
@@ -96,7 +96,7 @@ export default defineEventHandler(async (event) => {
     )
   ) {
     setResponseStatus(event, 400);
-    recordEnrichRequest({
+    await recordEnrichRequest({
       status: "user_key_rejected",
       keySource: "none",
       quota: "blocked",
@@ -118,7 +118,7 @@ export default defineEventHandler(async (event) => {
       err.message.includes("self_hosted_anthropic_key_missing")
     ) {
       setResponseStatus(event, 503);
-      recordEnrichRequest({
+      await recordEnrichRequest({
         status: "self_hosted_key_missing",
         keySource: "none",
         quota: "not_applicable",
@@ -130,7 +130,7 @@ export default defineEventHandler(async (event) => {
       };
     }
     setResponseStatus(event, 402);
-    recordEnrichRequest({
+    await recordEnrichRequest({
       status: "no_api_key",
       keySource: "none",
       quota: "not_applicable",
@@ -151,7 +151,7 @@ export default defineEventHandler(async (event) => {
     connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
     if (!connectedBuilderOwner) {
       setResponseStatus(event, 401);
-      recordEnrichRequest({
+      await recordEnrichRequest({
         status: "sign_in_required",
         keySource,
         quota: "blocked",
@@ -170,8 +170,8 @@ export default defineEventHandler(async (event) => {
     dec = await decrementCredits(quotaOwner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
-      recordQuotaEvent({ route: "enrich", event: "exhausted" });
-      recordEnrichRequest({
+      await recordQuotaEvent({ route: "enrich", event: "exhausted" });
+      await recordEnrichRequest({
         status: "out_of_credits",
         keySource,
         quota: "exhausted",
@@ -182,7 +182,7 @@ export default defineEventHandler(async (event) => {
         reason: "signed-in-and-out-of-credits",
       };
     }
-    recordQuotaEvent({ route: "enrich", event: "decremented" });
+    await recordQuotaEvent({ route: "enrich", event: "decremented" });
   }
 
   const inputWithKey: EnrichInput = {
@@ -241,7 +241,7 @@ export default defineEventHandler(async (event) => {
                   saveErr instanceof Error ? saveErr.message : String(saveErr),
               };
             }
-            recordEnrichRequest({
+            await recordEnrichRequest({
               status: "success",
               keySource,
               quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
@@ -254,9 +254,9 @@ export default defineEventHandler(async (event) => {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
           await refundCredit(quotaOwner).catch(() => {});
-          recordQuotaEvent({ route: "enrich", event: "refunded" });
+          await recordQuotaEvent({ route: "enrich", event: "refunded" });
         }
-        recordEnrichRequest({
+        await recordEnrichRequest({
           status: "stream_error",
           keySource,
           quota:

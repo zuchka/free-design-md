@@ -1,12 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  renderPrometheusMetrics,
-  resetMetricsForTests,
-} from "./metrics.js";
+import { renderPrometheusMetrics, resetMetricsForTests } from "./metrics.js";
 
 const mockResolveBuilderCredentials = vi.hoisted(() => vi.fn());
-const mockRunWithRequestContext = vi.hoisted(
-  () => vi.fn(async (_ctx: unknown, fn: () => unknown) => await fn()),
+const mockRunWithRequestContext = vi.hoisted(() =>
+  vi.fn(async (_ctx: unknown, fn: () => unknown) => await fn()),
 );
 
 vi.mock("@agent-native/core/server", () => ({
@@ -18,10 +15,10 @@ const { resolveConnectedBuilderOwner, resolveConnectedBuilderQuotaOwner } =
   await import("./builder-connection.js");
 
 describe("Builder Connect owner resolution", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockResolveBuilderCredentials.mockReset();
     mockRunWithRequestContext.mockClear();
-    resetMetricsForTests();
+    await resetMetricsForTests();
   });
 
   it("returns a user-level owner for complete Builder credentials", async () => {
@@ -41,7 +38,7 @@ describe("Builder Connect owner resolution", () => {
       orgName: "Builder",
       orgKind: "team",
     });
-    const metrics = renderPrometheusMetrics();
+    const metrics = await renderPrometheusMetrics();
     expect(metrics).toContain(
       'fdmd_builder_connect_resolutions_total{status="connected",org_kind="team"} 1',
     );
@@ -58,7 +55,7 @@ describe("Builder Connect owner resolution", () => {
     });
 
     await expect(resolveConnectedBuilderOwner("owner")).resolves.toBeNull();
-    expect(renderPrometheusMetrics()).toContain(
+    expect(await renderPrometheusMetrics()).toContain(
       'fdmd_builder_connect_resolutions_total{status="missing_credentials",org_kind="unknown"} 1',
     );
   });

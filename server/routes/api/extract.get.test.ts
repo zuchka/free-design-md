@@ -42,9 +42,9 @@ vi.mock("h3", async () => {
 const { default: routeHandler } = await import("./extract.get");
 
 describe("GET /api/extract metrics", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockExtractRun.mockReset();
-    resetMetricsForTests();
+    await resetMetricsForTests();
   });
 
   it("records deterministic extraction success", async () => {
@@ -67,10 +67,12 @@ describe("GET /api/extract metrics", () => {
     expect(event._statusCode ?? 200).toBe(200);
     expect(event._headers?.["Content-Type"]).toContain("application/json");
     expect(result).toMatchObject({ markdown: "# design" });
-    expect(renderPrometheusMetrics()).toContain(
+    expect(await renderPrometheusMetrics()).toContain(
       'fdmd_extract_requests_total{status="success",format="json"} 1',
     );
-    expect(renderPrometheusMetrics()).not.toContain("https://example.com");
+    expect(await renderPrometheusMetrics()).not.toContain(
+      "https://example.com",
+    );
   });
 
   it("returns raw markdown by default", async () => {
@@ -94,7 +96,7 @@ describe("GET /api/extract metrics", () => {
     expect(event._statusCode ?? 200).toBe(200);
     expect(event._headers?.["Content-Type"]).toContain("text/markdown");
     expect(result).toBe("# design");
-    expect(renderPrometheusMetrics()).toContain(
+    expect(await renderPrometheusMetrics()).toContain(
       'fdmd_extract_requests_total{status="success",format="markdown"} 1',
     );
   });
@@ -120,7 +122,7 @@ describe("GET /api/extract metrics", () => {
     expect(event._statusCode ?? 200).toBe(200);
     expect(event._headers?.["Content-Type"]).toContain("text/mdx");
     expect(result).toBe("MDX_EXPORT");
-    expect(renderPrometheusMetrics()).toContain(
+    expect(await renderPrometheusMetrics()).toContain(
       'fdmd_extract_requests_total{status="success",format="mdx"} 1',
     );
   });
@@ -133,7 +135,7 @@ describe("GET /api/extract metrics", () => {
     await routeHandler(event as never);
 
     expect(event._statusCode).toBe(400);
-    expect(renderPrometheusMetrics()).toContain(
+    expect(await renderPrometheusMetrics()).toContain(
       'fdmd_extract_requests_total{status="bad_request",format="markdown"} 1',
     );
   });
@@ -152,7 +154,7 @@ describe("GET /api/extract metrics", () => {
     expect(event._headers?.["Content-Type"]).toContain("text/plain");
     expect(result).toContain("format must be one of");
     expect(mockExtractRun).not.toHaveBeenCalled();
-    expect(renderPrometheusMetrics()).toContain(
+    expect(await renderPrometheusMetrics()).toContain(
       'fdmd_extract_requests_total{status="bad_request",format="invalid"} 1',
     );
   });

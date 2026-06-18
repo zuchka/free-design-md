@@ -87,7 +87,7 @@ beforeEach(async () => {
   mockGetPublicSavedEnrichment.mockReset();
   mockGetPublicSavedEnrichment.mockResolvedValue(null);
   mockSaveEnrichmentSnapshot.mockReset();
-  resetMetricsForTests();
+  await resetMetricsForTests();
   await resetDb();
 });
 afterEach(resetDb);
@@ -235,7 +235,7 @@ describe("POST /api/iterate-design-md", () => {
     ).toMatch(/^blocklist:/);
 
     expect(mockIterateStream).not.toHaveBeenCalled();
-    expect(renderPrometheusMetrics()).toContain(
+    expect(await renderPrometheusMetrics()).toContain(
       'fdmd_iterate_requests_total{route="iterate",status="blocked",key_source="hosted_server",quota="blocked"} 1',
     );
   });
@@ -327,7 +327,7 @@ describe("POST /api/iterate-design-md", () => {
     expect(
       (rows.rows[0] as { rejected_reason: string | null }).rejected_reason,
     ).toBeFalsy();
-    const metrics = renderPrometheusMetrics();
+    const metrics = await renderPrometheusMetrics();
     expect(metrics).toContain(
       'fdmd_iterate_requests_total{route="iterate",status="success",key_source="hosted_server",quota="consumed"} 1',
     );

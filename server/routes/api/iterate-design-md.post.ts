@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event).catch(() => null);
   if (!body || typeof body !== "object") {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "iterate",
       status: "bad_body",
       keySource: "none",
@@ -100,7 +100,7 @@ export default defineEventHandler(async (event) => {
 
   if (!previousMarkdown || !userPrompt || !sessionId) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "iterate",
       status: "missing_fields",
       keySource: "none",
@@ -111,7 +111,7 @@ export default defineEventHandler(async (event) => {
   }
   if (previousMarkdown.length > INPUT_CAPS.parentMarkdown) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "iterate",
       status: "previous_markdown_too_long",
       keySource: "none",
@@ -122,7 +122,7 @@ export default defineEventHandler(async (event) => {
   }
   if (userPrompt.length > INPUT_CAPS.userPrompt) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "iterate",
       status: "user_prompt_too_long",
       keySource: "none",
@@ -133,7 +133,7 @@ export default defineEventHandler(async (event) => {
   }
   if (sectionTarget && !SECTION_RE.test(sectionTarget)) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "iterate",
       status: "bad_section_target",
       keySource: "none",
@@ -154,7 +154,7 @@ export default defineEventHandler(async (event) => {
     )
   ) {
     setResponseStatus(event, 400);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "iterate",
       status: "user_key_rejected",
       keySource: "none",
@@ -177,7 +177,7 @@ export default defineEventHandler(async (event) => {
       err.message.includes("self_hosted_anthropic_key_missing")
     ) {
       setResponseStatus(event, 503);
-      recordIterateRequest({
+      await recordIterateRequest({
         route: "iterate",
         status: "self_hosted_key_missing",
         keySource: "none",
@@ -190,7 +190,7 @@ export default defineEventHandler(async (event) => {
       };
     }
     setResponseStatus(event, 402);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "iterate",
       status: "no_api_key",
       keySource: "none",
@@ -215,7 +215,7 @@ export default defineEventHandler(async (event) => {
       rejectedReason: `blocklist:${blockHit}`,
     });
     setResponseStatus(event, 422);
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "iterate",
       status: "blocked",
       keySource,
@@ -232,7 +232,7 @@ export default defineEventHandler(async (event) => {
     if (isAnonymousOwner(owner)) {
       if (!connectedBuilderOwner) {
         setResponseStatus(event, 401);
-        recordIterateRequest({
+        await recordIterateRequest({
           route: "iterate",
           status: "sign_in_required",
           keySource,
@@ -250,8 +250,8 @@ export default defineEventHandler(async (event) => {
     dec = await decrementCredits(quotaOwner);
     if (!dec.ok) {
       setResponseStatus(event, 402);
-      recordQuotaEvent({ route: "iterate", event: "exhausted" });
-      recordIterateRequest({
+      await recordQuotaEvent({ route: "iterate", event: "exhausted" });
+      await recordIterateRequest({
         route: "iterate",
         status: "out_of_credits",
         keySource,
@@ -263,7 +263,7 @@ export default defineEventHandler(async (event) => {
         reason: "signed-in-and-out-of-credits",
       };
     }
-    recordQuotaEvent({ route: "iterate", event: "decremented" });
+    await recordQuotaEvent({ route: "iterate", event: "decremented" });
   }
 
   setResponseHeader(event, "Content-Type", "text/event-stream; charset=utf-8");
@@ -351,7 +351,7 @@ export default defineEventHandler(async (event) => {
                 };
               }
             }
-            recordIterateRequest({
+            await recordIterateRequest({
               route: "iterate",
               status: "success",
               keySource,
@@ -370,7 +370,7 @@ export default defineEventHandler(async (event) => {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
           await refundCredit(quotaOwner).catch(() => {});
-          recordQuotaEvent({ route: "iterate", event: "refunded" });
+          await recordQuotaEvent({ route: "iterate", event: "refunded" });
         }
         await insertRejected({
           sessionId,
@@ -381,7 +381,7 @@ export default defineEventHandler(async (event) => {
           sectionTarget,
           rejectedReason: message.slice(0, 200),
         }).catch(() => {});
-        recordIterateRequest({
+        await recordIterateRequest({
           route: "iterate",
           status: "stream_error",
           keySource,

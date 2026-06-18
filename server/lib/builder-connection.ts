@@ -36,13 +36,13 @@ export async function resolveConnectedBuilderOwner(
         !credentials.publicKey ||
         !credentials.userId
       ) {
-        recordBuilderConnectResolution({
+        await recordBuilderConnectResolution({
           status: "missing_credentials",
           orgKind: credentials.orgKind ?? null,
         });
         return null;
       }
-      recordBuilderConnectResolution({
+      await recordBuilderConnectResolution({
         status: "connected",
         orgKind: credentials.orgKind ?? null,
       });
@@ -54,7 +54,7 @@ export async function resolveConnectedBuilderOwner(
       };
     });
   } catch {
-    recordBuilderConnectResolution({ status: "error" });
+    await recordBuilderConnectResolution({ status: "error" });
     return null;
   }
 }

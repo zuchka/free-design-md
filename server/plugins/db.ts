@@ -272,6 +272,20 @@ export default runMigrations(
   );
   CREATE INDEX IF NOT EXISTS fdmd_credit_promos_owner_idx ON fdmd_credit_promos (owner_id, claimed_at)`,
     },
+    // v30: durable Prometheus counter backing. Request/duration histograms stay
+    // process-local, but counters are all-time app metrics and must survive
+    // Railway container restarts and image deploys.
+    {
+      version: 30,
+      sql: `CREATE TABLE IF NOT EXISTS fdmd_metric_counters (
+    name TEXT NOT NULL,
+    label_key TEXT NOT NULL,
+    labels_json TEXT NOT NULL,
+    value INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (name, label_key)
+  )`,
+    },
   ],
   { table: "slides_migrations" },
 );

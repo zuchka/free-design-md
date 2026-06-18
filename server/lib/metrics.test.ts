@@ -7,36 +7,43 @@ import {
   recordIterateRequest,
   recordQuotaEvent,
   renderPrometheusMetrics,
+  resetInMemoryMetricsForTests,
   resetMetricsForTests,
 } from "./metrics";
 
 describe("metrics registry", () => {
-  beforeEach(() => resetMetricsForTests());
+  beforeEach(async () => {
+    await resetMetricsForTests();
+  });
 
-  it("renders Prometheus counters and histograms", () => {
+  it("renders Prometheus counters and histograms", async () => {
     const startedAt = metricsStartedAt();
 
-    recordExtractRequest({ status: "success", format: "json", startedAt });
-    recordEnrichRequest({
+    await recordExtractRequest({
+      status: "success",
+      format: "json",
+      startedAt,
+    });
+    await recordEnrichRequest({
       status: "success",
       keySource: "hosted_server",
       quota: "consumed",
       startedAt,
     });
-    recordIterateRequest({
+    await recordIterateRequest({
       route: "iterate",
       status: "blocked",
       keySource: "hosted_server",
       quota: "blocked",
       startedAt,
     });
-    recordQuotaEvent({ route: "iterate", event: "refunded" });
-    recordBuilderConnectResolution({
+    await recordQuotaEvent({ route: "iterate", event: "refunded" });
+    await recordBuilderConnectResolution({
       status: "connected",
       orgKind: "Team Plan / US",
     });
 
-    const output = renderPrometheusMetrics();
+    const output = await renderPrometheusMetrics();
 
     expect(output).toContain("# TYPE fdmd_extract_requests_total counter");
     expect(output).toContain(
@@ -60,17 +67,32 @@ describe("metrics registry", () => {
     expect(output).not.toContain("sk-");
   });
 
-  it("can reset metrics between tests", () => {
-    recordExtractRequest({
+  it("can reset metrics between tests", async () => {
+    await recordExtractRequest({
       status: "success",
       format: "markdown",
       startedAt: metricsStartedAt(),
     });
 
-    resetMetricsForTests();
+    await resetMetricsForTests();
 
-    expect(renderPrometheusMetrics()).not.toContain(
+    expect(await renderPrometheusMetrics()).not.toContain(
       'fdmd_extract_requests_total{status="success",format="markdown"}',
+    );
+  });
+
+  it("renders persisted counters after in-memory reset", async () => {
+    await recordEnrichRequest({
+      status: "success",
+      keySource: "hosted_server",
+      quota: "consumed",
+      startedAt: metricsStartedAt(),
+    });
+
+    resetInMemoryMetricsForTests();
+
+    expect(await renderPrometheusMetrics()).toContain(
+      'fdmd_enrich_requests_total{status="success",key_source="hosted_server",quota="consumed"} 1',
     );
   });
 });
