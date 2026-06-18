@@ -1,7 +1,9 @@
 import { getDbExec } from "@agent-native/core/db";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 type LabelValue = string | number | boolean | null | undefined;
 type Labels = Record<string, LabelValue>;
+type ActionMetricCaller = "http" | "direct";
 
 const DEFAULT_BUCKETS = [0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60];
 
@@ -239,6 +241,12 @@ const designArtifactEvents = new CounterMetric(
   ["action", "source", "variant", "format"],
 );
 
+const actionRuns = new CounterMetric(
+  "fdmd_action_runs_total",
+  "Agent-native action executions by action name, outcome, and caller surface.",
+  ["action", "status", "caller"],
+);
+
 const metrics = [
   extractRequests,
   extractDuration,
@@ -248,6 +256,7 @@ const metrics = [
   builderConnectResolutions,
   quotaEvents,
   designArtifactEvents,
+  actionRuns,
 ];
 
 const counterMetrics = [
@@ -257,6 +266,7 @@ const counterMetrics = [
   builderConnectResolutions,
   quotaEvents,
   designArtifactEvents,
+  actionRuns,
 ];
 
 const histogramMetrics = [extractDuration, aiStreamDuration];
@@ -274,6 +284,7 @@ interface RawCounterRow {
 
 let ensureCountersTablePromise: Promise<void> | null = null;
 let loggedPersistentMetricsError = false;
+const actionMetricCallerStorage = new AsyncLocalStorage<ActionMetricCaller>();
 
 async function ensurePersistentCountersTable(): Promise<void> {
   if (!ensureCountersTablePromise) {
@@ -373,6 +384,17 @@ export function metricsStartedAt(): number {
   return nowSeconds();
 }
 
+export async function withActionMetricCaller<T>(
+  caller: ActionMetricCaller,
+  fn: () => Promise<T>,
+): Promise<T> {
+  return await actionMetricCallerStorage.run(caller, fn);
+}
+
+function currentActionMetricCaller(): ActionMetricCaller {
+  return actionMetricCallerStorage.getStore() ?? "direct";
+}
+
 export function keySourceLabel(source: string | null | undefined): string {
   if (source === "server") return "hosted_server";
   if (source === "self-host") return "self_hosted_env";
@@ -459,6 +481,21 @@ export function recordDesignArtifactEvent(input: {
     source: safeMetricLabel(input.source),
     variant: safeMetricLabel(input.variant),
     format: safeMetricLabel(input.format),
+  });
+}
+
+export function recordActionRun(input: {
+  action: string;
+  status: string;
+  caller?: ActionMetricCaller;
+}): Promise<void> {
+  return actionRuns.record({
+    action: safeMetricLabel(input.action),
+    status: safeMetricLabel(input.status),
+    caller: safeMetricLabel(
+      input.caller ?? currentActionMetricCaller(),
+      "direct",
+    ),
   });
 }
 

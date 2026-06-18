@@ -34,6 +34,7 @@ import {
   recordDesignArtifactEvent,
   recordIterateRequest,
   recordQuotaEvent,
+  withActionMetricCaller,
 } from "../../lib/metrics.js";
 
 const SECTION_RE = /^[a-z0-9-]{1,40}$/;
@@ -286,93 +287,95 @@ export default defineEventHandler(async (event) => {
       sse = createSseSender(controller);
 
       try {
-        for await (const ev of iterateStream(input)) {
-          if (ev.type === "delta") {
-            sse.send("delta", { text: ev.text });
-          } else {
-            // done
-            const { type: _drop, ...rawResult } = ev;
-            const result = {
-              ...rawResult,
-              markdown: applyDeterministicRadiusFidelity(
-                rawResult.markdown,
-                designSystemData,
-              ),
-            };
-            await insertSuccess({
-              id,
-              sessionId,
-              parentId,
-              url,
-              owner,
-              userPrompt,
-              sectionTarget,
-              result,
-            });
-            let saveResult:
-              | { savedDesignId: string; savedDesignUrl: string }
-              | { saveError: string }
-              | null = null;
-            if (
-              connectedBuilderOwner &&
-              url &&
-              deterministicMarkdown &&
-              designSystemData &&
-              signals
-            ) {
-              try {
-                const parent = parentId
-                  ? await getPublicSavedEnrichment(parentId)
-                  : null;
-                const saved = await saveEnrichmentSnapshot({
-                  owner: connectedBuilderOwner,
-                  sourceUrl: url,
-                  deterministicMarkdown,
-                  enrichedMarkdown: result.markdown,
+        await withActionMetricCaller("http", async () => {
+          for await (const ev of iterateStream(input)) {
+            if (ev.type === "delta") {
+              sse.send("delta", { text: ev.text });
+            } else {
+              // done
+              const { type: _drop, ...rawResult } = ev;
+              const result = {
+                ...rawResult,
+                markdown: applyDeterministicRadiusFidelity(
+                  rawResult.markdown,
                   designSystemData,
-                  signals,
-                  screenshotDataUrl,
-                  parentId: parent?.id ?? parentId,
-                  rootId: parent?.rootId ?? parent?.id ?? parentId,
-                  iterationPrompt: userPrompt,
-                  model: result.model,
-                  usage: result.usage,
-                  stopReason: result.stopReason,
-                });
-                await recordDesignArtifactEvent({
-                  action: "public_snapshot_saved",
-                  source: "home",
-                  variant: "iteration",
-                  format: "snapshot",
-                });
-                saveResult = {
-                  savedDesignId: saved.id,
-                  savedDesignUrl: saved.url,
-                };
-              } catch (saveErr) {
-                saveResult = {
-                  saveError:
-                    saveErr instanceof Error
-                      ? saveErr.message
-                      : String(saveErr),
-                };
+                ),
+              };
+              await insertSuccess({
+                id,
+                sessionId,
+                parentId,
+                url,
+                owner,
+                userPrompt,
+                sectionTarget,
+                result,
+              });
+              let saveResult:
+                | { savedDesignId: string; savedDesignUrl: string }
+                | { saveError: string }
+                | null = null;
+              if (
+                connectedBuilderOwner &&
+                url &&
+                deterministicMarkdown &&
+                designSystemData &&
+                signals
+              ) {
+                try {
+                  const parent = parentId
+                    ? await getPublicSavedEnrichment(parentId)
+                    : null;
+                  const saved = await saveEnrichmentSnapshot({
+                    owner: connectedBuilderOwner,
+                    sourceUrl: url,
+                    deterministicMarkdown,
+                    enrichedMarkdown: result.markdown,
+                    designSystemData,
+                    signals,
+                    screenshotDataUrl,
+                    parentId: parent?.id ?? parentId,
+                    rootId: parent?.rootId ?? parent?.id ?? parentId,
+                    iterationPrompt: userPrompt,
+                    model: result.model,
+                    usage: result.usage,
+                    stopReason: result.stopReason,
+                  });
+                  await recordDesignArtifactEvent({
+                    action: "public_snapshot_saved",
+                    source: "home",
+                    variant: "iteration",
+                    format: "snapshot",
+                  });
+                  saveResult = {
+                    savedDesignId: saved.id,
+                    savedDesignUrl: saved.url,
+                  };
+                } catch (saveErr) {
+                  saveResult = {
+                    saveError:
+                      saveErr instanceof Error
+                        ? saveErr.message
+                        : String(saveErr),
+                  };
+                }
               }
+              await recordIterateRequest({
+                route: "iterate",
+                status: "success",
+                keySource,
+                quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
+                startedAt,
+              });
+              sse.send("done", {
+                id,
+                ...result,
+                remaining: dec?.remaining ?? null,
+                ...(saveResult ?? {}),
+              });
             }
-            await recordIterateRequest({
-              route: "iterate",
-              status: "success",
-              keySource,
-              quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
-              startedAt,
-            });
-            sse.send("done", {
-              id,
-              ...result,
-              remaining: dec?.remaining ?? null,
-              ...(saveResult ?? {}),
-            });
           }
-        }
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {

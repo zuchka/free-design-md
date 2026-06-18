@@ -24,6 +24,7 @@ import {
   recordDesignArtifactEvent,
   recordEnrichRequest,
   recordQuotaEvent,
+  withActionMetricCaller,
 } from "../../lib/metrics.js";
 
 /**
@@ -205,58 +206,62 @@ export default defineEventHandler(async (event) => {
       sse = createSseSender(controller);
 
       try {
-        for await (const ev of enrichStream(inputWithKey)) {
-          if (ev.type === "delta") {
-            sse.send("delta", { text: ev.text });
-          } else {
-            const { type: _drop, ...result } = ev;
-            let saveResult:
-              | { savedDesignId: string; savedDesignUrl: string }
-              | { saveError: string }
-              | null = null;
-            try {
-              const connected =
-                connectedBuilderOwner ??
-                (await resolveConnectedBuilderOwner(owner));
-              if (connected) {
-                const saved = await saveEnrichmentSnapshot({
-                  owner: connected,
-                  sourceUrl: url,
-                  deterministicMarkdown: md,
-                  enrichedMarkdown: result.markdown,
-                  designSystemData,
-                  signals,
-                  screenshotDataUrl,
-                  model: result.model,
-                  usage: result.usage,
-                  stopReason: result.stopReason,
-                });
-                await recordDesignArtifactEvent({
-                  action: "public_snapshot_saved",
-                  source: "home",
-                  variant: "enriched",
-                  format: "snapshot",
-                });
+        await withActionMetricCaller("http", async () => {
+          for await (const ev of enrichStream(inputWithKey)) {
+            if (ev.type === "delta") {
+              sse.send("delta", { text: ev.text });
+            } else {
+              const { type: _drop, ...result } = ev;
+              let saveResult:
+                | { savedDesignId: string; savedDesignUrl: string }
+                | { saveError: string }
+                | null = null;
+              try {
+                const connected =
+                  connectedBuilderOwner ??
+                  (await resolveConnectedBuilderOwner(owner));
+                if (connected) {
+                  const saved = await saveEnrichmentSnapshot({
+                    owner: connected,
+                    sourceUrl: url,
+                    deterministicMarkdown: md,
+                    enrichedMarkdown: result.markdown,
+                    designSystemData,
+                    signals,
+                    screenshotDataUrl,
+                    model: result.model,
+                    usage: result.usage,
+                    stopReason: result.stopReason,
+                  });
+                  await recordDesignArtifactEvent({
+                    action: "public_snapshot_saved",
+                    source: "home",
+                    variant: "enriched",
+                    format: "snapshot",
+                  });
+                  saveResult = {
+                    savedDesignId: saved.id,
+                    savedDesignUrl: saved.url,
+                  };
+                }
+              } catch (saveErr) {
                 saveResult = {
-                  savedDesignId: saved.id,
-                  savedDesignUrl: saved.url,
+                  saveError:
+                    saveErr instanceof Error
+                      ? saveErr.message
+                      : String(saveErr),
                 };
               }
-            } catch (saveErr) {
-              saveResult = {
-                saveError:
-                  saveErr instanceof Error ? saveErr.message : String(saveErr),
-              };
+              await recordEnrichRequest({
+                status: "success",
+                keySource,
+                quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
+                startedAt,
+              });
+              sse.send("done", { ...result, ...(saveResult ?? {}) });
             }
-            await recordEnrichRequest({
-              status: "success",
-              keySource,
-              quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
-              startedAt,
-            });
-            sse.send("done", { ...result, ...(saveResult ?? {}) });
           }
-        }
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {

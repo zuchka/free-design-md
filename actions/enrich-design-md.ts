@@ -31,6 +31,7 @@ import { useDemoBrandCache } from "../shared/flags.js";
 import type { DesignSystemData } from "../shared/api.js";
 import type { ExtractedSignals } from "../shared/extract-design-system.js";
 import { applyDeterministicRadiusFidelity } from "../shared/radius-fidelity.js";
+import { recordActionRun } from "../server/lib/metrics.js";
 
 const ENRICH_MODEL = "claude-sonnet-4-6";
 const ENRICH_MAX_TOKENS = 64000;
@@ -179,12 +180,27 @@ async function writeCache(result: EnrichResult): Promise<void> {
 export async function* enrichStream(
   input: EnrichInput,
 ): AsyncGenerator<EnrichStreamEvent, void, undefined> {
+  try {
+    yield* enrichStreamInner(input);
+  } catch (err) {
+    await recordActionRun({ action: "enrich-design-md", status: "error" });
+    throw err;
+  }
+}
+
+async function* enrichStreamInner(
+  input: EnrichInput,
+): AsyncGenerator<EnrichStreamEvent, void, undefined> {
   // Cache short-circuit. Returns the cached result as a single `done`
   // event with no streaming deltas — the UI handles that naturally
   // (the AI-enriched pane fills in instantly).
   if (useDemoBrandCache()) {
     const cached = await readCache(input.url);
     if (cached) {
+      await recordActionRun({
+        action: "enrich-design-md",
+        status: "success",
+      });
       yield { type: "done", ...cached };
       return;
     }
@@ -308,6 +324,7 @@ export async function* enrichStream(
   // got their enrichment.
   await writeCache(result);
 
+  await recordActionRun({ action: "enrich-design-md", status: "success" });
   yield { type: "done", ...result };
 }
 

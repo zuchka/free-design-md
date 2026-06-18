@@ -24,6 +24,7 @@ import {
   validateIterationFulfillment,
 } from "../shared/iteration-fulfillment.js";
 import { validateSectionScope } from "../shared/iteration-scope.js";
+import { recordActionRun } from "../server/lib/metrics.js";
 
 const ITERATE_MODEL = "claude-sonnet-4-6";
 const ITERATE_MAX_TOKENS = 16_000;
@@ -90,6 +91,17 @@ const InputSchema = z.object({
 });
 
 export async function* iterateStream(
+  input: IterationInput,
+): AsyncGenerator<IterationStreamEvent, void, undefined> {
+  try {
+    yield* iterateStreamInner(input);
+  } catch (err) {
+    await recordActionRun({ action: "iterate-design-md", status: "error" });
+    throw err;
+  }
+}
+
+async function* iterateStreamInner(
   input: IterationInput,
 ): AsyncGenerator<IterationStreamEvent, void, undefined> {
   // Input caps — fail fast before any LLM call.
@@ -177,6 +189,7 @@ export async function* iterateStream(
 
     const result = buildIterationResult(attempt);
     yield { type: "delta", text: result.markdown };
+    await recordActionRun({ action: "iterate-design-md", status: "success" });
     yield { type: "done", ...result };
     return;
   }
@@ -241,6 +254,7 @@ export async function* iterateStream(
 
   const result = buildIterationResult({ markdown, finalMessage, latencyMs });
 
+  await recordActionRun({ action: "iterate-design-md", status: "success" });
   yield { type: "done", ...result };
 }
 

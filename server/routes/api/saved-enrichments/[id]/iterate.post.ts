@@ -39,6 +39,7 @@ import {
   recordDesignArtifactEvent,
   recordIterateRequest,
   recordQuotaEvent,
+  withActionMetricCaller,
 } from "../../../../lib/metrics.js";
 
 const SECTION_RE = /^[a-z0-9-]{1,40}$/;
@@ -273,56 +274,58 @@ export default defineEventHandler(async (event) => {
       sse = createSseSender(controller);
 
       try {
-        for await (const ev of iterateStream(input)) {
-          if (ev.type === "delta") {
-            sse.send("delta", { text: ev.text });
-          } else {
-            const { type: _drop, ...rawResult } = ev;
-            const result = {
-              ...rawResult,
-              markdown: applyDeterministicRadiusFidelity(
-                rawResult.markdown,
-                parent.designSystemData,
-              ),
-            };
-            const saved = await saveEnrichmentSnapshot({
-              owner: saveOwner,
-              sourceUrl: parent.sourceUrl,
-              deterministicMarkdown: parent.deterministicMarkdown,
-              enrichedMarkdown: result.markdown,
-              designSystemData: parent.designSystemData,
-              signals: parent.signals,
-              screenshotDataUrl: parent.screenshotDataUrl,
-              parentId: parent.id,
-              rootId: parent.rootId ?? parent.id,
-              iterationPrompt: userPrompt,
-              model: result.model,
-              usage: result.usage,
-              stopReason: result.stopReason,
-            });
-            await recordDesignArtifactEvent({
-              action: "public_snapshot_saved",
-              source: "saved_design",
-              variant: "iteration",
-              format: "snapshot",
-            });
-            await recordIterateRequest({
-              route: "saved_iterate",
-              status: "success",
-              keySource,
-              quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
-              startedAt,
-            });
-            sse.send("done", {
-              ...result,
-              savedDesignId: saved.id,
-              savedDesignUrl: saved.url,
-              parentId: parent.id,
-              rootId: parent.rootId ?? parent.id,
-              remaining: dec?.remaining ?? null,
-            });
+        await withActionMetricCaller("http", async () => {
+          for await (const ev of iterateStream(input)) {
+            if (ev.type === "delta") {
+              sse.send("delta", { text: ev.text });
+            } else {
+              const { type: _drop, ...rawResult } = ev;
+              const result = {
+                ...rawResult,
+                markdown: applyDeterministicRadiusFidelity(
+                  rawResult.markdown,
+                  parent.designSystemData,
+                ),
+              };
+              const saved = await saveEnrichmentSnapshot({
+                owner: saveOwner,
+                sourceUrl: parent.sourceUrl,
+                deterministicMarkdown: parent.deterministicMarkdown,
+                enrichedMarkdown: result.markdown,
+                designSystemData: parent.designSystemData,
+                signals: parent.signals,
+                screenshotDataUrl: parent.screenshotDataUrl,
+                parentId: parent.id,
+                rootId: parent.rootId ?? parent.id,
+                iterationPrompt: userPrompt,
+                model: result.model,
+                usage: result.usage,
+                stopReason: result.stopReason,
+              });
+              await recordDesignArtifactEvent({
+                action: "public_snapshot_saved",
+                source: "saved_design",
+                variant: "iteration",
+                format: "snapshot",
+              });
+              await recordIterateRequest({
+                route: "saved_iterate",
+                status: "success",
+                keySource,
+                quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
+                startedAt,
+              });
+              sse.send("done", {
+                ...result,
+                savedDesignId: saved.id,
+                savedDesignUrl: saved.url,
+                parentId: parent.id,
+                rootId: parent.rootId ?? parent.id,
+                remaining: dec?.remaining ?? null,
+              });
+            }
           }
-        }
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {

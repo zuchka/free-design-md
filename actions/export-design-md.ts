@@ -4,6 +4,7 @@ import { resolveAccess } from "@agent-native/core/sharing";
 import "../server/db/index.js"; // ensure registerShareableResource runs
 import { designSystemToDesignMd } from "../shared/design-md.js";
 import type { DesignSystemData } from "../shared/api.js";
+import { recordActionRun } from "../server/lib/metrics.js";
 
 export default defineAction({
   description:
@@ -15,16 +16,24 @@ export default defineAction({
   readOnly: true,
   http: { method: "GET" },
   run: async ({ id }) => {
-    const access = await resolveAccess("design-system", id);
-    if (!access) throw new Error(`design system ${id} not found or not accessible`);
-    const row = access.resource;
-    const data = JSON.parse(row.data) as DesignSystemData;
-    const markdown = designSystemToDesignMd({
-      title: row.title,
-      description: row.description ?? "",
-      data,
-      customInstructions: row.customInstructions ?? "",
-    });
-    return { id: row.id, title: row.title, markdown };
+    try {
+      const access = await resolveAccess("design-system", id);
+      if (!access) {
+        throw new Error(`design system ${id} not found or not accessible`);
+      }
+      const row = access.resource;
+      const data = JSON.parse(row.data) as DesignSystemData;
+      const markdown = designSystemToDesignMd({
+        title: row.title,
+        description: row.description ?? "",
+        data,
+        customInstructions: row.customInstructions ?? "",
+      });
+      await recordActionRun({ action: "export-design-md", status: "success" });
+      return { id: row.id, title: row.title, markdown };
+    } catch (err) {
+      await recordActionRun({ action: "export-design-md", status: "error" });
+      throw err;
+    }
   },
 });

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   metricsStartedAt,
+  recordActionRun,
   recordBuilderConnectResolution,
   recordDesignArtifactEvent,
   recordEnrichRequest,
@@ -10,6 +11,7 @@ import {
   renderPrometheusMetrics,
   resetInMemoryMetricsForTests,
   resetMetricsForTests,
+  withActionMetricCaller,
 } from "./metrics";
 
 describe("metrics registry", () => {
@@ -49,6 +51,10 @@ describe("metrics registry", () => {
       variant: "enriched",
       format: "mdx",
     });
+    await recordActionRun({
+      action: "extract-design-md",
+      status: "success",
+    });
 
     const output = await renderPrometheusMetrics();
 
@@ -70,6 +76,9 @@ describe("metrics registry", () => {
     );
     expect(output).toContain(
       'fdmd_design_artifact_events_total{action="download",source="example",variant="enriched",format="mdx"} 1',
+    );
+    expect(output).toContain(
+      'fdmd_action_runs_total{action="extract-design-md",status="success",caller="direct"} 1',
     );
     expect(output).toContain("fdmd_ai_stream_duration_seconds_bucket");
     expect(output).not.toContain("https://example.com");
@@ -103,6 +112,28 @@ describe("metrics registry", () => {
 
     expect(await renderPrometheusMetrics()).toContain(
       'fdmd_enrich_requests_total{status="success",key_source="hosted_server",quota="consumed"} 1',
+    );
+  });
+
+  it("labels action runs with the active caller surface", async () => {
+    await withActionMetricCaller("http", async () => {
+      await recordActionRun({
+        action: "iterate-design-md",
+        status: "success",
+      });
+    });
+    await recordActionRun({
+      action: "iterate-design-md",
+      status: "error",
+    });
+
+    const output = await renderPrometheusMetrics();
+
+    expect(output).toContain(
+      'fdmd_action_runs_total{action="iterate-design-md",status="success",caller="http"} 1',
+    );
+    expect(output).toContain(
+      'fdmd_action_runs_total{action="iterate-design-md",status="error",caller="direct"} 1',
     );
   });
 });

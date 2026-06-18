@@ -5,11 +5,25 @@ import {
   setResponseStatus,
 } from "h3";
 import extractAction from "../../../actions/extract-design-md.js";
+import type { DesignSystemData } from "../../../shared/api.js";
 import { designArtifactToMdx } from "../../../shared/design-mdx.js";
+import type { ExtractedSignals } from "../../../shared/extract-design-system.js";
 import { renderPreview } from "../../../shared/preview-template.js";
-import { metricsStartedAt, recordExtractRequest } from "../../lib/metrics.js";
+import {
+  metricsStartedAt,
+  recordExtractRequest,
+  withActionMetricCaller,
+} from "../../lib/metrics.js";
 
 type ExtractFormat = "json" | "markdown" | "mdx";
+
+interface ExtractActionResult {
+  url: string;
+  designSystemData: DesignSystemData;
+  markdown: string;
+  signals: ExtractedSignals;
+  screenshotDataUrl: string;
+}
 
 function normalizeFormat(value: unknown): ExtractFormat | null {
   if (value === undefined || value === null || value === "") return "markdown";
@@ -47,7 +61,9 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const result = await extractAction.run({ url });
+    const result = (await withActionMetricCaller("http", () =>
+      extractAction.run({ url }),
+    )) as ExtractActionResult;
     await recordExtractRequest({ status: "success", format, startedAt });
     if (format === "json") {
       setResponseHeader(
