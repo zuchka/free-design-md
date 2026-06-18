@@ -58,16 +58,18 @@ describe("metrics registry", () => {
 
     const output = await renderPrometheusMetrics();
 
-    expect(output).toContain("# TYPE fdmd_extract_requests_total counter");
     expect(output).toContain(
-      'fdmd_extract_requests_total{status="success",format="json"} 1',
+      'fdmd_extract_duration_seconds_count{status="success"} 1',
     );
     expect(output).toContain(
-      'fdmd_enrich_requests_total{status="success",key_source="hosted_server",quota="consumed"} 1',
+      'fdmd_ai_stream_duration_seconds_count{route="enrich",status="success"} 1',
     );
     expect(output).toContain(
-      'fdmd_iterate_requests_total{route="iterate",status="blocked",key_source="hosted_server",quota="blocked"} 1',
+      'fdmd_ai_stream_duration_seconds_count{route="iterate",status="blocked"} 1',
     );
+    expect(output).not.toContain("fdmd_extract_requests_total");
+    expect(output).not.toContain("fdmd_enrich_requests_total");
+    expect(output).not.toContain("fdmd_iterate_requests_total");
     expect(output).toContain(
       'fdmd_quota_events_total{route="iterate",event="refunded"} 1',
     );
@@ -96,22 +98,20 @@ describe("metrics registry", () => {
     await resetMetricsForTests();
 
     expect(await renderPrometheusMetrics()).not.toContain(
-      'fdmd_extract_requests_total{status="success",format="markdown"}',
+      'fdmd_extract_duration_seconds_count{status="success"}',
     );
   });
 
-  it("renders persisted counters after in-memory reset", async () => {
-    await recordEnrichRequest({
+  it("renders persisted business counters after in-memory reset", async () => {
+    await recordActionRun({
+      action: "enrich-design-md",
       status: "success",
-      keySource: "hosted_server",
-      quota: "consumed",
-      startedAt: metricsStartedAt(),
     });
 
     resetInMemoryMetricsForTests();
 
     expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_enrich_requests_total{status="success",key_source="hosted_server",quota="consumed"} 1',
+      'fdmd_action_runs_total{action="enrich-design-md",status="success",caller="direct"} 1',
     );
   });
 

@@ -193,28 +193,10 @@ class HistogramMetric {
   }
 }
 
-const extractRequests = new CounterMetric(
-  "fdmd_extract_requests_total",
-  "Deterministic design.md extraction requests by outcome.",
-  ["status", "format"],
-);
-
 const extractDuration = new HistogramMetric(
   "fdmd_extract_duration_seconds",
   "Deterministic design.md extraction duration by outcome.",
   ["status"],
-);
-
-const enrichRequests = new CounterMetric(
-  "fdmd_enrich_requests_total",
-  "AI enrichment requests by outcome, key source, and quota handling.",
-  ["status", "key_source", "quota"],
-);
-
-const iterateRequests = new CounterMetric(
-  "fdmd_iterate_requests_total",
-  "AI iteration requests by route, outcome, key source, and quota handling.",
-  ["route", "status", "key_source", "quota"],
 );
 
 const aiStreamDuration = new HistogramMetric(
@@ -248,10 +230,7 @@ const actionRuns = new CounterMetric(
 );
 
 const metrics = [
-  extractRequests,
   extractDuration,
-  enrichRequests,
-  iterateRequests,
   aiStreamDuration,
   builderConnectResolutions,
   quotaEvents,
@@ -260,9 +239,6 @@ const metrics = [
 ];
 
 const counterMetrics = [
-  extractRequests,
-  enrichRequests,
-  iterateRequests,
   builderConnectResolutions,
   quotaEvents,
   designArtifactEvents,
@@ -409,7 +385,7 @@ export function recordExtractRequest(input: {
   const status = safeMetricLabel(input.status);
   const duration = Math.max(0, nowSeconds() - input.startedAt);
   extractDuration.observe({ status }, duration);
-  return extractRequests.record({ status, format: input.format });
+  return Promise.resolve();
 }
 
 export function recordEnrichRequest(input: {
@@ -419,16 +395,11 @@ export function recordEnrichRequest(input: {
   startedAt: number;
 }): Promise<void> {
   const status = safeMetricLabel(input.status);
-  const labels = {
-    status,
-    key_source: safeMetricLabel(input.keySource, "none"),
-    quota: safeMetricLabel(input.quota, "not_applicable"),
-  };
   aiStreamDuration.observe(
     { route: "enrich", status },
     Math.max(0, nowSeconds() - input.startedAt),
   );
-  return enrichRequests.record(labels);
+  return Promise.resolve();
 }
 
 export function recordIterateRequest(input: {
@@ -440,17 +411,11 @@ export function recordIterateRequest(input: {
 }): Promise<void> {
   const status = safeMetricLabel(input.status);
   const route = safeMetricLabel(input.route);
-  const labels = {
-    route,
-    status,
-    key_source: safeMetricLabel(input.keySource, "none"),
-    quota: safeMetricLabel(input.quota, "not_applicable"),
-  };
   aiStreamDuration.observe(
     { route, status },
     Math.max(0, nowSeconds() - input.startedAt),
   );
-  return iterateRequests.record(labels);
+  return Promise.resolve();
 }
 
 export function recordBuilderConnectResolution(input: {

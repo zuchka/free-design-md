@@ -236,7 +236,7 @@ describe("POST /api/iterate-design-md", () => {
 
     expect(mockIterateStream).not.toHaveBeenCalled();
     expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_iterate_requests_total{route="iterate",status="blocked",key_source="hosted_server",quota="blocked"} 1',
+      'fdmd_ai_stream_duration_seconds_count{route="iterate",status="blocked"} 1',
     );
   });
 
@@ -329,8 +329,9 @@ describe("POST /api/iterate-design-md", () => {
     ).toBeFalsy();
     const metrics = await renderPrometheusMetrics();
     expect(metrics).toContain(
-      'fdmd_iterate_requests_total{route="iterate",status="success",key_source="hosted_server",quota="consumed"} 1',
+      'fdmd_ai_stream_duration_seconds_count{route="iterate",status="success"} 1',
     );
+    expect(metrics).not.toContain("fdmd_iterate_requests_total");
     expect(metrics).toContain(
       'fdmd_quota_events_total{route="iterate",event="decremented"} 1',
     );

@@ -203,8 +203,9 @@ describe("POST /api/enrich-design-md", () => {
     );
     const metrics = await renderPrometheusMetrics();
     expect(metrics).toContain(
-      'fdmd_enrich_requests_total{status="success",key_source="hosted_server",quota="consumed"} 1',
+      'fdmd_ai_stream_duration_seconds_count{route="enrich",status="success"} 1',
     );
+    expect(metrics).not.toContain("fdmd_enrich_requests_total");
     expect(metrics).toContain(
       'fdmd_quota_events_total{route="enrich",event="decremented"} 1',
     );
@@ -255,7 +256,7 @@ describe("POST /api/enrich-design-md", () => {
     expect(mockResolveAnthropicKey).not.toHaveBeenCalled();
     expect(mockEnrichStream).not.toHaveBeenCalled();
     expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_enrich_requests_total{status="user_key_rejected",key_source="none",quota="blocked"} 1',
+      'fdmd_ai_stream_duration_seconds_count{route="enrich",status="user_key_rejected"} 1',
     );
   });
 

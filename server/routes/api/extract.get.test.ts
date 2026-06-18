@@ -67,12 +67,12 @@ describe("GET /api/extract metrics", () => {
     expect(event._statusCode ?? 200).toBe(200);
     expect(event._headers?.["Content-Type"]).toContain("application/json");
     expect(result).toMatchObject({ markdown: "# design" });
-    expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_extract_requests_total{status="success",format="json"} 1',
+    const metrics = await renderPrometheusMetrics();
+    expect(metrics).toContain(
+      'fdmd_extract_duration_seconds_count{status="success"} 1',
     );
-    expect(await renderPrometheusMetrics()).not.toContain(
-      "https://example.com",
-    );
+    expect(metrics).not.toContain("fdmd_extract_requests_total");
+    expect(metrics).not.toContain("https://example.com");
   });
 
   it("returns raw markdown by default", async () => {
@@ -97,7 +97,7 @@ describe("GET /api/extract metrics", () => {
     expect(event._headers?.["Content-Type"]).toContain("text/markdown");
     expect(result).toBe("# design");
     expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_extract_requests_total{status="success",format="markdown"} 1',
+      'fdmd_extract_duration_seconds_count{status="success"} 1',
     );
   });
 
@@ -123,7 +123,7 @@ describe("GET /api/extract metrics", () => {
     expect(event._headers?.["Content-Type"]).toContain("text/mdx");
     expect(result).toBe("MDX_EXPORT");
     expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_extract_requests_total{status="success",format="mdx"} 1',
+      'fdmd_extract_duration_seconds_count{status="success"} 1',
     );
   });
 
@@ -136,7 +136,7 @@ describe("GET /api/extract metrics", () => {
 
     expect(event._statusCode).toBe(400);
     expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_extract_requests_total{status="bad_request",format="markdown"} 1',
+      'fdmd_extract_duration_seconds_count{status="bad_request"} 1',
     );
   });
 
@@ -155,7 +155,7 @@ describe("GET /api/extract metrics", () => {
     expect(result).toContain("format must be one of");
     expect(mockExtractRun).not.toHaveBeenCalled();
     expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_extract_requests_total{status="bad_request",format="invalid"} 1',
+      'fdmd_extract_duration_seconds_count{status="bad_request"} 1',
     );
   });
 });

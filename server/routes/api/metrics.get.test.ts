@@ -56,7 +56,8 @@ describe("GET /api/metrics", () => {
 
     expect(event._statusCode ?? 200).toBe(200);
     expect(event._headers?.["Content-Type"]).toContain("text/plain");
-    expect(result).toContain("fdmd_extract_requests_total");
+    expect(result).toContain("fdmd_extract_duration_seconds");
+    expect(result).not.toContain("fdmd_extract_requests_total");
   });
 
   it("requires a token when configured", async () => {
