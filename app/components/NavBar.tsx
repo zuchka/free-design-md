@@ -48,7 +48,7 @@ export default function NavBar({ showAgentToggle = true }: NavBarProps) {
           </Link>
           <span className="mx-2 hidden text-muted-foreground md:inline">·</span>
           <a
-            href="https://agent-native.com"
+            href="https://www.agent-native.com/?utm_content=ma"
             target="_blank"
             rel="noopener noreferrer"
             className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:inline"
