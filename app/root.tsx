@@ -20,6 +20,7 @@ import { ThemeProvider } from "next-themes";
 import NavBar from "@/components/NavBar";
 import { CreditsProvider } from "@/lib/use-credits";
 import AppAgentSidebar from "@/components/AppAgentSidebar";
+import FeedbackReporter from "@/components/FeedbackReporter";
 import type { LinksFunction } from "react-router";
 import stylesheet from "./global.css?url";
 
@@ -86,11 +87,23 @@ export default function Root() {
       <>
         <NavBar showAgentToggle={false} />
         <Outlet />
+        <PublicFeedbackRoot />
       </>
     );
   }
 
   return <ClientAppRoot />;
+}
+
+function PublicFeedbackRoot() {
+  const [queryClient] = useState(() => new QueryClient());
+  return (
+    <ClientOnly fallback={null}>
+      <QueryClientProvider client={queryClient}>
+        <FeedbackReporter />
+      </QueryClientProvider>
+    </ClientOnly>
+  );
 }
 
 function ClientAppRoot() {
@@ -118,6 +131,7 @@ function ClientAppRoot() {
               >
                 <Outlet />
               </AppAgentSidebar>
+              <FeedbackReporter />
             </CreditsProvider>
           </TooltipProvider>
         </QueryClientProvider>

@@ -60,6 +60,7 @@ import {
   clearAgentActivity,
 } from "@/lib/agent-activity";
 import { publishDesignContext } from "@/lib/agent-design-context";
+import { requestFeedback } from "@/lib/feedback-events";
 
 export function meta() {
   return [
@@ -134,6 +135,12 @@ function formatSectionLabel(section: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function shouldOpenFeedbackForAiError(
+  reason: AiAccessRecoveryReason | null,
+): boolean {
+  return reason !== "out_of_credits" && reason !== "sign_in_required";
 }
 
 export default function IndexRoute() {
@@ -404,6 +411,14 @@ export default function IndexRoute() {
         tone: "error",
       });
       setError(message);
+      requestFeedback({
+        category: "something_broke",
+        workflowStep: "Extraction",
+        sourceUrl: trimmed,
+        errorSource: "GET /api/extract",
+        errorMessage: message,
+        message: `I tried to extract ${trimmed} and got this error:\n\n${message}`,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -434,6 +449,7 @@ export default function IndexRoute() {
       detail: result.signals?.title ?? result.url,
       tone: "running",
     });
+    let pendingRecoveryReason: AiAccessRecoveryReason | null = null;
     try {
       const endpoint = `${appBasePath()}/api/enrich-design-md`;
       const res = await fetch(endpoint, {
@@ -452,6 +468,7 @@ export default function IndexRoute() {
           res,
           `Enrich failed with ${res.status}`,
         );
+        pendingRecoveryReason = details.recoveryReason;
         setEnrichRecoveryReason(details.recoveryReason);
         throw new Error(details.message);
       }
@@ -535,9 +552,19 @@ export default function IndexRoute() {
         tone: "error",
       });
       setEnrichError(message);
-      setEnrichRecoveryReason(
-        (current) => current ?? classifyAiAccessErrorMessage(message),
-      );
+      const recoveryReason =
+        pendingRecoveryReason ?? classifyAiAccessErrorMessage(message);
+      setEnrichRecoveryReason((current) => current ?? recoveryReason);
+      if (shouldOpenFeedbackForAiError(recoveryReason)) {
+        requestFeedback({
+          category: "something_broke",
+          workflowStep: "AI enrichment",
+          sourceUrl: result.url,
+          errorSource: "POST /api/enrich-design-md",
+          errorMessage: message,
+          message: `AI enrichment failed for ${result.url}:\n\n${message}`,
+        });
+      }
       // Fall back to the deterministic view if the stream blew up before
       // any content arrived. If we already have partial streaming text,
       // leave it visible so the user can see what they got.
@@ -701,6 +728,7 @@ export default function IndexRoute() {
           }
         },
         onError: (message) => {
+          const recoveryReason = classifyAiAccessErrorMessage(message);
           announceAgentActivity({
             title: "Iteration failed",
             detail: message,
@@ -712,7 +740,17 @@ export default function IndexRoute() {
           setCandidateSavedDesignUrl(null);
           setPreviewSource("current");
           setIterationError(message);
-          setIterationRecoveryReason(classifyAiAccessErrorMessage(message));
+          setIterationRecoveryReason(recoveryReason);
+          if (shouldOpenFeedbackForAiError(recoveryReason)) {
+            requestFeedback({
+              category: "something_broke",
+              workflowStep: "Iteration",
+              sourceUrl: result.url,
+              errorSource: "POST /api/iterate-design-md",
+              errorMessage: message,
+              message: `Iteration failed for ${result.url}:\n\n${message}`,
+            });
+          }
         },
       },
     );
