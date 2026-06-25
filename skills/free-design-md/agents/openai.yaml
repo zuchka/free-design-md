@@ -1,0 +1,4 @@
+interface:
+  display_name: "Free design.md"
+  short_description: "Call hosted API for design.md extraction"
+  default_prompt: "Use $free-design-md to extract a design.md from https://stripe.com."
