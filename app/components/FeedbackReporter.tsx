@@ -145,7 +145,7 @@ export default function FeedbackReporter() {
         type="button"
         variant="outline"
         onClick={openManualFeedback}
-        className="fixed bottom-20 right-4 z-40 h-10 gap-2 border-primary/30 bg-background/95 px-3 shadow-lg backdrop-blur sm:bottom-5 sm:right-5"
+        className="fixed bottom-20 left-4 z-40 h-10 gap-2 border-primary/30 bg-background/95 px-3 shadow-lg backdrop-blur sm:bottom-5 sm:left-5"
       >
         <IconMessageReport size={16} />
         <span>Feedback</span>
