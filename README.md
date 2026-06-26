@@ -53,6 +53,23 @@ docker run --rm \
   ghcr.io/zuchka/free-design-md:latest
 ```
 
+## Codex / Claude Skill
+
+A portable skill lives in [`skills/free-design-md`](./skills/free-design-md). It does one thing: calls the hosted deterministic extraction API.
+
+```bash
+node skills/free-design-md/scripts/free-design-md.mjs https://stripe.com --out design.md
+```
+
+Install it into Codex with:
+
+```bash
+mkdir -p ~/.codex/skills
+cp -R skills/free-design-md ~/.codex/skills/free-design-md
+```
+
+Available hosted API outputs are `markdown`/`md`, `json`, and `mdx`.
+
 ## Why this is agent-native
 
 Three load-bearing properties, not vibes:

@@ -22,7 +22,8 @@ export type DesignArtifactEventFormat =
   | "html"
   | "mdx"
   | "link"
-  | "snapshot";
+  | "snapshot"
+  | "cli";
 
 export interface DesignArtifactTrackingContext {
   source: DesignArtifactEventSource;
