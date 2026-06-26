@@ -4,7 +4,7 @@ import { recordDesignArtifactEvent } from "../../lib/metrics.js";
 const ACTIONS = new Set(["copy", "download", "share_link_copy"]);
 const SOURCES = new Set(["home", "example", "saved_design", "saved_library"]);
 const VARIANTS = new Set(["deterministic", "enriched", "iteration"]);
-const FORMATS = new Set(["markdown", "html", "mdx", "link", "snapshot"]);
+const FORMATS = new Set(["markdown", "html", "mdx", "link", "snapshot", "cli"]);
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event).catch(() => null);

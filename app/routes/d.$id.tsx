@@ -84,6 +84,7 @@ export default function SavedDesignRoute() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"enriched" | "deterministic">("enriched");
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCli, setCopiedCli] = useState(false);
   const [screenshotHeight, setScreenshotHeight] = useState<number | null>(null);
   const [iterationPrompt, setIterationPrompt] = useState("");
   const [iterationSectionTarget, setIterationSectionTarget] = useState("");
@@ -245,6 +246,19 @@ export default function SavedDesignRoute() {
     });
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 1500);
+  }
+
+  async function copyCliCommand() {
+    if (!saved) return;
+    await navigator.clipboard.writeText(`npx fdmd add ${saved.id}`);
+    recordDesignArtifactEvent({
+      action: "share_link_copy",
+      source: "saved_design",
+      variant: "enriched",
+      format: "cli",
+    });
+    setCopiedCli(true);
+    setTimeout(() => setCopiedCli(false), 1500);
   }
 
   async function iterateSavedDesign(event: React.FormEvent<HTMLFormElement>) {
@@ -426,7 +440,7 @@ export default function SavedDesignRoute() {
               <IconExternalLink size={14} />
             </a>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-col items-stretch gap-2 md:items-end">
             <Button variant="outline" onClick={copyLink}>
               {copiedLink ? (
                 <IconCheck size={14} />
@@ -435,6 +449,22 @@ export default function SavedDesignRoute() {
               )}
               <span className="ml-1">{copiedLink ? "Copied" : "Share"}</span>
             </Button>
+            <button
+              type="button"
+              onClick={copyCliCommand}
+              className="group inline-flex items-center gap-2 rounded-md border bg-muted/40 px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Copy CLI command"
+            >
+              <span>npx fdmd add {saved.id}</span>
+              {copiedCli ? (
+                <IconCheck size={12} />
+              ) : (
+                <IconExternalLink size={12} />
+              )}
+              <span className="sr-only">
+                {copiedCli ? "Copied" : "Copy CLI command"}
+              </span>
+            </button>
           </div>
         </header>
 
