@@ -1,4 +1,4 @@
-const ID_RE = /^[A-Za-z0-9_-]{6,64}$/;
+const DESIGN_SPECIFIER_RE = /^[A-Za-z0-9_.-]{2,80}$/;
 
 export function parseId(input: string): string {
   if (!input || !input.trim()) {
@@ -17,8 +17,8 @@ export function parseId(input: string): string {
     return match[1]!;
   }
 
-  if (!ID_RE.test(trimmed)) {
-    throw new Error(`Invalid id: ${trimmed}`);
+  if (!DESIGN_SPECIFIER_RE.test(trimmed)) {
+    throw new Error(`Invalid id or catalog slug: ${trimmed}`);
   }
   return trimmed;
 }

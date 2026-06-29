@@ -3,8 +3,13 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import extractAction from "../actions/extract-design-md.js";
 import enrichAction from "../actions/enrich-design-md.js";
+import {
+  CURATED_EXAMPLE_CATALOG,
+  getCatalogEntryBySlug,
+} from "../app/lib/example-catalog.js";
 import type { DesignSystemData } from "../shared/api.js";
 import type { ExtractedSignals } from "../shared/extract-design-system.js";
+import { parseEnrichedFrontmatter } from "../shared/parse-enriched-design-md.js";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config({ path: ".env" });
@@ -33,24 +38,10 @@ interface GeneratedExampleArtifact {
   generatedAt: string;
 }
 
-const TARGETS = [
-  { slug: "stripe", sourceUrl: "https://stripe.com" },
-  { slug: "intuit", sourceUrl: "https://www.intuit.com" },
-  { slug: "walmart", sourceUrl: "https://www.walmart.com" },
-  { slug: "apple", sourceUrl: "https://www.apple.com" },
-  { slug: "shopify", sourceUrl: "https://www.shopify.com" },
-  { slug: "vercel", sourceUrl: "https://vercel.com" },
-  { slug: "airbnb", sourceUrl: "https://www.airbnb.com" },
-  { slug: "nike", sourceUrl: "https://www.nike.com" },
-  { slug: "claude", sourceUrl: "https://www.anthropic.com/claude" },
-  { slug: "figma", sourceUrl: "https://www.figma.com" },
-  { slug: "linear", sourceUrl: "https://linear.app" },
-  { slug: "notion", sourceUrl: "https://www.notion.com" },
-  { slug: "supabase", sourceUrl: "https://supabase.com" },
-  { slug: "github", sourceUrl: "https://github.com/features" },
-  { slug: "bmw", sourceUrl: "https://www.bmwusa.com" },
-  { slug: "spotify", sourceUrl: "https://www.spotify.com" },
-] as const;
+const TARGETS = CURATED_EXAMPLE_CATALOG.map((entry) => ({
+  slug: entry.slug,
+  sourceUrl: entry.sourceUrl,
+}));
 
 const OUTPUT_PATH = join("app", "lib", "generated-example-artifacts.ts");
 
@@ -62,10 +53,13 @@ async function main() {
   }
 
   const onlySlug = getArg("--only");
-  const targets = onlySlug
-    ? TARGETS.filter((target) => target.slug === onlySlug)
-    : TARGETS;
-  if (onlySlug && targets.length === 0) {
+  const entry = onlySlug ? getCatalogEntryBySlug(onlySlug) : null;
+  const targets = entry
+    ? [{ slug: entry.slug, sourceUrl: entry.sourceUrl }]
+    : onlySlug
+      ? []
+      : TARGETS;
+  if (onlySlug && !entry) {
     throw new Error(`Unknown example slug: ${onlySlug}`);
   }
 
@@ -91,6 +85,8 @@ async function main() {
       screenshotDataUrl: extracted.screenshotDataUrl,
     })) as EnrichResult;
 
+    validateGeneratedMarkdown(target.slug, enriched.markdown);
+
     artifacts[target.slug] = {
       sourceUrl: extracted.url,
       markdown: extracted.markdown,
@@ -105,6 +101,22 @@ async function main() {
     console.log(
       `${prefix}: wrote ${enriched.markdown.length.toLocaleString()} enriched chars`,
     );
+  }
+}
+
+function validateGeneratedMarkdown(slug: string, markdown: string) {
+  if (!markdown.trim()) {
+    throw new Error(`${slug}: enrichedMarkdown is empty`);
+  }
+  if (!markdown.includes("## Overview")) {
+    throw new Error(`${slug}: enrichedMarkdown is missing ## Overview`);
+  }
+  if (!markdown.includes("## Do's and Don'ts")) {
+    throw new Error(`${slug}: enrichedMarkdown is missing ## Do's and Don'ts`);
+  }
+  const parsed = parseEnrichedFrontmatter(markdown);
+  if (!parsed?.name) {
+    throw new Error(`${slug}: enrichedMarkdown frontmatter did not parse`);
   }
 }
 

@@ -4,13 +4,26 @@ export async function fetchDesign(
   host: string,
   id: string,
 ): Promise<SavedDesign> {
-  const url = `${host}/api/saved-enrichments/${encodeURIComponent(id)}`;
+  const savedUrl = `${host}/api/saved-enrichments/${encodeURIComponent(id)}`;
+  const catalogUrl = `${host}/api/catalog-designs/${encodeURIComponent(id)}`;
+  const saved = await tryFetchDesign(savedUrl);
+  if (saved.status === "found") return saved.design;
+  const catalog = await tryFetchDesign(catalogUrl);
+  if (catalog.status === "found") return catalog.design;
+  throw new Error(`Design "${id}" was not found at ${host}.`);
+}
+
+type FetchDesignResult =
+  | { status: "found"; design: SavedDesign }
+  | { status: "not-found" };
+
+async function tryFetchDesign(url: string): Promise<FetchDesignResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (res.status === 404) {
-      throw new Error(`Design "${id}" was not found at ${host}.`);
+      return { status: "not-found" };
     }
     if (!res.ok) {
       const body = await res.text().catch(() => "");
@@ -29,7 +42,7 @@ export async function fetchDesign(
         "Unexpected response shape from saved-enrichments endpoint.",
       );
     }
-    return json as SavedDesign;
+    return { status: "found", design: json as SavedDesign };
   } finally {
     clearTimeout(timeout);
   }
