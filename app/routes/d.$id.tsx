@@ -250,7 +250,7 @@ export default function SavedDesignRoute() {
 
   async function copyCliCommand() {
     if (!saved) return;
-    await navigator.clipboard.writeText(`npx fdmd add ${saved.id}`);
+    await navigator.clipboard.writeText(`npx free-design-md add ${saved.id}`);
     recordDesignArtifactEvent({
       action: "share_link_copy",
       source: "saved_design",
@@ -455,7 +455,7 @@ export default function SavedDesignRoute() {
               className="group inline-flex items-center gap-2 rounded-md border bg-muted/40 px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
               aria-label="Copy CLI command"
             >
-              <span>npx fdmd add {saved.id}</span>
+              <span>npx free-design-md add {saved.id}</span>
               {copiedCli ? (
                 <IconCheck size={12} />
               ) : (
