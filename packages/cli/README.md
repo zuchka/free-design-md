@@ -1,14 +1,14 @@
 # fdmd
 
-Download a public `design.md` from [Free design.md](https://github.com/zuchka/free-design-md) by ID.
+Download a public or curated `design.md` from [Free design.md](https://github.com/zuchka/free-design-md) by ID, share URL, or catalog slug.
 
 ## Usage
 
 ```bash
-npx fdmd add <id-or-url> [--out design.md] [--host https://...] [--force]
+npx fdmd add <id-or-url-or-slug> [--out design.md] [--host https://...] [--force]
 ```
 
-`<id-or-url>` accepts either the bare nanoid (e.g. `abc123xyz`) or the full share URL (e.g. `https://free-design-md.com/d/abc123xyz`).
+`<id-or-url-or-slug>` accepts a bare nanoid (e.g. `abc123xyz`), a full share URL (e.g. `https://free-design-md.com/d/abc123xyz`), or a curated catalog slug (e.g. `stripe`, `linear.app`).
 
 ### Flags
 
@@ -20,6 +20,8 @@ npx fdmd add <id-or-url> [--out design.md] [--host https://...] [--force]
 
 ```bash
 npx fdmd add abc123xyz
+npx fdmd add stripe
+npx fdmd add linear.app --out specs/linear.md
 npx fdmd add https://free-design-md.com/d/abc123xyz --out specs/stripe.md
 FDMD_HOST=http://localhost:8080 npx fdmd add abc123xyz
 ```

@@ -20,7 +20,7 @@ describe("ExampleCardGrid", () => {
     expect(stripeLink.querySelector('img[src="/assets/examples/logos/stripe.svg"]'))
       .toBeTruthy();
     expect(screen.getByText("stripe.com")).toBeTruthy();
-    expect(screen.getByText("Developer platform")).toBeTruthy();
-    expect(screen.getByText(/cool surfaces/i)).toBeTruthy();
+    expect(screen.getByText("Fintech & Crypto")).toBeTruthy();
+    expect(screen.getByText(/Payment infrastructure/i)).toBeTruthy();
   });
 });

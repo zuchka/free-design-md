@@ -85,6 +85,7 @@ describe("runAdd", () => {
 
   it("throws a clear 404 error when the design is not found", async () => {
     mockFetchOnce({ error: "not found" }, { status: 404 });
+    mockFetchOnce({ error: "not found" }, { status: 404 });
     await expect(
       runAdd({
         idOrUrl: sample.id,
@@ -93,6 +94,46 @@ describe("runAdd", () => {
         force: false,
       }),
     ).rejects.toThrow(/not found/i);
+  });
+
+  it("falls back to the curated catalog endpoint for slugs", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ...sample,
+            id: "stripe",
+            title: "Stripe",
+          }),
+          { status: 200 },
+        ),
+      );
+
+    const result = await runAdd({
+      idOrUrl: "stripe",
+      out: join(dir, "design.md"),
+      host: "http://localhost:8080",
+      force: false,
+    });
+
+    expect(result.id).toBe("stripe");
+    expect(await readFile(result.path, "utf8")).toBe(sample.enrichedMarkdown);
+    expect(spy).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:8080/api/saved-enrichments/stripe",
+      expect.anything(),
+    );
+    expect(spy).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:8080/api/catalog-designs/stripe",
+      expect.anything(),
+    );
   });
 
   it("calls the saved-enrichments endpoint at the resolved host", async () => {

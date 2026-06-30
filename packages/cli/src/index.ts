@@ -5,10 +5,10 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "./args.js";
 import { runAdd } from "./add.js";
 
-const HELP = `fdmd — download public design.md files from Free design.md
+const HELP = `fdmd — download public and curated design.md files from Free design.md
 
 Usage:
-  fdmd add <id-or-url> [--out <path>] [--host <url>] [--force]
+  fdmd add <id-or-url-or-slug> [--out <path>] [--host <url>] [--force]
   fdmd --help
   fdmd --version
 

@@ -6,6 +6,14 @@ describe("parseId", () => {
     expect(parseId("abc123XYZ_-")).toBe("abc123XYZ_-");
   });
 
+  it("returns a catalog slug as-is", () => {
+    expect(parseId("stripe")).toBe("stripe");
+  });
+
+  it("returns a dotted catalog slug as-is", () => {
+    expect(parseId("linear.app")).toBe("linear.app");
+  });
+
   it("extracts id from a share URL with /d/<id>", () => {
     expect(parseId("https://free-design-md.example.com/d/abc123xyz")).toBe(
       "abc123xyz",

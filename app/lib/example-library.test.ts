@@ -7,9 +7,9 @@ import {
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 
 describe("example-library", () => {
-  it("ships sixteen curated examples", () => {
-    expect(EXAMPLE_DESIGNS).toHaveLength(16);
-    expect(getHomepageExamples()).toHaveLength(16);
+  it("ships the full curated catalog", () => {
+    expect(EXAMPLE_DESIGNS).toHaveLength(77);
+    expect(getHomepageExamples()).toHaveLength(77);
   });
 
   it("uses unique slugs and valid public source URLs", () => {
@@ -28,7 +28,7 @@ describe("example-library", () => {
       expect(example.markdown).toContain("## Colors");
       expect(example.markdown.length).toBeGreaterThan(150);
       expect(example.logoPath).toMatch(
-        new RegExp(`^/assets/examples/logos/${example.slug}\\.(svg|png)$`),
+        /^\/(?:assets\/examples\/logos\/.+\.(svg|png)|placeholder\.svg)$/,
       );
       expect(example.data.logos[0]).toMatchObject({
         url: example.logoPath,
@@ -63,6 +63,8 @@ describe("example-library", () => {
 
   it("resolves examples by slug", () => {
     expect(getExampleDesignBySlug("stripe")?.title).toBe("Stripe");
+    expect(getExampleDesignBySlug("linear.app")?.title).toBe("Linear");
+    expect(getExampleDesignBySlug("linear")?.title).toBe("Linear");
     expect(getExampleDesignBySlug("missing")).toBeNull();
     expect(getExampleDesignBySlug(undefined)).toBeNull();
   });

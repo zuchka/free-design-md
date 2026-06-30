@@ -1,5 +1,13 @@
 import type { DesignSystemData } from "@shared/api";
-import { GENERATED_EXAMPLE_ARTIFACTS } from "./generated-example-artifacts";
+import {
+  CURATED_EXAMPLE_CATALOG,
+  getCatalogEntryBySlug,
+  type ExampleCatalogEntry,
+} from "./example-catalog";
+import {
+  GENERATED_EXAMPLE_ARTIFACTS,
+  type GeneratedExampleArtifact,
+} from "./generated-example-artifacts";
 
 type TypographyInput = Partial<DesignSystemData["typography"]>;
 type SpacingInput = Partial<DesignSystemData["spacing"]>;
@@ -23,8 +31,24 @@ export interface ExampleDesignArtifact extends ExampleDesignSeed {
   enrichedMarkdown: string;
 }
 
-const EXAMPLE_LOGO_EXTENSIONS: Record<string, "svg" | "png"> = {
-  walmart: "png",
+const EXAMPLE_LOGO_FILENAMES: Record<string, string> = {
+  airbnb: "airbnb.svg",
+  apple: "apple.svg",
+  bmw: "bmw.svg",
+  claude: "claude.svg",
+  figma: "figma.svg",
+  github: "github.svg",
+  intuit: "intuit.svg",
+  "linear.app": "linear.svg",
+  linear: "linear.svg",
+  nike: "nike.svg",
+  notion: "notion.svg",
+  shopify: "shopify.svg",
+  spotify: "spotify.svg",
+  stripe: "stripe.svg",
+  supabase: "supabase.svg",
+  vercel: "vercel.svg",
+  walmart: "walmart.png",
 };
 
 function buildDesignData(input: {
@@ -74,8 +98,24 @@ function hostFromUrl(url: string): string {
 }
 
 function logoPathForSlug(slug: string): string {
-  const extension = EXAMPLE_LOGO_EXTENSIONS[slug] ?? "svg";
-  return `/assets/examples/logos/${slug}.${extension}`;
+  const filename = EXAMPLE_LOGO_FILENAMES[slug];
+  return filename ? `/assets/examples/logos/${filename}` : "/placeholder.svg";
+}
+
+function generatedArtifactForEntry(
+  entry: ExampleCatalogEntry,
+): GeneratedExampleArtifact | null {
+  const artifacts = GENERATED_EXAMPLE_ARTIFACTS as Record<
+    string,
+    GeneratedExampleArtifact | undefined
+  >;
+  return (
+    artifacts[entry.slug] ??
+    (entry.aliases ?? [])
+      .map((alias) => artifacts[alias])
+      .find((artifact): artifact is GeneratedExampleArtifact => Boolean(artifact)) ??
+    null
+  );
 }
 
 export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
@@ -1018,33 +1058,38 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
 ];
 
 export const EXAMPLE_DESIGNS: ExampleDesignArtifact[] =
-  EXAMPLE_DESIGN_SEEDS.map((example) => {
-    const generated = GENERATED_EXAMPLE_ARTIFACTS[example.slug];
-    if (!generated) {
-      throw new Error(`Missing generated example artifact for ${example.slug}`);
-    }
-    const sourceUrl = generated.sourceUrl || example.sourceUrl;
+  CURATED_EXAMPLE_CATALOG.flatMap((entry) => {
+    const generated = generatedArtifactForEntry(entry);
+    if (!generated) return [];
+    const sourceUrl = generated.sourceUrl || entry.sourceUrl;
     const domain = hostFromUrl(sourceUrl);
-    const logoPath = logoPathForSlug(example.slug);
-    return {
-      ...example,
-      sourceUrl,
-      data: {
-        ...generated.designSystemData,
-        logos: [{ url: logoPath, name: example.title, variant: "auto" }],
+    const logoPath = logoPathForSlug(entry.slug);
+    return [
+      {
+        slug: entry.slug,
+        title: entry.title,
+        sourceUrl,
+        category: entry.category,
+        description: entry.description,
+        bestFor: entry.bestFor,
+        data: {
+          ...generated.designSystemData,
+          logos: [{ url: logoPath, name: entry.title, variant: "auto" }],
+        },
+        domain,
+        logoPath,
+        markdown: generated.markdown,
+        enrichedMarkdown: generated.enrichedMarkdown,
       },
-      domain,
-      logoPath,
-      markdown: generated.markdown,
-      enrichedMarkdown: generated.enrichedMarkdown,
-    };
+    ];
   });
 
 export function getExampleDesignBySlug(
   slug: string | undefined,
 ): ExampleDesignArtifact | null {
-  if (!slug) return null;
-  return EXAMPLE_DESIGNS.find((example) => example.slug === slug) ?? null;
+  const entry = getCatalogEntryBySlug(slug);
+  if (!entry) return null;
+  return EXAMPLE_DESIGNS.find((example) => example.slug === entry.slug) ?? null;
 }
 
 export function getHomepageExamples(): ExampleDesignArtifact[] {
