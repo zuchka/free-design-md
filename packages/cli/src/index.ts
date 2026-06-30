@@ -5,15 +5,15 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "./args.js";
 import { runAdd } from "./add.js";
 
-const HELP = `fdmd — download public and curated design.md files from Free design.md
+const HELP = `free-design-md — download public and curated design.md files from Free design.md
 
 Usage:
-  fdmd add <id-or-url-or-slug> [--out <path>] [--host <url>] [--force]
-  fdmd --help
-  fdmd --version
+  free-design-md add <id-or-url-or-slug> [--out <path>] [--host <url>] [--force]
+  free-design-md --help
+  free-design-md --version
 
 Environment:
-  FDMD_HOST   Override the default host.
+  FREE_DESIGN_MD_HOST   Override the default host.
 `;
 
 function readVersion(): string {
@@ -43,7 +43,7 @@ main().then(
   (code) => process.exit(code),
   (err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`fdmd: ${msg}\n`);
+    process.stderr.write(`free-design-md: ${msg}\n`);
     process.exit(1);
   },
 );
