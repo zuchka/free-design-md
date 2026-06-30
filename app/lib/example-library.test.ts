@@ -7,9 +7,9 @@ import {
 import { parseEnrichedFrontmatter } from "../../shared/parse-enriched-design-md";
 
 describe("example-library", () => {
-  it("ships sixteen curated examples", () => {
-    expect(EXAMPLE_DESIGNS).toHaveLength(16);
-    expect(getHomepageExamples()).toHaveLength(16);
+  it("ships the full curated catalog", () => {
+    expect(EXAMPLE_DESIGNS).toHaveLength(77);
+    expect(getHomepageExamples()).toHaveLength(77);
   });
 
   it("uses unique slugs and valid public source URLs", () => {
