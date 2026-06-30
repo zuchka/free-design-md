@@ -8,7 +8,7 @@ Download a public or curated `design.md` from [Free design.md](https://github.co
 npx fdmd add <id-or-url-or-slug> [--out design.md] [--host https://...] [--force]
 ```
 
-`<id-or-url-or-slug>` accepts a bare nanoid (e.g. `abc123xyz`), a full share URL (e.g. `https://free-design-md.com/d/abc123xyz`), or a curated catalog slug (e.g. `stripe`, `linear.app`).
+`<id-or-url-or-slug>` accepts a bare nanoid (e.g. `abc123xyz`), a full share URL (e.g. `https://freedesign.md/d/abc123xyz`), or a curated catalog slug (e.g. `stripe`, `linear.app`).
 
 ### Flags
 
@@ -22,6 +22,6 @@ npx fdmd add <id-or-url-or-slug> [--out design.md] [--host https://...] [--force
 npx fdmd add abc123xyz
 npx fdmd add stripe
 npx fdmd add linear.app --out specs/linear.md
-npx fdmd add https://free-design-md.com/d/abc123xyz --out specs/stripe.md
+npx fdmd add https://freedesign.md/d/abc123xyz --out specs/stripe.md
 FDMD_HOST=http://localhost:8080 npx fdmd add abc123xyz
 ```

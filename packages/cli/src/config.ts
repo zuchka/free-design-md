@@ -1,5 +1,4 @@
-// TODO: replace with the canonical production host before the first npm publish.
-export const DEFAULT_HOST = "https://free-design-md.com";
+export const DEFAULT_HOST = "https://freedesign.md";
 
 export function resolveHost(flag: string | undefined): string {
   if (flag) return stripTrailingSlash(flag);
