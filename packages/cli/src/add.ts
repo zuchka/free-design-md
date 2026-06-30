@@ -19,7 +19,8 @@ export interface AddResult {
 export async function runAdd(opts: AddOptions): Promise<AddResult> {
   const id = parseId(opts.idOrUrl);
   const host = resolveHost(opts.host);
-  const out = resolve(opts.out ?? "design.md");
+  const design = await fetchDesign(host, id);
+  const out = resolve(opts.out ?? defaultOutputFilename(design.id));
 
   if (!opts.force) {
     const exists = await access(out).then(
@@ -33,12 +34,19 @@ export async function runAdd(opts: AddOptions): Promise<AddResult> {
     }
   }
 
-  const design = await fetchDesign(host, id);
   const markdown =
     design.enrichedMarkdown && design.enrichedMarkdown.trim().length > 0
       ? design.enrichedMarkdown
       : design.deterministicMarkdown;
 
   await writeFile(out, markdown, "utf8");
-  return { id, path: out };
+  return { id: design.id, path: out };
+}
+
+function defaultOutputFilename(id: string): string {
+  const safeId = id
+    .trim()
+    .replace(/[^A-Za-z0-9_.-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `${safeId || "design"}.design.md`;
 }

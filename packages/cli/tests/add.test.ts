@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { runAdd } from "../src/add.js";
 
 const sample = {
@@ -22,15 +22,34 @@ function mockFetchOnce(body: unknown, init: { status?: number } = {}) {
 
 describe("runAdd", () => {
   let dir: string;
+  let originalCwd: string;
+
   beforeEach(async () => {
+    originalCwd = process.cwd();
     dir = await mkdtemp(join(tmpdir(), "fdmd-test-"));
   });
+
   afterEach(async () => {
+    process.chdir(originalCwd);
     await rm(dir, { recursive: true, force: true });
     vi.restoreAllMocks();
   });
 
-  it("writes enrichedMarkdown to design.md by default", async () => {
+  it("writes enrichedMarkdown to a design-specific filename by default", async () => {
+    mockFetchOnce(sample);
+    process.chdir(dir);
+    const result = await runAdd({
+      idOrUrl: sample.id,
+      out: undefined,
+      host: "http://localhost:8080",
+      force: false,
+    });
+    expect(basename(result.path)).toBe("abc123xyz.design.md");
+    const content = await readFile(result.path, "utf8");
+    expect(content).toBe(sample.enrichedMarkdown);
+  });
+
+  it("writes to an explicit output path when --out is provided", async () => {
     mockFetchOnce(sample);
     const result = await runAdd({
       idOrUrl: sample.id,
@@ -39,8 +58,7 @@ describe("runAdd", () => {
       force: false,
     });
     expect(result.path).toBe(join(dir, "design.md"));
-    const content = await readFile(result.path, "utf8");
-    expect(content).toBe(sample.enrichedMarkdown);
+    expect(await readFile(result.path, "utf8")).toBe(sample.enrichedMarkdown);
   });
 
   it("falls back to deterministicMarkdown when enriched is empty", async () => {
@@ -134,6 +152,37 @@ describe("runAdd", () => {
       "http://localhost:8080/api/catalog-designs/stripe",
       expect.anything(),
     );
+  });
+
+  it("uses the returned catalog id for the default filename", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ...sample,
+            id: "linear.app",
+            title: "Linear",
+          }),
+          { status: 200 },
+        ),
+      );
+
+    process.chdir(dir);
+    const result = await runAdd({
+      idOrUrl: "linear",
+      out: undefined,
+      host: "http://localhost:8080",
+      force: false,
+    });
+
+    expect(result.id).toBe("linear.app");
+    expect(basename(result.path)).toBe("linear.app.design.md");
+    expect(await readFile(result.path, "utf8")).toBe(sample.enrichedMarkdown);
   });
 
   it("calls the saved-enrichments endpoint at the resolved host", async () => {
