@@ -38,6 +38,13 @@ npx free-design-md list
 npx free-design-md add stripe --out specs/stripe.design.md
 ```
 
+This private app remains the source of truth for curated examples. After adding
+or regenerating examples here, export the public mirror with:
+
+```bash
+pnpm export:public-catalog
+```
+
 To use your own Anthropic key, load `ANTHROPIC_API_KEY` into the local environment and run the app locally or in a private deployment:
 
 ```bash
