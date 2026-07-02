@@ -14,9 +14,29 @@ vi.mock("h3", async () => {
   };
 });
 
+const { default: listHandler } = await import("./index.get.js");
 const { default: handler } = await import("./[slug].get.js");
 
 describe("catalog design API route", () => {
+  it("lists curated catalog designs without markdown payloads", async () => {
+    const result = await listHandler({} as never);
+
+    expect(result.count).toBeGreaterThan(10);
+    expect(result.categories).toContain("Fintech & Crypto");
+    expect(result.designs).toContainEqual(
+      expect.objectContaining({
+        slug: "stripe",
+        aliases: [],
+        title: "Stripe",
+        sourceUrl: "https://stripe.com",
+        category: "Fintech & Crypto",
+        hasArtifact: true,
+      }),
+    );
+    expect(result.designs[0]).not.toHaveProperty("enrichedMarkdown");
+    expect(result.designs[0]).not.toHaveProperty("deterministicMarkdown");
+  });
+
   it("returns a curated catalog design by slug", async () => {
     const result = await handler({ _params: { slug: "stripe" } } as never);
 

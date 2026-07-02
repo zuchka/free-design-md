@@ -56,6 +56,21 @@ curl "https://free-design-md.agent-native.com/api/extract?url=https://stripe.com
 curl "https://free-design-md.agent-native.com/api/extract?url=https://stripe.com&format=mdx" \\
   -o design.mdx`;
 
+const CATALOG_CLI_EXAMPLE = `# Browse every curated design.md available for download.
+npx free-design-md list
+
+# Filter the catalog.
+npx free-design-md list --category "Developer Tools & IDEs"
+npx free-design-md list --search stripe
+
+# Use JSON when another agent or script needs the catalog.
+npx free-design-md list --json
+
+# Download a curated design.md by slug.
+npx free-design-md add stripe --out specs/stripe.design.md`;
+
+const PUBLIC_CATALOG_URL = "https://github.com/zuchka/free-design-md-catalog";
+
 const LOCAL_EXAMPLE = `# Deterministic extraction from a local checkout.
 pnpm action extract-design-md --url stripe.com > extract.json
 
@@ -124,6 +139,12 @@ const API_SURFACE = [
   },
   {
     method: "GET",
+    path: "/api/catalog-designs",
+    key: "Public catalog",
+    body: "Lists curated downloadable design.md artifacts by slug, title, URL, category, description, and best-use text. The CLI uses this for `free-design-md list`.",
+  },
+  {
+    method: "GET",
     path: "/api/metrics",
     key: "Prometheus",
     body: "Exposes low-cardinality counters and histograms for extraction, AI enrichment, AI iteration, quota outcomes, and Builder Connect credential resolution.",
@@ -161,6 +182,11 @@ const FAQS = [
     question: "Can I use Free design.md without the browser UI?",
     answer:
       "Yes. Use GET /api/extract for deterministic extraction, or run pnpm action extract-design-md from a local checkout.",
+  },
+  {
+    question: "Can I browse curated design.md files from the CLI?",
+    answer:
+      "Yes. Run npx free-design-md list to see every curated artifact, then npx free-design-md add <slug> to download one.",
   },
   {
     question: "Can the extract API return JSON, Markdown, or MDX?",
@@ -436,23 +462,32 @@ export default function ApiAndCliRoute() {
         className="grid min-w-0 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]"
       >
         <div>
-          <SectionHeading eyebrow="CLI" title="Use your key locally">
-            The action layer is the same core surface the UI wraps. In local or
-            private deployments, extraction returns structured JSON on stdout;
-            pipe `.markdown` into a file when you want only design.md text. Set
-            ANTHROPIC_API_KEY in the environment for AI enrichment so the key
-            never passes through the hosted Free design.md service.
+          <SectionHeading
+            eyebrow="CLI"
+            title="Browse curated design.md artifacts"
+          >
+            The published CLI can list every curated downloadable design.md
+            artifact, filter by category or search text, print JSON for agents,
+            and download a chosen slug into your project.
           </SectionHeading>
+          <a
+            href={PUBLIC_CATALOG_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-5 inline-flex text-sm font-medium text-primary transition-colors hover:text-primary/80"
+          >
+            View the public catalog repo
+          </a>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {[
               {
-                title: "Extraction",
-                body: "Calls Playwright and returns deterministic JSON. No LLM and no key.",
+                title: "List the catalog",
+                body: "Grouped terminal output shows the slug, title, source URL, and best-fit usage for each curated artifact.",
                 icon: IconTerminal2,
               },
               {
-                title: "Enrichment",
-                body: "Calls Anthropic with the extraction payload and returns the final enriched design.md.",
+                title: "Download by slug",
+                body: "Use the slug from the list with add to write the enriched design.md file into your repo.",
                 icon: IconCode,
               },
             ].map((item) => {
@@ -471,8 +506,57 @@ export default function ApiAndCliRoute() {
         </div>
 
         <pre className="min-w-0 overflow-auto rounded-lg border bg-[#111111] p-5 text-xs leading-6 text-white shadow-sm">
-          <code>{LOCAL_EXAMPLE}</code>
+          <code>{CATALOG_CLI_EXAMPLE}</code>
         </pre>
+      </section>
+
+      <section
+        id="local-actions"
+        className="border-t border-border bg-muted/25"
+      >
+        <div className="grid min-w-0 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
+          <div>
+            <SectionHeading
+              eyebrow="Local actions"
+              title="Use your key locally"
+            >
+              The action layer is the same core surface the UI wraps. In local
+              or private deployments, extraction returns structured JSON on
+              stdout; pipe `.markdown` into a file when you want only design.md
+              text. Set ANTHROPIC_API_KEY in the environment for AI enrichment
+              so the key never passes through the hosted Free design.md service.
+            </SectionHeading>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  title: "Extraction",
+                  body: "Calls Playwright and returns deterministic JSON. No LLM and no key.",
+                  icon: IconTerminal2,
+                },
+                {
+                  title: "Enrichment",
+                  body: "Calls Anthropic with the extraction payload and returns the final enriched design.md.",
+                  icon: IconCode,
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <article key={item.title} className="rounded-lg border p-5">
+                    <Icon size={20} className="text-primary" />
+                    <h3 className="mt-4 text-sm font-semibold">{item.title}</h3>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                      {item.body}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+
+          <pre className="min-w-0 overflow-auto rounded-lg border bg-[#111111] p-5 text-xs leading-6 text-white shadow-sm">
+            <code>{LOCAL_EXAMPLE}</code>
+          </pre>
+        </div>
       </section>
 
       <section className="border-t border-border bg-muted/25">
