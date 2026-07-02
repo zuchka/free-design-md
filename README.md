@@ -31,6 +31,13 @@ pnpm action extract-design-md --url stripe.com
 
 `pnpm action enrich-design-md` takes the deterministic JSON output and produces the AI-enriched markdown.
 
+The public CLI and curated design.md catalog now live in [`zuchka/free-design-md-catalog`](https://github.com/zuchka/free-design-md-catalog):
+
+```bash
+npx free-design-md list
+npx free-design-md add stripe --out specs/stripe.design.md
+```
+
 To use your own Anthropic key, load `ANTHROPIC_API_KEY` into the local environment and run the app locally or in a private deployment:
 
 ```bash

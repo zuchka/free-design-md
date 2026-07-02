@@ -31,6 +31,17 @@ export interface ExampleDesignArtifact extends ExampleDesignSeed {
   enrichedMarkdown: string;
 }
 
+export interface ExampleDesignSummary {
+  slug: string;
+  aliases: string[];
+  title: string;
+  sourceUrl: string;
+  category: string;
+  description: string;
+  bestFor: string;
+  hasArtifact: boolean;
+}
+
 const EXAMPLE_LOGO_FILENAMES: Record<string, string> = {
   airbnb: "airbnb.svg",
   apple: "apple.svg",
@@ -113,7 +124,9 @@ function generatedArtifactForEntry(
     artifacts[entry.slug] ??
     (entry.aliases ?? [])
       .map((alias) => artifacts[alias])
-      .find((artifact): artifact is GeneratedExampleArtifact => Boolean(artifact)) ??
+      .find((artifact): artifact is GeneratedExampleArtifact =>
+        Boolean(artifact),
+      ) ??
     null
   );
 }
@@ -197,8 +210,10 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       typography: {
         headingFont: "Avenir Next",
         bodyFont: "Avenir Next",
-        headingFontStack: "Avenir Next, Inter, ui-sans-serif, system-ui, sans-serif",
-        bodyFontStack: "Avenir Next, Inter, ui-sans-serif, system-ui, sans-serif",
+        headingFontStack:
+          "Avenir Next, Inter, ui-sans-serif, system-ui, sans-serif",
+        bodyFontStack:
+          "Avenir Next, Inter, ui-sans-serif, system-ui, sans-serif",
         headingWeight: "700",
       },
       components: {
@@ -231,7 +246,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Fortune 500",
     description:
       "A high-contrast retail system with confident blue navigation, yellow emphasis, and compact commerce cards.",
-    bestFor: "Retail search, marketplace grids, inventory views, and promotion-heavy flows.",
+    bestFor:
+      "Retail search, marketplace grids, inventory views, and promotion-heavy flows.",
     data: buildDesignData({
       colors: {
         primary: "#0071CE",
@@ -284,7 +300,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Fortune 500",
     description:
       "A restraint-first product system with quiet gray surfaces, large confident type, and minimal blue actions.",
-    bestFor: "Hardware pages, product launches, premium landing pages, and feature storytelling.",
+    bestFor:
+      "Hardware pages, product launches, premium landing pages, and feature storytelling.",
     data: buildDesignData({
       colors: {
         primary: "#0071E3",
@@ -298,8 +315,10 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       typography: {
         headingFont: "SF Pro Display",
         bodyFont: "SF Pro Text",
-        headingFontStack: "SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif",
-        bodyFontStack: "SF Pro Text, -apple-system, BlinkMacSystemFont, sans-serif",
+        headingFontStack:
+          "SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif",
+        bodyFontStack:
+          "SF Pro Text, -apple-system, BlinkMacSystemFont, sans-serif",
         headingWeight: "700",
         bodyWeight: "400",
         headingSizes: { h1: "64px", h2: "40px", h3: "24px" },
@@ -343,7 +362,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Commerce platform",
     description:
       "A merchant-focused commerce system with deep green anchors, approachable surfaces, and direct conversion controls.",
-    bestFor: "Commerce onboarding, merchant dashboards, pricing pages, and growth tooling.",
+    bestFor:
+      "Commerce onboarding, merchant dashboards, pricing pages, and growth tooling.",
     data: buildDesignData({
       colors: {
         primary: "#008060",
@@ -391,7 +411,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Developer platform",
     description:
       "A monochrome developer system with surgical spacing, code-like rhythm, and sparse high-confidence surfaces.",
-    bestFor: "Developer tools, deployment dashboards, docs, and technical product pages.",
+    bestFor:
+      "Developer tools, deployment dashboards, docs, and technical product pages.",
     data: buildDesignData({
       colors: {
         primary: "#000000",
@@ -445,7 +466,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Marketplace",
     description:
       "A human marketplace system with coral actions, rounded cards, warm imagery space, and approachable product copy.",
-    bestFor: "Travel search, marketplace listings, trust flows, and consumer booking experiences.",
+    bestFor:
+      "Travel search, marketplace listings, trust flows, and consumer booking experiences.",
     data: buildDesignData({
       colors: {
         primary: "#FF385C",
@@ -459,7 +481,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       typography: {
         headingFont: "Circular",
         bodyFont: "Circular",
-        headingFontStack: "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
+        headingFontStack:
+          "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
         bodyFontStack: "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
         headingSizes: { h1: "54px", h2: "34px", h3: "22px" },
       },
@@ -498,7 +521,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Fortune 500",
     description:
       "A direct athletic retail system with bold monochrome contrast, punchy orange moments, and oversized display scale.",
-    bestFor: "Launch pages, retail drops, performance product pages, and editorial campaigns.",
+    bestFor:
+      "Launch pages, retail drops, performance product pages, and editorial campaigns.",
     data: buildDesignData({
       colors: {
         primary: "#111111",
@@ -512,8 +536,10 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       typography: {
         headingFont: "Helvetica Neue",
         bodyFont: "Helvetica Neue",
-        headingFontStack: "Helvetica Neue, Arial, ui-sans-serif, system-ui, sans-serif",
-        bodyFontStack: "Helvetica Neue, Arial, ui-sans-serif, system-ui, sans-serif",
+        headingFontStack:
+          "Helvetica Neue, Arial, ui-sans-serif, system-ui, sans-serif",
+        bodyFontStack:
+          "Helvetica Neue, Arial, ui-sans-serif, system-ui, sans-serif",
         headingWeight: "800",
         headingSizes: { h1: "68px", h2: "42px", h3: "24px" },
       },
@@ -556,7 +582,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "AI platform",
     description:
       "A warm AI-product system with terracotta accents, editorial whitespace, and calm problem-solving copy.",
-    bestFor: "AI assistants, knowledge tools, chat interfaces, and thoughtful editorial product pages.",
+    bestFor:
+      "AI assistants, knowledge tools, chat interfaces, and thoughtful editorial product pages.",
     data: buildDesignData({
       colors: {
         primary: "#C96442",
@@ -570,7 +597,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       typography: {
         headingFont: "Styrene",
         bodyFont: "Styrene",
-        headingFontStack: "Styrene, Inter, ui-sans-serif, system-ui, sans-serif",
+        headingFontStack:
+          "Styrene, Inter, ui-sans-serif, system-ui, sans-serif",
         bodyFontStack: "Styrene, Inter, ui-sans-serif, system-ui, sans-serif",
         headingWeight: "500",
         headingSizes: { h1: "58px", h2: "36px", h3: "22px" },
@@ -619,7 +647,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Design tool",
     description:
       "A collaborative design-tool system with bright product color, clean work surfaces, and playful geometric accents.",
-    bestFor: "Design tools, collaboration products, creative workflows, and feature-led SaaS pages.",
+    bestFor:
+      "Design tools, collaboration products, creative workflows, and feature-led SaaS pages.",
     data: buildDesignData({
       colors: {
         primary: "#5551FF",
@@ -680,7 +709,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Productivity SaaS",
     description:
       "A precision SaaS system with dark glass surfaces, purple accents, and dense keyboard-first product rhythm.",
-    bestFor: "Issue trackers, planning tools, operational dashboards, and developer productivity apps.",
+    bestFor:
+      "Issue trackers, planning tools, operational dashboards, and developer productivity apps.",
     data: buildDesignData({
       colors: {
         primary: "#5E6AD2",
@@ -694,8 +724,10 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       typography: {
         headingFont: "Inter Variable",
         bodyFont: "Inter Variable",
-        headingFontStack: "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif",
-        bodyFontStack: "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif",
+        headingFontStack:
+          "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif",
+        bodyFontStack:
+          "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif",
         headingWeight: "510",
         bodyWeight: "400",
         headingSizes: { h1: "56px", h2: "36px", h3: "22px" },
@@ -744,7 +776,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Productivity SaaS",
     description:
       "A warm workspace system with paper-like surfaces, restrained typography, and document-first product patterns.",
-    bestFor: "Docs tools, workspace apps, knowledge bases, project hubs, and editorial SaaS pages.",
+    bestFor:
+      "Docs tools, workspace apps, knowledge bases, project hubs, and editorial SaaS pages.",
     data: buildDesignData({
       colors: {
         primary: "#111111",
@@ -808,7 +841,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Developer platform",
     description:
       "A code-first backend system with dark technical surfaces, emerald actions, and dashboard-ready component patterns.",
-    bestFor: "Developer tools, database dashboards, API products, auth flows, and technical docs.",
+    bestFor:
+      "Developer tools, database dashboards, API products, auth flows, and technical docs.",
     data: buildDesignData({
       colors: {
         primary: "#3ECF8E",
@@ -822,7 +856,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       typography: {
         headingFont: "Circular",
         bodyFont: "Circular",
-        headingFontStack: "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
+        headingFontStack:
+          "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
         bodyFontStack: "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
         headingWeight: "600",
         headingSizes: { h1: "56px", h2: "36px", h3: "22px" },
@@ -871,7 +906,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Developer platform",
     description:
       "A developer collaboration system with dark code surfaces, blue actions, and dense repository-style information hierarchy.",
-    bestFor: "Developer portals, code collaboration, dashboards, issue flows, and technical product marketing.",
+    bestFor:
+      "Developer portals, code collaboration, dashboards, issue flows, and technical product marketing.",
     data: buildDesignData({
       colors: {
         primary: "#0969DA",
@@ -885,8 +921,10 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       typography: {
         headingFont: "Mona Sans",
         bodyFont: "Mona Sans",
-        headingFontStack: "Mona Sans, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-        bodyFontStack: "Mona Sans, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+        headingFontStack:
+          "Mona Sans, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+        bodyFontStack:
+          "Mona Sans, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
         headingWeight: "700",
         headingSizes: { h1: "58px", h2: "36px", h3: "22px" },
       },
@@ -934,7 +972,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Automotive",
     description:
       "A premium automotive system with crisp blue actions, high-contrast model imagery, and engineered layout precision.",
-    bestFor: "Luxury product pages, configurators, automotive retail, and premium commerce experiences.",
+    bestFor:
+      "Luxury product pages, configurators, automotive retail, and premium commerce experiences.",
     data: buildDesignData({
       colors: {
         primary: "#1C69D4",
@@ -998,7 +1037,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
     category: "Media platform",
     description:
       "A music-product system with black immersive surfaces, green conversion cues, and bold entertainment typography.",
-    bestFor: "Media apps, audio products, subscription flows, creator tools, and consumer dashboards.",
+    bestFor:
+      "Media apps, audio products, subscription flows, creator tools, and consumer dashboards.",
     data: buildDesignData({
       colors: {
         primary: "#1DB954",
@@ -1012,7 +1052,8 @@ export const EXAMPLE_DESIGN_SEEDS: ExampleDesignSeed[] = [
       typography: {
         headingFont: "Circular",
         bodyFont: "Circular",
-        headingFontStack: "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
+        headingFontStack:
+          "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
         bodyFontStack: "Circular, Inter, ui-sans-serif, system-ui, sans-serif",
         headingWeight: "800",
         bodyWeight: "400",
@@ -1090,6 +1131,20 @@ export function getExampleDesignBySlug(
   const entry = getCatalogEntryBySlug(slug);
   if (!entry) return null;
   return EXAMPLE_DESIGNS.find((example) => example.slug === entry.slug) ?? null;
+}
+
+export function listExampleDesignSummaries(): ExampleDesignSummary[] {
+  const artifactSlugs = new Set(EXAMPLE_DESIGNS.map((example) => example.slug));
+  return CURATED_EXAMPLE_CATALOG.map((entry) => ({
+    slug: entry.slug,
+    aliases: entry.aliases ?? [],
+    title: entry.title,
+    sourceUrl: entry.sourceUrl,
+    category: entry.category,
+    description: entry.description,
+    bestFor: entry.bestFor,
+    hasArtifact: artifactSlugs.has(entry.slug),
+  })).filter((entry) => entry.hasArtifact);
 }
 
 export function getHomepageExamples(): ExampleDesignArtifact[] {
