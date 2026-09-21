@@ -115,7 +115,7 @@ export const metadata = {
 
 Use the primary color for calls to action.
 
-<ColorSwatch name="Primary" value="#18b6f6" />
+<ColorSwatch name="Primary" value="#10b981" />
 
 Plain Markdown explains the rule. The JSX component
 renders the visual example.`;

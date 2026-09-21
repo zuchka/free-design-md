@@ -120,7 +120,7 @@ source: https://example.com
 # Acme Design System
 
 ## Colors
-- primary: #18b6f6
+- primary: #10b981
 - text: #111111
 
 ## Typography

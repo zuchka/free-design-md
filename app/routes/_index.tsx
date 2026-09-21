@@ -1193,8 +1193,8 @@ function EnrichBanner({
       className="relative overflow-hidden rounded-lg border px-5 py-3"
       style={{
         background:
-          "linear-gradient(135deg, rgba(24,182,246,0.08) 0%, rgba(24,182,246,0.04) 60%, transparent 100%)",
-        borderColor: "rgba(24,182,246,0.22)",
+          "linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.04) 60%, transparent 100%)",
+        borderColor: "rgba(16,185,129,0.22)",
       }}
     >
       <div className="relative flex flex-col gap-4">

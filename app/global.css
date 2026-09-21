@@ -33,7 +33,7 @@
 :root {
   /* Builder.io design system — light-mode adaptation
      (source brand is dark-first; canvas/ink inverted for a white surface,
-      electric cyan #18b6f6 and Poppins carry the brand identity) */
+      emerald green #10b981 and Poppins carry the brand identity) */
   --background: 0 0% 100%;           /* canvas → white   */
   --foreground: 0 0% 7%;             /* ink   → #111111  */
 
@@ -43,8 +43,8 @@
   --popover: 0 0% 100%;
   --popover-foreground: 0 0% 7%;
 
-  --primary: 197 93% 53%;            /* Builder cyan #18b6f6 */
-  --primary-foreground: 0 0% 0%;     /* black-on-cyan  */
+  --primary: 160.118 84.08% 39.412%; /* brand green #10b981 */
+  --primary-foreground: 0 0% 0%;     /* black-on-green */
 
   --secondary: 0 0% 94%;
   --secondary-foreground: 0 0% 14%;
@@ -60,7 +60,7 @@
 
   --border: 0 0% 89%;                /* hairline */
   --input: 0 0% 89%;
-  --ring: 197 93% 53%;
+  --ring: 160.118 84.08% 39.412%;
 
   /* Builder.io signature: 5 px radius for all interactive elements */
   --radius: 0.3125rem;
@@ -71,11 +71,11 @@
   /* Builder.io brand extras (kept compatible with existing code refs) */
   --intuit-hero-start: #0d1a2e;
   --intuit-hero-end: #0e7cb3;
-  --intuit-primary: #18b6f6;
+  --intuit-primary: #10b981;
   --intuit-error-bg: #fef2f2;
   --intuit-error: #ef4444;
-  --intuit-link: #18b6f6;
-  --intuit-card-shadow: rgba(24, 182, 246, 0.08) 0px 4px 16px 0px;
+  --intuit-link: #10b981;
+  --intuit-card-shadow: rgba(16, 185, 129, 0.08) 0px 4px 16px 0px;
 }
 
 @layer base {

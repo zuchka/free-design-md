@@ -114,7 +114,7 @@ const MARKDOWN_EXAMPLE = `# Button
 
 Use the primary button for the most important action.
 
-- Background: #18b6f6
+- Background: #10b981
 - Radius: 5px
 - Padding: 12px 18px`;
 
