@@ -55,14 +55,28 @@ export function getSession(url: string): IterationSession | null {
 export function getOrCreateSession(
   url: string,
   initialMarkdown: string,
+  initialId: string | null = null,
 ): IterationSession {
   const all = readAll();
   const existing = all[url];
-  if (existing) return existing;
+  if (existing) {
+    const markdownChanged = existing.current.markdown !== initialMarkdown;
+    const idWasResolved = existing.current.id === null && initialId !== null;
+    if (!markdownChanged && !idWasResolved) return existing;
+
+    const synced: IterationSession = {
+      ...existing,
+      current: { id: initialId, markdown: initialMarkdown },
+      previous: markdownChanged ? null : existing.previous,
+    };
+    all[url] = synced;
+    writeAll(all);
+    return synced;
+  }
   const fresh: IterationSession = {
     sessionId: safeRandomUUID(),
     url,
-    current: { id: null, markdown: initialMarkdown },
+    current: { id: initialId, markdown: initialMarkdown },
     previous: null,
   };
   all[url] = fresh;
@@ -108,7 +122,7 @@ export interface IterateDone {
   markdown: string;
   model: string;
   latencyMs: number;
-  remaining: number;
+  remaining: number | null;
   savedDesignId?: string;
   savedDesignUrl?: string;
   saveError?: string;

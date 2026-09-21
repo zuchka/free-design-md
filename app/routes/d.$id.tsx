@@ -28,6 +28,7 @@ import {
 } from "../../shared/parse-enriched-design-md";
 import { renderEnrichedPreview } from "../../shared/render-enriched-showcase";
 import type { DesignSystemData } from "../../shared/api";
+import { useCredits } from "@/lib/use-credits";
 
 interface PublicSavedEnrichment {
   id: string;
@@ -73,6 +74,7 @@ function formatSectionLabel(section: string): string {
 }
 
 export default function SavedDesignRoute() {
+  const { setRemaining } = useCredits();
   const { id } = useParams();
   const [saved, setSaved] = useState<PublicSavedEnrichment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -288,9 +290,13 @@ export default function SavedDesignRoute() {
             const doneData = parsed.data as {
               markdown: string;
               savedDesignUrl: string;
+              remaining?: number | null;
             };
             setCandidateMarkdown(doneData.markdown);
             setCandidateSavedUrl(doneData.savedDesignUrl);
+            if (typeof doneData.remaining === "number") {
+              setRemaining(doneData.remaining);
+            }
           } else if (parsed.event === "error") {
             const { message } = parsed.data as { message: string };
             throw new Error(message);

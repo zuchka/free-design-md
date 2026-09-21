@@ -51,6 +51,7 @@ import {
   type IterationSession,
 } from "@/lib/iteration-client";
 import { requestFeedback } from "@/lib/feedback-events";
+import { useCredits } from "@/lib/use-credits";
 
 export function meta() {
   return [
@@ -90,6 +91,7 @@ interface EnrichResult {
     cacheCreationInputTokens: number;
   };
   stopReason: string | null;
+  remaining?: number | null;
   savedDesignId?: string;
   savedDesignUrl?: string;
   saveError?: string;
@@ -128,6 +130,7 @@ function formatSectionLabel(section: string): string {
 }
 
 export default function IndexRoute() {
+  const { setRemaining } = useCredits();
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -201,10 +204,14 @@ export default function IndexRoute() {
 
   useEffect(() => {
     if (enriched?.markdown && result?.url) {
-      const s = getOrCreateSession(result.url, enriched.markdown);
+      const s = getOrCreateSession(
+        result.url,
+        enriched.markdown,
+        enriched.savedDesignId ?? null,
+      );
       setIterSession(s);
     }
-  }, [enriched?.markdown, result?.url]);
+  }, [enriched?.markdown, enriched?.savedDesignId, result?.url]);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -410,6 +417,9 @@ export default function IndexRoute() {
             sawDone = true;
             const enrichResult = parsed.data as EnrichResult;
             setEnriched(enrichResult);
+            if (typeof enrichResult.remaining === "number") {
+              setRemaining(enrichResult.remaining);
+            }
             if (enrichResult.savedDesignUrl) {
               history.replaceState(
                 null,
@@ -545,7 +555,12 @@ export default function IndexRoute() {
     }
 
     const session =
-      iterSession ?? getOrCreateSession(result.url, enriched.markdown);
+      iterSession ??
+      getOrCreateSession(
+        result.url,
+        enriched.markdown,
+        enriched.savedDesignId ?? null,
+      );
     setIterSession(session);
     setIsIterating(true);
     setIterationError(null);
@@ -584,6 +599,9 @@ export default function IndexRoute() {
           setCandidateId(done.id);
           setCandidateSavedDesignId(done.savedDesignId ?? null);
           setCandidateSavedDesignUrl(done.savedDesignUrl ?? null);
+          if (typeof done.remaining === "number") {
+            setRemaining(done.remaining);
+          }
           if (done.savedDesignUrl) {
             void refreshSavedDesigns();
           }

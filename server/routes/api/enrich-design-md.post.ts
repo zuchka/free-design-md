@@ -255,7 +255,11 @@ export default defineEventHandler(async (event) => {
                 startedAt,
               });
               if (dec?.ok) await commitCredit(dec.operationId);
-              sse.send("done", { ...result, ...(saveResult ?? {}) });
+              sse.send("done", {
+                ...result,
+                ...(saveResult ?? {}),
+                remaining: dec?.remaining ?? null,
+              });
             }
           }
         });
