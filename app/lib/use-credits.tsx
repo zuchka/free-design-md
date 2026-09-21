@@ -51,6 +51,42 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (params.get("purchase") !== "success" || !sessionId) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const checkPurchase = async () => {
+      attempts += 1;
+      const response = await fetch(
+        `/api/billing/purchase/${encodeURIComponent(sessionId)}`,
+      ).catch(() => null);
+      if (response?.ok) {
+        const purchase = (await response.json()) as { status?: string };
+        if (purchase.status === "fulfilled") {
+          await refresh();
+          params.delete("purchase");
+          params.delete("session_id");
+          const search = params.toString();
+          window.history.replaceState(
+            {},
+            "",
+            `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`,
+          );
+          return;
+        }
+      }
+      if (!cancelled && attempts < 12) window.setTimeout(checkPurchase, 1000);
+    };
+    void checkPurchase();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const value = useMemo<CreditsContextValue>(
     () => ({
       credits,

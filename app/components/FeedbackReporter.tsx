@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useActionMutation } from "@agent-native/core/client";
 import {
   IconAlertTriangle,
   IconBug,
@@ -56,23 +55,8 @@ export default function FeedbackReporter() {
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const submitFeedback = useActionMutation("submit-feedback", {
-    onSuccess: () => {
-      setSent(true);
-      setSubmitError(null);
-      setMessage("");
-      setEmail("");
-      window.setTimeout(() => {
-        setOpen(false);
-        setSent(false);
-      }, 1400);
-    },
-    onError: (error) => {
-      setSubmitError(error.message);
-    },
-  });
 
   useEffect(() => {
     function handleFeedbackRequest(event: CustomEvent<FeedbackRequestDetail>) {
@@ -92,7 +76,7 @@ export default function FeedbackReporter() {
   }, []);
 
   const hasErrorContext = Boolean(context.errorMessage || context.errorSource);
-  const canSubmit = message.trim().length >= 3 && !submitFeedback.isPending;
+  const canSubmit = message.trim().length >= 3 && !isPending;
 
   const contextSummary = useMemo(() => {
     if (!hasErrorContext) return null;
@@ -123,20 +107,43 @@ export default function FeedbackReporter() {
     }
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSubmit) return;
 
-    submitFeedback.mutate({
-      category,
-      message: message.trim(),
-      email: email.trim() || undefined,
-      sourceUrl: context.sourceUrl,
-      errorSource: context.errorSource,
-      errorMessage: context.errorMessage,
-      workflowStep: context.workflowStep,
-      ...getBrowserContext(),
-    });
+    setIsPending(true);
+    setSubmitError(null);
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category,
+          message: message.trim(),
+          email: email.trim() || undefined,
+          sourceUrl: context.sourceUrl,
+          errorSource: context.errorSource,
+          errorMessage: context.errorMessage,
+          workflowStep: context.workflowStep,
+          ...getBrowserContext(),
+        }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!response.ok) throw new Error(result.error ?? "Feedback failed.");
+      setSent(true);
+      setMessage("");
+      setEmail("");
+      window.setTimeout(() => {
+        setOpen(false);
+        setSent(false);
+      }, 1400);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Feedback failed.");
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
@@ -250,7 +257,7 @@ export default function FeedbackReporter() {
                 Cancel
               </Button>
               <Button type="submit" disabled={!canSubmit}>
-                {submitFeedback.isPending ? (
+                {isPending ? (
                   "Sending..."
                 ) : (
                   <>

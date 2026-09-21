@@ -103,6 +103,8 @@ export default function HomepageLanding({
               value={url}
               onChange={(event) => onUrlChange(event.target.value)}
               placeholder="stripe.com"
+              aria-label="Website URL"
+              required
               disabled={isLoading}
               className="h-11 flex-1 border-0 bg-secondary/50 shadow-none focus-visible:ring-1"
               autoFocus
@@ -110,7 +112,7 @@ export default function HomepageLanding({
             <Button
               type="submit"
               size="lg"
-              disabled={isLoading || !url.trim()}
+              disabled={isLoading}
               className="shrink-0"
             >
               {isLoading ? "Extracting..." : "Extract design.md"}

@@ -1,8 +1,8 @@
 import type { H3Event } from "h3";
 import { getCookie, setCookie } from "h3";
-import { getSession } from "@agent-native/core";
 import { randomUUID } from "node:crypto";
 import { FDMD_ANON_COOKIE } from "./cookie-names";
+import { auth } from "./auth.js";
 
 export const ANONYMOUS_OWNER = "anonymous@free-design-md.local";
 
@@ -50,9 +50,9 @@ export function anonymousOwnerForEvent(event: H3Event): string {
 
 export async function resolveOwner(event: H3Event): Promise<string> {
   try {
-    const session = await getSession(event);
-    if (session?.email && typeof session.email === "string") {
-      return session.email;
+    const session = await auth.api.getSession({ headers: event.req.headers });
+    if (session?.user.id) {
+      return session.user.id;
     }
   } catch {
     // No session plugin configured or session read failed — fall through.
@@ -60,13 +60,25 @@ export async function resolveOwner(event: H3Event): Promise<string> {
   return ANONYMOUS_OWNER;
 }
 
+export async function resolveVerifiedOwner(
+  event: H3Event,
+): Promise<string | null> {
+  try {
+    const session = await auth.api.getSession({ headers: event.req.headers });
+    if (session?.user.id && !session.user.isAnonymous) return session.user.id;
+  } catch {
+    // Treat unavailable or invalid sessions as signed out.
+  }
+  return null;
+}
+
 export async function resolveAgentContextOwner(
   event: H3Event,
 ): Promise<string> {
   try {
-    const session = await getSession(event);
-    if (session?.email && typeof session.email === "string") {
-      return session.email;
+    const session = await auth.api.getSession({ headers: event.req.headers });
+    if (session?.user.id) {
+      return session.user.id;
     }
   } catch {
     // No session plugin configured or session read failed — fall through.

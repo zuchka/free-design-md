@@ -1,10 +1,14 @@
 import { reactRouter } from "@react-router/dev/vite";
-import { defineConfig } from "@agent-native/core/vite";
+import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "vite";
+import path from "node:path";
 
 export default defineConfig({
-  plugins: [reactRouter()],
-  ssrStubs: [
-    "shiki",
-    "@agent-native/pinpoint",
-  ],
+  plugins: [tailwindcss(), reactRouter()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./app"),
+      "@shared": path.resolve(__dirname, "./shared"),
+    },
+  },
 });

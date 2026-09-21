@@ -1,11 +1,27 @@
-import {
-  table,
-  text,
-  integer,
-  now,
-  ownableColumns,
-  createSharesTable,
-} from "@agent-native/core/db/schema";
+import { sql } from "drizzle-orm";
+import { integer, sqliteTable as table, text } from "drizzle-orm/sqlite-core";
+
+const now = () => sql`(datetime('now'))`;
+
+function ownableColumns() {
+  return {
+    ownerEmail: text("owner_email").notNull().default("legacy"),
+    orgId: text("org_id"),
+    visibility: text("visibility").notNull().default("private"),
+  };
+}
+
+function createSharesTable(name: string) {
+  return table(name, {
+    id: text("id").primaryKey(),
+    resourceId: text("resource_id").notNull(),
+    principalType: text("principal_type").notNull(),
+    principalId: text("principal_id").notNull(),
+    role: text("role").notNull().default("viewer"),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at").notNull().default(now()),
+  });
+}
 
 export const decks = table("decks", {
   id: text("id").primaryKey(),
@@ -98,23 +114,9 @@ export const enrichmentCache = table("enrichment_cache", {
   createdAt: text("created_at").notNull().default(now()),
 });
 
-/**
- * Legacy per-visitor BYO Anthropic API key store.
- * Hosted BYO keys are no longer active; the table remains to avoid a
- * destructive migration.
- */
-export const fdmdBYOKeys = table("fdmd_byo_keys", {
-  token: text("token").primaryKey(),
-  apiKey: text("api_key").notNull(),
-  createdAt: text("created_at").notNull().default(now()),
-});
-
 export const fdmdSavedEnrichments = table("fdmd_saved_enrichments", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
-  builderUserId: text("builder_user_id").notNull(),
-  builderOrgName: text("builder_org_name"),
-  builderOrgKind: text("builder_org_kind"),
   sourceUrl: text("source_url").notNull(),
   title: text("title").notNull(),
   parentId: text("parent_id"),
@@ -138,4 +140,110 @@ export const fdmdMetricCounters = table("fdmd_metric_counters", {
   labelsJson: text("labels_json").notNull(),
   value: integer("value").notNull().default(0),
   updatedAt: text("updated_at").notNull().default(now()),
+});
+
+export const authUsers = table("auth_users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: integer("email_verified", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  image: text("image"),
+  isAnonymous: integer("is_anonymous", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const authSessions = table("auth_sessions", {
+  id: text("id").primaryKey(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => authUsers.id, { onDelete: "cascade" }),
+});
+
+export const authAccounts = table("auth_accounts", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => authUsers.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: integer("access_token_expires_at", {
+    mode: "timestamp",
+  }),
+  refreshTokenExpiresAt: integer("refresh_token_expires_at", {
+    mode: "timestamp",
+  }),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const authVerifications = table("auth_verifications", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }),
+  updatedAt: integer("updated_at", { mode: "timestamp" }),
+});
+
+export const creditWallets = table("credit_wallets", {
+  ownerId: text("owner_id").primaryKey(),
+  balance: integer("balance").notNull().default(0),
+  lifetimePurchased: integer("lifetime_purchased").notNull().default(0),
+  createdAt: text("created_at").notNull().default(now()),
+  updatedAt: text("updated_at").notNull().default(now()),
+});
+
+export const creditLedger = table("credit_ledger", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  delta: integer("delta").notNull(),
+  kind: text("kind").notNull(),
+  referenceId: text("reference_id").notNull().unique(),
+  metadataJson: text("metadata_json"),
+  createdAt: text("created_at").notNull().default(now()),
+});
+
+export const creditOperations = table("credit_operations", {
+  operationId: text("operation_id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  kind: text("kind").notNull(),
+  status: text("status").notNull(),
+  createdAt: text("created_at").notNull().default(now()),
+  updatedAt: text("updated_at").notNull().default(now()),
+});
+
+export const purchases = table("purchases", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull().unique(),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  packId: text("pack_id").notNull(),
+  credits: integer("credits").notNull(),
+  amountTotal: integer("amount_total"),
+  currency: text("currency"),
+  status: text("status").notNull(),
+  createdAt: text("created_at").notNull().default(now()),
+  fulfilledAt: text("fulfilled_at"),
+});
+
+export const stripeEvents = table("stripe_events", {
+  eventId: text("event_id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  processedAt: text("processed_at").notNull().default(now()),
 });

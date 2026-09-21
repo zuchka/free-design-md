@@ -1,143 +1,229 @@
-import { getDbExec } from "@agent-native/core/db";
-
-export const DEFAULT_ALLOWED_CREDITS = 3;
-export const SHARE_PROMO_BONUS_CREDITS = 3;
-export const SHARE_PROMO_CAMPAIGN = "share-v1";
+import { randomUUID } from "node:crypto";
+import { getDbExec } from "../db/index.js";
 
 export interface Credits {
   remaining: number;
   allowed: number;
 }
 
-interface QuotaRow {
-  enrich_count: number | bigint;
-  bonus_credits: number | bigint;
+interface WalletRow {
+  balance: number | bigint;
+  lifetime_purchased: number | bigint;
 }
 
-function toNum(v: number | bigint): number {
-  return typeof v === "bigint" ? Number(v) : v;
+function toNumber(value: number | bigint): number {
+  return typeof value === "bigint" ? Number(value) : value;
 }
 
-export async function getCredits(owner: string): Promise<Credits> {
-  const exec = getDbExec();
-  // Upsert: seed a fresh row with the default allowed credits if missing.
-  await exec.execute({
-    sql: `INSERT INTO fdmd_quota (user_id, enrich_count, bonus_credits)
-          VALUES (?, 0, ?)
-          ON CONFLICT(user_id) DO NOTHING`,
-    args: [owner, DEFAULT_ALLOWED_CREDITS],
+async function ensureWallet(ownerId: string) {
+  await getDbExec().execute({
+    sql: `INSERT INTO credit_wallets (owner_id, balance, lifetime_purchased)
+          VALUES (?, 0, 0)
+          ON CONFLICT(owner_id) DO NOTHING`,
+    args: [ownerId],
   });
+}
 
-  const r = await exec.execute({
-    sql: `SELECT enrich_count, bonus_credits FROM fdmd_quota WHERE user_id = ?`,
-    args: [owner],
+export async function getCredits(ownerId: string): Promise<Credits> {
+  await ensureWallet(ownerId);
+  const result = await getDbExec().execute({
+    sql: "SELECT balance, lifetime_purchased FROM credit_wallets WHERE owner_id = ?",
+    args: [ownerId],
   });
-  const row = r.rows[0] as QuotaRow | undefined;
-  if (!row) {
-    throw new Error("quota row missing after upsert");
-  }
-  const allowed = toNum(row.bonus_credits);
-  const used = toNum(row.enrich_count);
-  return { allowed, remaining: Math.max(0, allowed - used) };
+  const row = result.rows[0] as unknown as WalletRow | undefined;
+  if (!row) throw new Error("credit wallet missing after creation");
+  return {
+    remaining: toNumber(row.balance),
+    allowed: toNumber(row.lifetime_purchased),
+  };
 }
 
 export interface DecrementResult {
   ok: boolean;
   remaining: number;
+  operationId: string;
 }
 
-export async function decrementCredits(owner: string): Promise<DecrementResult> {
-  await getCredits(owner); // ensure row exists
-  const exec = getDbExec();
-
-  // Atomic conditional decrement — only succeeds while credits remain.
-  const result = await exec.execute({
-    sql: `UPDATE fdmd_quota
-          SET enrich_count = enrich_count + 1,
-              updated_at = datetime('now')
-          WHERE user_id = ?
-            AND enrich_count < bonus_credits`,
-    args: [owner],
-  });
-
-  const affected = result.rowsAffected ?? 0;
-  if (affected === 0) {
-    return { ok: false, remaining: 0 };
-  }
-  const { remaining } = await getCredits(owner);
-  return { ok: true, remaining };
-}
-
-export async function refundCredit(owner: string): Promise<void> {
-  const exec = getDbExec();
-  await exec.execute({
-    sql: `UPDATE fdmd_quota
-          SET enrich_count = MAX(0, enrich_count - 1),
-              updated_at = datetime('now')
-          WHERE user_id = ?`,
-    args: [owner],
-  });
-}
-
-export interface CreditPromoStatus {
-  campaign: string;
-  credits: number;
-  claimed: boolean;
-}
-
-interface CreditPromoRow {
-  credits: number | bigint;
-}
-
-export async function getSharePromoStatus(
-  owner: string,
-): Promise<CreditPromoStatus> {
-  await getCredits(owner);
-  const exec = getDbExec();
-  const result = await exec.execute({
-    sql: `SELECT credits
-          FROM fdmd_credit_promos
-          WHERE owner_id = ? AND campaign = ?`,
-    args: [owner, SHARE_PROMO_CAMPAIGN],
-  });
-  const row = result.rows[0] as CreditPromoRow | undefined;
-  return {
-    campaign: SHARE_PROMO_CAMPAIGN,
-    credits: row ? toNum(row.credits) : SHARE_PROMO_BONUS_CREDITS,
-    claimed: Boolean(row),
-  };
-}
-
-export interface ClaimSharePromoResult {
-  claimedNow: boolean;
-  promo: CreditPromoStatus;
-  credits: Credits;
-}
-
-export async function claimSharePromoCredits(
-  owner: string,
-): Promise<ClaimSharePromoResult> {
-  await getCredits(owner);
-  const exec = getDbExec();
-  const inserted = await exec.execute({
-    sql: `INSERT INTO fdmd_credit_promos (owner_id, campaign, credits)
-          VALUES (?, ?, ?)
-          ON CONFLICT(owner_id, campaign) DO NOTHING`,
-    args: [owner, SHARE_PROMO_CAMPAIGN, SHARE_PROMO_BONUS_CREDITS],
-  });
-
-  const claimedNow = (inserted.rowsAffected ?? 0) > 0;
-  if (claimedNow) {
-    await exec.execute({
-      sql: `UPDATE fdmd_quota
-            SET bonus_credits = bonus_credits + ?,
-                updated_at = datetime('now')
-            WHERE user_id = ?`,
-      args: [SHARE_PROMO_BONUS_CREDITS, owner],
+export async function decrementCredits(
+  ownerId: string,
+  operationId: string = randomUUID(),
+  kind = "ai-operation",
+): Promise<DecrementResult> {
+  await ensureWallet(ownerId);
+  const db = getDbExec();
+  const transaction = await db.transaction("write");
+  try {
+    const existing = await transaction.execute({
+      sql: "SELECT status FROM credit_operations WHERE operation_id = ? AND owner_id = ?",
+      args: [operationId, ownerId],
     });
+    if (existing.rows.length > 0) {
+      await transaction.commit();
+      const credits = await getCredits(ownerId);
+      const status = String(existing.rows[0]?.status ?? "");
+      return {
+        ok: status === "reserved" || status === "committed",
+        remaining: credits.remaining,
+        operationId,
+      };
+    }
+
+    const debited = await transaction.execute({
+      sql: `UPDATE credit_wallets
+            SET balance = balance - 1, updated_at = datetime('now')
+            WHERE owner_id = ? AND balance > 0`,
+      args: [ownerId],
+    });
+    if (Number(debited.rowsAffected ?? 0) === 0) {
+      await transaction.execute({
+        sql: `INSERT INTO credit_operations (operation_id, owner_id, kind, status)
+              VALUES (?, ?, ?, 'rejected')`,
+        args: [operationId, ownerId, kind],
+      });
+      await transaction.commit();
+      return { ok: false, remaining: 0, operationId };
+    }
+
+    await transaction.batch([
+      {
+        sql: `INSERT INTO credit_operations (operation_id, owner_id, kind, status)
+              VALUES (?, ?, ?, 'reserved')`,
+        args: [operationId, ownerId, kind],
+      },
+      {
+        sql: `INSERT INTO credit_ledger (id, owner_id, delta, kind, reference_id)
+              VALUES (?, ?, -1, 'spend', ?)`,
+        args: [randomUUID(), ownerId, `spend:${operationId}`],
+      },
+    ]);
+    await transaction.commit();
+  } catch (error) {
+    if (!transaction.closed) await transaction.rollback();
+    throw error;
   }
 
-  const credits = await getCredits(owner);
-  const promo = await getSharePromoStatus(owner);
-  return { claimedNow, promo, credits };
+  const credits = await getCredits(ownerId);
+  return { ok: true, remaining: credits.remaining, operationId };
+}
+
+export async function commitCredit(operationId: string): Promise<void> {
+  await getDbExec().execute({
+    sql: `UPDATE credit_operations
+          SET status = 'committed', updated_at = datetime('now')
+          WHERE operation_id = ? AND status = 'reserved'`,
+    args: [operationId],
+  });
+}
+
+export async function refundCredit(
+  ownerId: string,
+  operationId: string,
+): Promise<void> {
+  const db = getDbExec();
+  const transaction = await db.transaction("write");
+  try {
+    const changed = await transaction.execute({
+      sql: `UPDATE credit_operations
+            SET status = 'refunded', updated_at = datetime('now')
+            WHERE operation_id = ? AND owner_id = ? AND status = 'reserved'`,
+      args: [operationId, ownerId],
+    });
+    if (Number(changed.rowsAffected ?? 0) === 0) {
+      await transaction.commit();
+      return;
+    }
+
+    await transaction.batch([
+      {
+        sql: `UPDATE credit_wallets
+              SET balance = balance + 1, updated_at = datetime('now')
+              WHERE owner_id = ?`,
+        args: [ownerId],
+      },
+      {
+        sql: `INSERT INTO credit_ledger (id, owner_id, delta, kind, reference_id)
+              VALUES (?, ?, 1, 'refund', ?)`,
+        args: [randomUUID(), ownerId, `refund:${operationId}`],
+      },
+    ]);
+    await transaction.commit();
+  } catch (error) {
+    if (!transaction.closed) await transaction.rollback();
+    throw error;
+  }
+}
+
+export interface PurchasedCreditsInput {
+  eventId: string;
+  eventType: string;
+  ownerId: string;
+  checkoutSessionId: string;
+  paymentIntentId?: string | null;
+  packId: string;
+  credits: number;
+  amountTotal?: number | null;
+  currency?: string | null;
+}
+
+export async function grantPurchasedCredits(
+  input: PurchasedCreditsInput,
+): Promise<boolean> {
+  await ensureWallet(input.ownerId);
+  const db = getDbExec();
+
+  try {
+    await db.batch(
+      [
+        {
+          sql: "INSERT INTO stripe_events (event_id, event_type) VALUES (?, ?)",
+          args: [input.eventId, input.eventType],
+        },
+        {
+          sql: `INSERT INTO purchases (
+                  id, owner_id, stripe_checkout_session_id,
+                  stripe_payment_intent_id, pack_id, credits,
+                  amount_total, currency, status, fulfilled_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'fulfilled', datetime('now'))
+                ON CONFLICT(stripe_checkout_session_id) DO UPDATE SET
+                  status = 'fulfilled', fulfilled_at = datetime('now')`,
+          args: [
+            randomUUID(),
+            input.ownerId,
+            input.checkoutSessionId,
+            input.paymentIntentId ?? null,
+            input.packId,
+            input.credits,
+            input.amountTotal ?? null,
+            input.currency ?? null,
+          ],
+        },
+        {
+          sql: `UPDATE credit_wallets
+                SET balance = balance + ?,
+                    lifetime_purchased = lifetime_purchased + ?,
+                    updated_at = datetime('now')
+                WHERE owner_id = ?`,
+          args: [input.credits, input.credits, input.ownerId],
+        },
+        {
+          sql: `INSERT INTO credit_ledger (
+                  id, owner_id, delta, kind, reference_id, metadata_json
+                ) VALUES (?, ?, ?, 'purchase', ?, ?)`,
+          args: [
+            randomUUID(),
+            input.ownerId,
+            input.credits,
+            `stripe:${input.checkoutSessionId}`,
+            JSON.stringify({ packId: input.packId, eventId: input.eventId }),
+          ],
+        },
+      ],
+      "write",
+    );
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/unique|constraint/i.test(message)) return false;
+    throw error;
+  }
 }

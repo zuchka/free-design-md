@@ -6,36 +6,21 @@ import {
   ScrollRestoration,
   useLocation,
 } from "react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import {
-  ClientOnly,
-  DefaultSpinner,
-  appPath,
-  configureTracking,
-  getThemeInitScript,
-} from "@agent-native/core/client";
 import { ThemeProvider } from "next-themes";
 import NavBar from "@/components/NavBar";
 import { CreditsProvider } from "@/lib/use-credits";
-import AppAgentSidebar from "@/components/AppAgentSidebar";
 import FeedbackReporter from "@/components/FeedbackReporter";
+import { appPath } from "@/lib/base-path";
+import { authClient } from "@/lib/auth-client";
 import type { LinksFunction } from "react-router";
 import stylesheet from "./global.css?url";
-
-configureTracking({
-  getDefaultProps: (_name, properties) => ({
-    ...properties,
-    app: "free-design-md",
-  }),
-});
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
 ];
-
-const THEME_INIT_SCRIPT = getThemeInitScript("light", true);
 
 function isPublicContentPath(pathname: string): boolean {
   return (
@@ -53,10 +38,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
-        />
-        <script
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
         />
         <link rel="icon" type="image/svg+xml" href={appPath("/favicon.svg")} />
         <link rel="manifest" href={appPath("/manifest.json")} />
@@ -85,7 +66,7 @@ export default function Root() {
   if (isPublicContentPath(location.pathname)) {
     return (
       <>
-        <NavBar showAgentToggle={false} />
+        <NavBar />
         <Outlet />
         <PublicFeedbackRoot />
       </>
@@ -98,46 +79,51 @@ export default function Root() {
 function PublicFeedbackRoot() {
   const [queryClient] = useState(() => new QueryClient());
   return (
-    <ClientOnly fallback={null}>
-      <QueryClientProvider client={queryClient}>
-        <FeedbackReporter />
-      </QueryClientProvider>
-    </ClientOnly>
+    <QueryClientProvider client={queryClient}>
+      <FeedbackReporter />
+    </QueryClientProvider>
   );
 }
 
 function ClientAppRoot() {
   const [queryClient] = useState(() => new QueryClient());
   return (
-    <ClientOnly fallback={<DefaultSpinner />}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="light"
-        enableSystem={false}
-        disableTransitionOnChange
-      >
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <CreditsProvider>
-              <NavBar />
-              <AppAgentSidebar
-                emptyStateText="Paste a URL above and click Enrich with AI — then use the page's Ask for a change box to iterate. I can answer questions about the loaded design.md."
-                suggestions={[
-                  "What are the dominant colors?",
-                  "Summarize the typography system",
-                  "Which components did we capture?",
-                  "What should I change in the iteration box?",
-                ]}
-              >
-                <Outlet />
-              </AppAgentSidebar>
-              <FeedbackReporter />
-            </CreditsProvider>
-          </TooltipProvider>
-        </QueryClientProvider>
-      </ThemeProvider>
-    </ClientOnly>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem={false}
+      disableTransitionOnChange
+    >
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <CreditsProvider>
+            <AnonymousSessionBootstrap />
+            <NavBar />
+            <Outlet />
+            <FeedbackReporter />
+          </CreditsProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 
-export { ErrorBoundary } from "@agent-native/core/client";
+function AnonymousSessionBootstrap() {
+  const session = authClient.useSession();
+  useEffect(() => {
+    if (!session.isPending && !session.data) {
+      void authClient.signIn.anonymous({ query: {} });
+    }
+  }, [session.data, session.isPending]);
+  return null;
+}
+
+export function ErrorBoundary({ error }: { error: unknown }) {
+  const message = error instanceof Error ? error.message : "Something went wrong.";
+  return (
+    <main className="mx-auto max-w-2xl px-6 py-24">
+      <h1 className="text-2xl font-semibold">Unable to load this page</h1>
+      <p className="mt-3 text-muted-foreground">{message}</p>
+    </main>
+  );
+}

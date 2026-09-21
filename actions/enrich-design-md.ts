@@ -18,7 +18,7 @@
  * see the existing shape. The HTTP endpoint imports `enrichStream`
  * directly and forwards each delta as an SSE event.
  */
-import { defineAction } from "@agent-native/core";
+import { defineAction } from "./define-action.js";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { existsSync, readFileSync } from "node:fs";

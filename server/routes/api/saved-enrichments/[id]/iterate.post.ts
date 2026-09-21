@@ -1,6 +1,5 @@
 import {
   defineEventHandler,
-  getCookie,
   getHeader,
   getRouterParam,
   readBody,
@@ -15,17 +14,18 @@ import {
   containsRequestAnthropicApiKey,
   resolveAnthropicKey,
 } from "../../../../lib/anthropic-key.js";
-import { resolveConnectedBuilderOwner } from "../../../../lib/builder-connection.js";
-import { FDMD_ANON_COOKIE } from "../../../../lib/cookie-names.js";
 import {
-  isAnonymousOwner,
   resolveAgentContextOwner,
+  resolveVerifiedOwner,
 } from "../../../../lib/owner.js";
-import { decrementCredits, refundCredit } from "../../../../lib/quota.js";
+import {
+  commitCredit,
+  decrementCredits,
+  refundCredit,
+} from "../../../../lib/quota.js";
 import {
   getPublicSavedEnrichment,
   saveEnrichmentSnapshot,
-  type SavedEnrichmentOwner,
 } from "../../../../lib/saved-enrichments.js";
 import { createSseSender } from "../../../../lib/sse.js";
 import {
@@ -209,35 +209,31 @@ export default defineEventHandler(async (event) => {
   }
   const keySource = keySourceLabel(resolvedKey.source);
 
-  let connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
   let quotaOwner = owner;
   if (resolvedKey.consumesQuota) {
-    if (isAnonymousOwner(owner)) {
-      if (!connectedBuilderOwner) {
-        setResponseStatus(event, 401);
-        await recordIterateRequest({
-          route: "saved_iterate",
-          status: "sign_in_required",
-          keySource,
-          quota: "blocked",
-          startedAt,
-        });
-        return {
-          error: "sign_in_required",
-          reason: "connect Builder to use hosted AI credits",
-        };
-      }
-      quotaOwner = connectedBuilderOwner.ownerId;
+    const verifiedOwner = await resolveVerifiedOwner(event);
+    if (!verifiedOwner) {
+      setResponseStatus(event, 401);
+      await recordIterateRequest({
+        route: "saved_iterate",
+        status: "sign_in_required",
+        keySource,
+        quota: "blocked",
+        startedAt,
+      });
+      return {
+        error: "sign_in_required",
+        reason: "sign in with email to purchase and use AI credits",
+      };
     }
+    quotaOwner = verifiedOwner;
   }
 
-  const saveOwner =
-    connectedBuilderOwner ??
-    fallbackSavedOwner(owner, getCookie(event, FDMD_ANON_COOKIE));
+  const saveOwner = { ownerId: quotaOwner };
 
-  let dec: { ok: boolean; remaining: number } | null = null;
+  let dec: { ok: boolean; remaining: number; operationId: string } | null = null;
   if (resolvedKey.consumesQuota) {
-    dec = await decrementCredits(quotaOwner);
+    dec = await decrementCredits(quotaOwner, undefined, "saved-iterate");
     if (!dec.ok) {
       setResponseStatus(event, 402);
       await recordQuotaEvent({ route: "saved_iterate", event: "exhausted" });
@@ -315,6 +311,7 @@ export default defineEventHandler(async (event) => {
                 quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
                 startedAt,
               });
+              if (dec?.ok) await commitCredit(dec.operationId);
               sse.send("done", {
                 ...result,
                 savedDesignId: saved.id,
@@ -329,7 +326,7 @@ export default defineEventHandler(async (event) => {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
-          await refundCredit(quotaOwner).catch(() => {});
+          await refundCredit(quotaOwner, dec.operationId).catch(() => {});
           await recordQuotaEvent({ route: "saved_iterate", event: "refunded" });
         }
         await recordIterateRequest({
@@ -351,13 +348,3 @@ export default defineEventHandler(async (event) => {
     },
   });
 });
-
-function fallbackSavedOwner(
-  owner: string,
-  anonToken: string | undefined,
-): SavedEnrichmentOwner {
-  if (owner && !isAnonymousOwner(owner)) {
-    return { ownerId: `user:${owner}` };
-  }
-  return { ownerId: anonToken ? `anon:${anonToken}` : "public:anonymous" };
-}

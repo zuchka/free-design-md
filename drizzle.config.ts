@@ -1,3 +1,8 @@
-import { createDrizzleConfig } from "@agent-native/core/db/drizzle-config";
+import { defineConfig } from "drizzle-kit";
 
-export default createDrizzleConfig();
+export default defineConfig({
+  dialect: "sqlite",
+  schema: "./server/db/schema.ts",
+  out: "./drizzle",
+  dbCredentials: { url: process.env.DATABASE_URL ?? "file:./data/app.db" },
+});

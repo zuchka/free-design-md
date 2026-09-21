@@ -3,8 +3,7 @@ import {
   getRouterParam,
   setResponseStatus,
 } from "h3";
-import { resolveConnectedBuilderOwner } from "../../../lib/builder-connection.js";
-import { resolveAgentContextOwner } from "../../../lib/owner.js";
+import { resolveVerifiedOwner } from "../../../lib/owner.js";
 import { deleteSavedEnrichmentForOwner } from "../../../lib/saved-enrichments.js";
 
 export default defineEventHandler(async (event) => {
@@ -14,14 +13,13 @@ export default defineEventHandler(async (event) => {
     return { error: "saved enrichment id is required" };
   }
 
-  const owner = await resolveAgentContextOwner(event);
-  const connected = await resolveConnectedBuilderOwner(owner);
-  if (!connected) {
+  const ownerId = await resolveVerifiedOwner(event);
+  if (!ownerId) {
     setResponseStatus(event, 401);
-    return { error: "builder_connect_required" };
+    return { error: "sign_in_required" };
   }
 
-  const deleted = await deleteSavedEnrichmentForOwner(id, connected.ownerId);
+  const deleted = await deleteSavedEnrichmentForOwner(id, ownerId);
   if (!deleted) {
     setResponseStatus(event, 404);
     return { error: "saved enrichment not found" };

@@ -9,7 +9,7 @@
  * pre- and post-call. No tool use, no system-prompt interpolation of
  * user data, fixed max_tokens.
  */
-import { defineAction } from "@agent-native/core";
+import { defineAction } from "./define-action.js";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildIterationPrompt } from "../shared/iteration-prompt.js";

@@ -1,27 +1,13 @@
 import * as schema from "./schema.js";
-import { createGetDb } from "@agent-native/core/db";
-import { registerShareableResource } from "@agent-native/core/sharing";
+import { drizzle } from "drizzle-orm/libsql";
+import { getDbExec } from "./client.js";
 
-export const getDb = createGetDb(schema);
+let database: ReturnType<typeof drizzle<typeof schema>> | null = null;
+
+export function getDb() {
+  if (!database) database = drizzle(getDbExec(), { schema });
+  return database;
+}
+
+export { getDbExec } from "./client.js";
 export { schema };
-
-registerShareableResource({
-  type: "deck",
-  resourceTable: schema.decks,
-  sharesTable: schema.deckShares,
-  displayName: "Deck",
-  titleColumn: "title",
-  getResourcePath: (deck) => `/deck/${deck.id}`,
-  getDb,
-});
-
-registerShareableResource({
-  type: "design-system",
-  resourceTable: schema.designSystems,
-  sharesTable: schema.designSystemShares,
-  displayName: "Design System",
-  titleColumn: "title",
-  getResourcePath: (designSystem) =>
-    `/design-systems?designSystemId=${designSystem.id}`,
-  getDb,
-});

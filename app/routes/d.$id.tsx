@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
-import {
-  appBasePath,
-  updateMcpAppModelContext,
-} from "@agent-native/core/client";
+import { appBasePath } from "@/lib/base-path";
 import {
   IconCheck,
   IconExternalLink,
@@ -22,8 +19,6 @@ import {
   readAiAccessErrorResponse,
   type AiAccessRecoveryReason,
 } from "@/lib/ai-access-errors";
-import { announceAgentActivity } from "@/lib/agent-activity";
-import { publishDesignContext } from "@/lib/agent-design-context";
 import { recordDesignArtifactEvent } from "@/lib/design-artifact-events";
 import { renderPreview } from "../../shared/preview-template";
 import { designArtifactToMdx } from "../../shared/design-mdx";
@@ -125,33 +120,6 @@ export default function SavedDesignRoute() {
     }
     void load();
   }, [id]);
-
-  useEffect(() => {
-    if (!saved?.enrichedMarkdown) return;
-    void publishDesignContext({
-      url: saved.sourceUrl,
-      title: saved.signals?.title ?? saved.title,
-      stage: "enriched",
-      deterministicMarkdown: saved.deterministicMarkdown,
-      currentMarkdown: saved.enrichedMarkdown,
-      designSystemData: saved.designSystemData,
-      savedDesignId: saved.id,
-      savedDesignUrl: `/d/${saved.id}`,
-    });
-    updateMcpAppModelContext({
-      content: [
-        {
-          type: "text",
-          text:
-            `The user is viewing a public AI-enriched design.md for ${saved.sourceUrl}. ` +
-            "This public page supports creating a new public fork from an iteration. " +
-            "Do not tell the user the page is read-only or that they must sign in just to iterate; " +
-            "they can use the Ask for a change box on this page. Use this markdown as the current design context.\n\n" +
-            saved.enrichedMarkdown,
-        },
-      ],
-    });
-  }, [saved]);
 
   const deterministicPreviewHtml = useMemo(() => {
     if (!saved) return "";
@@ -273,11 +241,6 @@ export default function SavedDesignRoute() {
     setPreviewSource("candidate");
     streamAccumRef.current = "";
     iterationDeltaAnnouncedRef.current = false;
-    announceAgentActivity({
-      title: "Starting iteration",
-      detail: iterationPrompt.trim(),
-      tone: "running",
-    });
 
     try {
       const res = await fetch(
@@ -319,12 +282,6 @@ export default function SavedDesignRoute() {
             setCandidateMarkdown(streamAccumRef.current);
             if (!iterationDeltaAnnouncedRef.current) {
               iterationDeltaAnnouncedRef.current = true;
-              announceAgentActivity({
-                title: "Drafting public fork",
-                detail: "Streaming the revised design.md candidate.",
-                tone: "running",
-                openSidebar: false,
-              });
             }
           } else if (parsed.event === "done") {
             sawDone = true;
@@ -334,18 +291,8 @@ export default function SavedDesignRoute() {
             };
             setCandidateMarkdown(doneData.markdown);
             setCandidateSavedUrl(doneData.savedDesignUrl);
-            announceAgentActivity({
-              title: "Public fork ready",
-              detail: doneData.savedDesignUrl,
-              tone: "success",
-            });
           } else if (parsed.event === "error") {
             const { message } = parsed.data as { message: string };
-            announceAgentActivity({
-              title: "Iteration failed",
-              detail: message,
-              tone: "error",
-            });
             throw new Error(message);
           }
         }
@@ -353,11 +300,6 @@ export default function SavedDesignRoute() {
       if (!sawDone) throw new Error("Stream ended without a done event");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      announceAgentActivity({
-        title: "Iteration stopped",
-        detail: message,
-        tone: "error",
-      });
       setIterationError(message);
       setIterationRecoveryReason(
         (current) => current ?? classifyAiAccessErrorMessage(message),

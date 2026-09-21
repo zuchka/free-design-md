@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  appBasePath,
-  focusAgentChat,
-  updateMcpAppModelContext,
-  useBuilderConnectFlow,
-} from "@agent-native/core/client";
+import { appBasePath } from "@/lib/base-path";
 import { renderPreview } from "../../shared/preview-template";
 import { designArtifactToMdx } from "../../shared/design-mdx";
 import {
@@ -35,13 +30,13 @@ import {
   IconTrash,
   IconX,
 } from "@tabler/icons-react";
-import BuilderConnectCta from "@/components/auth/BuilderConnectCta";
 import CreditsRecoveryBanner from "@/components/CreditsRecoveryBanner";
 import ArtifactActions from "@/components/ArtifactActions";
 import HomepageLanding from "@/components/HomepageLanding";
 import {
   classifyAiAccessErrorMessage,
   readAiAccessErrorResponse,
+  shouldOpenFeedbackForAiError,
   type AiAccessRecoveryReason,
 } from "@/lib/ai-access-errors";
 import { getHomepageExamples } from "@/lib/example-library";
@@ -55,11 +50,6 @@ import {
   iterate,
   type IterationSession,
 } from "@/lib/iteration-client";
-import {
-  announceAgentActivity,
-  clearAgentActivity,
-} from "@/lib/agent-activity";
-import { publishDesignContext } from "@/lib/agent-design-context";
 import { requestFeedback } from "@/lib/feedback-events";
 
 export function meta() {
@@ -137,12 +127,6 @@ function formatSectionLabel(section: string): string {
     .join(" ");
 }
 
-function shouldOpenFeedbackForAiError(
-  reason: AiAccessRecoveryReason | null,
-): boolean {
-  return reason !== "out_of_credits" && reason !== "sign_in_required";
-}
-
 export default function IndexRoute() {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -194,18 +178,11 @@ export default function IndexRoute() {
 
   // Iteration state: separate from the enrichment SSE flow. A session
   // represents one extract→enrich→iterate chain keyed on the URL.
-  const { configured } = useBuilderConnectFlow({
-    trackingSource: "free_design_md_index",
-  });
   const [iterSession, setIterSession] = useState<IterationSession | null>(null);
 
   useEffect(() => {
-    if (!configured) {
-      setSavedDesigns([]);
-      return;
-    }
     void refreshSavedDesigns();
-  }, [configured]);
+  }, []);
 
   async function refreshSavedDesigns() {
     try {
@@ -228,49 +205,6 @@ export default function IndexRoute() {
       setIterSession(s);
     }
   }, [enriched?.markdown, result?.url]);
-
-  useEffect(() => {
-    if (!enriched?.markdown) return;
-    focusAgentChat();
-    if (result?.url) {
-      void publishDesignContext({
-        url: result.url,
-        title: result.signals?.title,
-        stage: "enriched",
-        deterministicMarkdown: result.markdown,
-        currentMarkdown: enriched.markdown,
-        designSystemData: result.designSystemData,
-        savedDesignId: enriched.savedDesignId ?? null,
-        savedDesignUrl: enriched.savedDesignUrl ?? null,
-      });
-    }
-    updateMcpAppModelContext({
-      content: [
-        {
-          type: "text",
-          text:
-            `IMPORTANT: The user already has an AI-enriched design.md loaded for ${result?.url ?? "this page"}. ` +
-            "DO NOT call extract-design-md — the content is already available below. " +
-            "Do not revise or iterate from chat; the visible page has an 'Ask for a change' box that streams the candidate markdown and preview. " +
-            "Answer questions about the loaded design.md and direct requested edits to that page control. " +
-            "Do not re-extract, do not re-enrich.\n\n" +
-            enriched.markdown,
-        },
-      ],
-    });
-  }, [enriched?.markdown, result?.url]);
-
-  useEffect(() => {
-    if (!result?.markdown || enriched?.markdown) return;
-    void publishDesignContext({
-      url: result.url,
-      title: result.signals?.title,
-      stage: "deterministic",
-      deterministicMarkdown: result.markdown,
-      currentMarkdown: result.markdown,
-      designSystemData: result.designSystemData,
-    });
-  }, [enriched?.markdown, result]);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -357,12 +291,6 @@ export default function IndexRoute() {
   const hasCandidateComparison = isIterating || candidateMarkdown.length > 0;
 
   async function extractUrl(trimmed: string) {
-    clearAgentActivity();
-    announceAgentActivity({
-      title: "Loading page",
-      detail: trimmed,
-      tone: "running",
-    });
     setIsLoading(true);
     setError(null);
     setResult(null);
@@ -389,11 +317,6 @@ export default function IndexRoute() {
       }
       const data = (await res.json()) as ExtractResult;
       setResult(data);
-      announceAgentActivity({
-        title: "Extracted design tokens",
-        detail: data.signals?.title ?? data.url,
-        tone: "success",
-      });
       writeCache({
         url: data.url,
         markdown: data.markdown,
@@ -402,14 +325,8 @@ export default function IndexRoute() {
         screenshotDataUrl: data.screenshotDataUrl,
       });
       history.replaceState(null, "", `?url=${encodeURIComponent(data.url)}`);
-      focusAgentChat();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      announceAgentActivity({
-        title: "Extraction failed",
-        detail: message,
-        tone: "error",
-      });
       setError(message);
       requestFeedback({
         category: "something_broke",
@@ -444,11 +361,6 @@ export default function IndexRoute() {
     streamAccumRef.current = "";
     enrichDeltaAnnouncedRef.current = false;
     setView("enriched");
-    announceAgentActivity({
-      title: "Starting AI enrichment",
-      detail: result.signals?.title ?? result.url,
-      tone: "running",
-    });
     let pendingRecoveryReason: AiAccessRecoveryReason | null = null;
     try {
       const endpoint = `${appBasePath()}/api/enrich-design-md`;
@@ -493,24 +405,11 @@ export default function IndexRoute() {
             setStreamingMarkdown(streamAccumRef.current);
             if (!enrichDeltaAnnouncedRef.current) {
               enrichDeltaAnnouncedRef.current = true;
-              announceAgentActivity({
-                title: "Claude is writing design.md",
-                detail: "Streaming the enriched memo into the preview.",
-                tone: "running",
-                openSidebar: false,
-              });
             }
           } else if (parsed.event === "done") {
             sawDone = true;
             const enrichResult = parsed.data as EnrichResult;
             setEnriched(enrichResult);
-            announceAgentActivity({
-              title: "AI enrichment complete",
-              detail: enrichResult.savedDesignUrl
-                ? "Saved a public snapshot."
-                : "Ready for follow-up questions.",
-              tone: "success",
-            });
             if (enrichResult.savedDesignUrl) {
               history.replaceState(
                 null,
@@ -532,11 +431,6 @@ export default function IndexRoute() {
             }
           } else if (parsed.event === "error") {
             const { message } = parsed.data as { message: string };
-            announceAgentActivity({
-              title: "AI enrichment failed",
-              detail: message,
-              tone: "error",
-            });
             throw new Error(message);
           }
         }
@@ -546,11 +440,6 @@ export default function IndexRoute() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      announceAgentActivity({
-        title: "AI enrichment stopped",
-        detail: message,
-        tone: "error",
-      });
       setEnrichError(message);
       const recoveryReason =
         pendingRecoveryReason ?? classifyAiAccessErrorMessage(message);
@@ -668,11 +557,6 @@ export default function IndexRoute() {
     setPreviewSource("candidate");
     iterationAccumRef.current = "";
     iterationDeltaAnnouncedRef.current = false;
-    announceAgentActivity({
-      title: "Starting iteration",
-      detail: iterationPrompt.trim(),
-      tone: "running",
-    });
 
     await iterate(
       {
@@ -693,12 +577,6 @@ export default function IndexRoute() {
           setCandidateMarkdown(iterationAccumRef.current);
           if (!iterationDeltaAnnouncedRef.current) {
             iterationDeltaAnnouncedRef.current = true;
-            announceAgentActivity({
-              title: "Drafting candidate memo",
-              detail: "Streaming the revised design.md side by side.",
-              tone: "running",
-              openSidebar: false,
-            });
           }
         },
         onDone: (done) => {
@@ -706,34 +584,12 @@ export default function IndexRoute() {
           setCandidateId(done.id);
           setCandidateSavedDesignId(done.savedDesignId ?? null);
           setCandidateSavedDesignUrl(done.savedDesignUrl ?? null);
-          void publishDesignContext({
-            url: result.url,
-            title: result.signals?.title,
-            stage: "iteration",
-            deterministicMarkdown: result.markdown,
-            currentMarkdown: done.markdown,
-            designSystemData: result.designSystemData,
-            savedDesignId: done.savedDesignId ?? null,
-            savedDesignUrl: done.savedDesignUrl ?? null,
-          });
-          announceAgentActivity({
-            title: "Iteration ready",
-            detail: done.savedDesignUrl
-              ? "Review the candidate, then keep or discard it."
-              : "Review the candidate side by side.",
-            tone: "success",
-          });
           if (done.savedDesignUrl) {
             void refreshSavedDesigns();
           }
         },
         onError: (message) => {
           const recoveryReason = classifyAiAccessErrorMessage(message);
-          announceAgentActivity({
-            title: "Iteration failed",
-            detail: message,
-            tone: "error",
-          });
           setCandidateMarkdown("");
           setCandidateId(null);
           setCandidateSavedDesignId(null);
@@ -798,18 +654,6 @@ export default function IndexRoute() {
   }
 
   function handleDiscard() {
-    if (result && enriched?.markdown) {
-      void publishDesignContext({
-        url: result.url,
-        title: result.signals?.title,
-        stage: "enriched",
-        deterministicMarkdown: result.markdown,
-        currentMarkdown: enriched.markdown,
-        designSystemData: result.designSystemData,
-        savedDesignId: enriched.savedDesignId ?? null,
-        savedDesignUrl: enriched.savedDesignUrl ?? null,
-      });
-    }
     setCandidateMarkdown("");
     setCandidateId(null);
     setCandidateSavedDesignId(null);
@@ -883,11 +727,13 @@ export default function IndexRoute() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="stripe.com"
+                aria-label="Website URL"
+                required
                 disabled={isLoading}
                 className="flex-1"
                 autoFocus
               />
-              <Button type="submit" disabled={isLoading || !url.trim()}>
+              <Button type="submit" disabled={isLoading}>
                 {isLoading ? "Extracting…" : "Extract"}
               </Button>
             </form>
@@ -900,13 +746,12 @@ export default function IndexRoute() {
               isEnriching={isEnriching}
               hasScreenshot={!!result?.screenshotDataUrl}
               hasResult={!!result}
-              configured={configured}
               onEnrich={handleEnrich}
             />
           </div>
         )}
 
-        {configured && savedDesigns.length > 0 && (
+        {savedDesigns.length > 0 && (
           <SavedDesignsList
             items={savedDesigns}
             onDelete={handleDeleteSavedDesign}
@@ -1006,14 +851,9 @@ export default function IndexRoute() {
                         onClick={handleEnrich}
                         disabled={
                           isEnriching ||
-                          !result.screenshotDataUrl ||
-                          !configured
+                          !result.screenshotDataUrl
                         }
-                        title={
-                          !configured
-                            ? "Connect Builder.io to unlock AI enrichment"
-                            : "Enrich with Claude (~30-60s)"
-                        }
+                        title="Enrich with Claude (~30-60s)"
                       >
                         {isEnriching ? (
                           <Spinner className="size-3.5" />
@@ -1339,7 +1179,6 @@ interface EnrichBannerProps {
   isEnriching: boolean;
   hasScreenshot: boolean;
   hasResult: boolean;
-  configured: boolean;
   onEnrich: () => void;
 }
 
@@ -1347,7 +1186,6 @@ function EnrichBanner({
   isEnriching,
   hasScreenshot,
   hasResult,
-  configured,
   onEnrich,
 }: EnrichBannerProps) {
   return (
@@ -1399,23 +1237,16 @@ function EnrichBanner({
               size="lg"
               variant="default"
               onClick={onEnrich}
-              disabled={isEnriching || !hasScreenshot || !configured}
+              disabled={isEnriching || !hasScreenshot}
               className="gap-2 border-0 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: "var(--intuit-primary)" }}
-              title={
-                !hasResult
-                  ? "Extract a URL first"
-                  : !configured
-                    ? "Connect Builder.io to unlock AI enrichment"
-                    : undefined
-              }
+              title={!hasResult ? "Extract a URL first" : undefined}
             >
               <IconSparkles size={18} />
               {isEnriching ? "Enriching…" : "Enrich with AI"}
             </Button>
           </div>
         </div>
-        {hasResult && <BuilderConnectCta />}
       </div>
     </div>
   );

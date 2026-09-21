@@ -1,4 +1,4 @@
-import { defineAction } from "@agent-native/core";
+import { defineAction } from "./define-action.js";
 import { z } from "zod";
 
 const FeedbackCategory = z.enum([

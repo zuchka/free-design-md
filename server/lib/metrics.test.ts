@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   metricsStartedAt,
   recordActionRun,
-  recordBuilderConnectResolution,
   recordDesignArtifactEvent,
   recordEnrichRequest,
   recordExtractRequest,
@@ -41,10 +40,6 @@ describe("metrics registry", () => {
       startedAt,
     });
     await recordQuotaEvent({ route: "iterate", event: "refunded" });
-    await recordBuilderConnectResolution({
-      status: "connected",
-      orgKind: "Team Plan / US",
-    });
     await recordDesignArtifactEvent({
       action: "download",
       source: "example",
@@ -72,9 +67,6 @@ describe("metrics registry", () => {
     expect(output).not.toContain("fdmd_iterate_requests_total");
     expect(output).toContain(
       'fdmd_quota_events_total{route="iterate",event="refunded"} 1',
-    );
-    expect(output).toContain(
-      'fdmd_builder_connect_resolutions_total{status="connected",org_kind="team_plan_us"} 1',
     );
     expect(output).toContain(
       'fdmd_design_artifact_events_total{action="download",source="example",variant="enriched",format="mdx"} 1',

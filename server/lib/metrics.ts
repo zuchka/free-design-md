@@ -1,4 +1,4 @@
-import { getDbExec } from "@agent-native/core/db";
+import { getDbExec } from "../db/index.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 
 type LabelValue = string | number | boolean | null | undefined;
@@ -205,12 +205,6 @@ const aiStreamDuration = new HistogramMetric(
   ["route", "status"],
 );
 
-const builderConnectResolutions = new CounterMetric(
-  "fdmd_builder_connect_resolutions_total",
-  "Builder Connect credential resolution attempts by outcome.",
-  ["status", "org_kind"],
-);
-
 const quotaEvents = new CounterMetric(
   "fdmd_quota_events_total",
   "Hosted credit quota events by route.",
@@ -225,21 +219,19 @@ const designArtifactEvents = new CounterMetric(
 
 const actionRuns = new CounterMetric(
   "fdmd_action_runs_total",
-  "Agent-native action executions by action name, outcome, and caller surface.",
+  "Action executions by action name, outcome, and caller surface.",
   ["action", "status", "caller"],
 );
 
 const metrics = [
   extractDuration,
   aiStreamDuration,
-  builderConnectResolutions,
   quotaEvents,
   designArtifactEvents,
   actionRuns,
 ];
 
 const counterMetrics = [
-  builderConnectResolutions,
   quotaEvents,
   designArtifactEvents,
   actionRuns,
@@ -416,16 +408,6 @@ export function recordIterateRequest(input: {
     Math.max(0, nowSeconds() - input.startedAt),
   );
   return Promise.resolve();
-}
-
-export function recordBuilderConnectResolution(input: {
-  status: "connected" | "missing_credentials" | "error";
-  orgKind?: string | null;
-}): Promise<void> {
-  return builderConnectResolutions.record({
-    status: input.status,
-    org_kind: safeMetricLabel(input.orgKind, "unknown"),
-  });
 }
 
 export function recordQuotaEvent(input: {

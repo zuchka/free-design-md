@@ -3,7 +3,6 @@ import { ServerRouter } from "react-router";
 import ReactDOMServer from "react-dom/server.browser";
 const { renderToReadableStream } = ReactDOMServer;
 import { isbot } from "isbot";
-import { wrapWithAnalytics } from "@agent-native/core/server";
 
 export const streamTimeout = 5_000;
 
@@ -46,9 +45,7 @@ export default async function handleRequest(
     }
 
     responseHeaders.set("Content-Type", "text/html");
-    const wrapped =
-      typeof wrapWithAnalytics === "function" ? wrapWithAnalytics(body) : body;
-    return new Response(wrapped, {
+    return new Response(body, {
       headers: responseHeaders,
       status: responseStatusCode,
     });

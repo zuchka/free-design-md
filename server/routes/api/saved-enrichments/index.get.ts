@@ -1,18 +1,15 @@
 import { defineEventHandler, setResponseStatus } from "h3";
-import { resolveAgentContextOwner } from "../../../lib/owner.js";
-import { resolveConnectedBuilderOwner } from "../../../lib/builder-connection.js";
+import { resolveVerifiedOwner } from "../../../lib/owner.js";
 import { listSavedEnrichmentsForOwner } from "../../../lib/saved-enrichments.js";
 
 export default defineEventHandler(async (event) => {
-  const owner = await resolveAgentContextOwner(event);
-  const connected = await resolveConnectedBuilderOwner(owner);
-
-  if (!connected) {
+  const ownerId = await resolveVerifiedOwner(event);
+  if (!ownerId) {
     setResponseStatus(event, 401);
-    return { error: "builder_connect_required" };
+    return { error: "sign_in_required" };
   }
 
   return {
-    items: await listSavedEnrichmentsForOwner(connected.ownerId),
+    items: await listSavedEnrichmentsForOwner(ownerId),
   };
 });

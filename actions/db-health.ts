@@ -1,5 +1,5 @@
-import { defineAction } from "@agent-native/core";
-import { getDbExec } from "@agent-native/core/db";
+import { defineAction } from "./define-action.js";
+import { getDbExec } from "../server/db/index.js";
 import { z } from "zod";
 
 export default defineAction({

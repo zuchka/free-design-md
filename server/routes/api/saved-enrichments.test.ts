@@ -1,17 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockResolveAgentContextOwner = vi.hoisted(() => vi.fn());
+const mockResolveVerifiedOwner = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/owner", () => ({
   ANONYMOUS_OWNER: "anonymous@free-design-md.local",
   resolveAgentContextOwner: mockResolveAgentContextOwner,
+  resolveVerifiedOwner: mockResolveVerifiedOwner,
   isAnonymousOwner: (owner: string | null | undefined) =>
     owner === "anonymous@free-design-md.local" ||
     /^anonymous:[a-zA-Z0-9_-]{8,128}@free-design-md\.local$/.test(owner ?? ""),
-}));
-
-const mockResolveConnectedBuilderOwner = vi.hoisted(() => vi.fn());
-vi.mock("../../lib/builder-connection", () => ({
-  resolveConnectedBuilderOwner: mockResolveConnectedBuilderOwner,
 }));
 
 const mockGetPublicSavedEnrichment = vi.hoisted(() => vi.fn());
@@ -43,9 +40,11 @@ vi.mock("../../lib/anthropic-key", async () => {
 
 const mockDecrementCredits = vi.hoisted(() => vi.fn());
 const mockRefundCredit = vi.hoisted(() => vi.fn());
+const mockCommitCredit = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/quota", () => ({
   decrementCredits: mockDecrementCredits,
   refundCredit: mockRefundCredit,
+  commitCredit: mockCommitCredit,
 }));
 
 vi.mock("h3", async () => {
@@ -88,12 +87,7 @@ const { default: iterateHandler } = await import(
   "./saved-enrichments/[id]/iterate.post.js"
 );
 
-const CONNECTED = {
-  ownerId: "builder:user-123",
-  builderUserId: "user-123",
-  orgName: "Builder",
-  orgKind: "team",
-};
+const VERIFIED_OWNER = "user-123";
 
 describe("saved enrichment API routes", () => {
   beforeEach(() => {
@@ -101,7 +95,7 @@ describe("saved enrichment API routes", () => {
     mockResolveAgentContextOwner.mockResolvedValue(
       "anonymous:browser-token@free-design-md.local",
     );
-    mockResolveConnectedBuilderOwner.mockReset();
+    mockResolveVerifiedOwner.mockReset();
     mockGetPublicSavedEnrichment.mockReset();
     mockListSavedEnrichmentsForOwner.mockReset();
     mockDeleteSavedEnrichmentForOwner.mockReset();
@@ -110,9 +104,10 @@ describe("saved enrichment API routes", () => {
     mockResolveAnthropicKey.mockReset();
     mockDecrementCredits.mockReset();
     mockRefundCredit.mockReset();
+    mockCommitCredit.mockReset();
   });
 
-  it("publicly reads a saved enrichment without Builder Connect", async () => {
+  it("publicly reads a saved enrichment without sign-in", async () => {
     mockGetPublicSavedEnrichment.mockResolvedValueOnce({
       id: "saved-123",
       sourceUrl: "https://example.com",
@@ -128,25 +123,22 @@ describe("saved enrichment API routes", () => {
       title: "Example",
     });
     expect(mockResolveAgentContextOwner).not.toHaveBeenCalled();
-    expect(mockResolveConnectedBuilderOwner).not.toHaveBeenCalled();
+    expect(mockResolveVerifiedOwner).not.toHaveBeenCalled();
   });
 
-  it("requires Builder Connect to list creator-owned enrichments", async () => {
-    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(null);
+  it("requires a verified account to list creator-owned enrichments", async () => {
+    mockResolveVerifiedOwner.mockResolvedValueOnce(null);
 
     const event = {};
     const result = await listHandler(event as never);
 
     expect((event as { _statusCode?: number })._statusCode).toBe(401);
-    expect(result).toEqual({ error: "builder_connect_required" });
-    expect(mockResolveConnectedBuilderOwner).toHaveBeenCalledWith(
-      "anonymous:browser-token@free-design-md.local",
-    );
+    expect(result).toEqual({ error: "sign_in_required" });
     expect(mockListSavedEnrichmentsForOwner).not.toHaveBeenCalled();
   });
 
-  it("lists only the connected Builder owner's enrichments", async () => {
-    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(CONNECTED);
+  it("lists only the verified owner's enrichments", async () => {
+    mockResolveVerifiedOwner.mockResolvedValueOnce(VERIFIED_OWNER);
     mockListSavedEnrichmentsForOwner.mockResolvedValueOnce([
       { id: "saved-123", title: "Example" },
     ]);
@@ -157,12 +149,12 @@ describe("saved enrichment API routes", () => {
       items: [{ id: "saved-123", title: "Example" }],
     });
     expect(mockListSavedEnrichmentsForOwner).toHaveBeenCalledWith(
-      "builder:user-123",
+      VERIFIED_OWNER,
     );
   });
 
-  it("deletes only rows owned by the connected Builder owner", async () => {
-    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(CONNECTED);
+  it("deletes only rows owned by the verified owner", async () => {
+    mockResolveVerifiedOwner.mockResolvedValueOnce(VERIFIED_OWNER);
     mockDeleteSavedEnrichmentForOwner.mockResolvedValueOnce(false);
 
     const event = { _params: { id: "other-user-row" } };
@@ -172,7 +164,7 @@ describe("saved enrichment API routes", () => {
     expect(result).toEqual({ error: "saved enrichment not found" });
     expect(mockDeleteSavedEnrichmentForOwner).toHaveBeenCalledWith(
       "other-user-row",
-      "builder:user-123",
+      VERIFIED_OWNER,
     );
   });
 
@@ -189,13 +181,17 @@ describe("saved enrichment API routes", () => {
       signals: { title: "Example" },
       screenshotDataUrl: null,
     });
-    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(CONNECTED);
+    mockResolveVerifiedOwner.mockResolvedValueOnce(VERIFIED_OWNER);
     mockResolveAnthropicKey.mockResolvedValueOnce({
       apiKey: "sk-server",
       source: "server",
       consumesQuota: true,
     });
-    mockDecrementCredits.mockResolvedValueOnce({ ok: true, remaining: 2 });
+    mockDecrementCredits.mockResolvedValueOnce({
+      ok: true,
+      remaining: 2,
+      operationId: "op-123",
+    });
     mockIterateStream.mockImplementation(async function* () {
       yield { type: "delta", text: "# Dark" };
       yield {
@@ -225,10 +221,15 @@ describe("saved enrichment API routes", () => {
         deterministicMarkdown: "# Deterministic",
       }),
     );
-    expect(mockDecrementCredits).toHaveBeenCalledWith("builder:user-123");
+    expect(mockDecrementCredits).toHaveBeenCalledWith(
+      VERIFIED_OWNER,
+      undefined,
+      "saved-iterate",
+    );
+    expect(mockCommitCredit).toHaveBeenCalledWith("op-123");
     expect(mockSaveEnrichmentSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({
-        owner: CONNECTED,
+        owner: { ownerId: VERIFIED_OWNER },
         parentId: "saved-123",
         rootId: "saved-123",
         iterationPrompt: "Make it dark mode",
@@ -277,7 +278,6 @@ describe("saved enrichment API routes", () => {
       signals: { title: "Example" },
       screenshotDataUrl: null,
     });
-    mockResolveConnectedBuilderOwner.mockResolvedValueOnce(null);
     mockResolveAnthropicKey.mockResolvedValueOnce({
       apiKey: "sk-self-host",
       source: "self-host",

@@ -6,18 +6,24 @@ import {
   setResponseStatus,
 } from "h3";
 import { randomUUID } from "node:crypto";
-import { getDbExec } from "@agent-native/core/db";
+import { getDbExec } from "../../db/index.js";
 import {
   iterateStream,
   type IterationInput,
 } from "../../../actions/iterate-design-md.js";
-import { isAnonymousOwner, resolveAgentContextOwner } from "../../lib/owner.js";
-import { decrementCredits, refundCredit } from "../../lib/quota.js";
+import {
+  resolveAgentContextOwner,
+  resolveVerifiedOwner,
+} from "../../lib/owner.js";
+import {
+  commitCredit,
+  decrementCredits,
+  refundCredit,
+} from "../../lib/quota.js";
 import {
   containsRequestAnthropicApiKey,
   resolveAnthropicKey,
 } from "../../lib/anthropic-key.js";
-import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
 import {
   getPublicSavedEnrichment,
   saveEnrichmentSnapshot,
@@ -146,7 +152,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const owner = await resolveAgentContextOwner(event);
-  const connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
   const bodyRecord = body as Record<string, unknown>;
 
   if (
@@ -228,28 +233,27 @@ export default defineEventHandler(async (event) => {
   }
 
   // Atomic quota decrement before streaming (only when consuming quota).
-  let dec: { ok: boolean; remaining: number } | null = null;
+  let dec: { ok: boolean; remaining: number; operationId: string } | null = null;
   let quotaOwner = owner;
   if (resolvedKey.consumesQuota) {
-    if (isAnonymousOwner(owner)) {
-      if (!connectedBuilderOwner) {
-        setResponseStatus(event, 401);
-        await recordIterateRequest({
-          route: "iterate",
-          status: "sign_in_required",
-          keySource,
-          quota: "blocked",
-          startedAt,
-        });
-        return {
-          error: "sign_in_required",
-          reason: "connect Builder to use hosted AI credits",
-        };
-      }
-      quotaOwner = connectedBuilderOwner.ownerId;
+    const verifiedOwner = await resolveVerifiedOwner(event);
+    if (!verifiedOwner) {
+      setResponseStatus(event, 401);
+      await recordIterateRequest({
+        route: "iterate",
+        status: "sign_in_required",
+        keySource,
+        quota: "blocked",
+        startedAt,
+      });
+      return {
+        error: "sign_in_required",
+        reason: "sign in with email to purchase and use AI credits",
+      };
     }
+    quotaOwner = verifiedOwner;
 
-    dec = await decrementCredits(quotaOwner);
+    dec = await decrementCredits(quotaOwner, undefined, "iterate");
     if (!dec.ok) {
       setResponseStatus(event, 402);
       await recordQuotaEvent({ route: "iterate", event: "exhausted" });
@@ -315,19 +319,13 @@ export default defineEventHandler(async (event) => {
                 | { savedDesignId: string; savedDesignUrl: string }
                 | { saveError: string }
                 | null = null;
-              if (
-                connectedBuilderOwner &&
-                url &&
-                deterministicMarkdown &&
-                designSystemData &&
-                signals
-              ) {
+              if (url && deterministicMarkdown && designSystemData && signals) {
                 try {
                   const parent = parentId
                     ? await getPublicSavedEnrichment(parentId)
                     : null;
                   const saved = await saveEnrichmentSnapshot({
-                    owner: connectedBuilderOwner,
+                    owner: { ownerId: quotaOwner },
                     sourceUrl: url,
                     deterministicMarkdown,
                     enrichedMarkdown: result.markdown,
@@ -367,6 +365,7 @@ export default defineEventHandler(async (event) => {
                 quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
                 startedAt,
               });
+              if (dec?.ok) await commitCredit(dec.operationId);
               sse.send("done", {
                 id,
                 ...result,
@@ -379,7 +378,7 @@ export default defineEventHandler(async (event) => {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
-          await refundCredit(quotaOwner).catch(() => {});
+          await refundCredit(quotaOwner, dec.operationId).catch(() => {});
           await recordQuotaEvent({ route: "iterate", event: "refunded" });
         }
         await insertRejected({

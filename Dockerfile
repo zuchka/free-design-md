@@ -13,7 +13,7 @@ RUN pnpm install --frozen-lockfile
 # Source
 COPY . .
 
-# Build (agent-native build → .output/server/index.mjs)
+# Build the React Router server and browser bundles.
 RUN pnpm build
 
 # Install Playwright Chromium + all required OS libs
@@ -22,7 +22,7 @@ RUN pnpm exec playwright install --with-deps chromium
 
 # Runtime
 EXPOSE 3000
-ENV NITRO_HOST=0.0.0.0
+ENV HOST=0.0.0.0
 ENV PORT=3000
 
-CMD ["node", ".output/server/index.mjs"]
+CMD ["pnpm", "start"]

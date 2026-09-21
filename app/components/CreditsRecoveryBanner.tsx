@@ -1,9 +1,5 @@
-import {
-  IconAlertCircle,
-  IconCreditCard,
-  IconSparkles,
-} from "@tabler/icons-react";
-import ShareCreditsUnlock from "@/components/ShareCreditsUnlock";
+import { IconAlertCircle, IconCreditCard, IconSparkles } from "@tabler/icons-react";
+import PurchaseCreditsButton from "@/components/PurchaseCreditsButton";
 import type { AiAccessRecoveryReason } from "@/lib/ai-access-errors";
 
 interface CreditsRecoveryBannerProps {
@@ -27,17 +23,17 @@ export default function CreditsRecoveryBanner({
               <IconAlertCircle size={16} />
             </span>
             {outOfCredits
-              ? "You've used your 3 free AI credits"
+              ? "You're out of AI credits"
               : noApiKey
                 ? "AI enrichment is not configured"
-                : "AI enrichment needs Builder Connect"}
+                : "Sign in to use AI enrichment"}
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             {outOfCredits
-              ? "Post Free design.md once to unlock a one-time credit refill, or connect Builder again when more hosted credits are available."
+              ? "Buy another pack to keep enriching and revising design.md files."
               : noApiKey
                 ? "This deployment does not have a server Anthropic key configured. A local or self-hosted deployment can set ANTHROPIC_API_KEY in the environment."
-                : "Connect Builder.io for the hosted trial quota. The hosted service does not accept user Anthropic keys."}
+                : "Sign in with your email, then buy a pack of 10 AI extractions. The hosted service does not accept user Anthropic keys."}
           </p>
 
           <div className="mt-3 grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
@@ -57,15 +53,15 @@ export default function CreditsRecoveryBanner({
                 className="mt-0.5 shrink-0 text-foreground"
               />
               <span>
-                Plan-based credits are paused until Builder account metadata is
-                reliable enough to use for grants.
+                Credits are sold as simple one-time packs through Stripe. No
+                subscription is required.
               </span>
             </div>
           </div>
         </div>
 
         <div className="grid w-full gap-3 lg:w-[360px]">
-          {outOfCredits && <ShareCreditsUnlock onResolved={onResolved} />}
+          {!noApiKey && <PurchaseCreditsButton className="w-full" />}
           <div className="rounded-md border bg-muted/20 p-3">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-foreground">
               <IconSparkles size={14} />

@@ -135,7 +135,7 @@ const API_SURFACE = [
     method: "POST",
     path: "/api/iterate-design-md",
     key: "Hosted credits",
-    body: "Streams a revised design.md from previousMarkdown and userPrompt. The hosted route uses Builder-connected credits, not user Anthropic keys.",
+    body: "Streams a revised design.md from previousMarkdown and userPrompt. The hosted route uses purchased credits, not user Anthropic keys.",
   },
   {
     method: "GET",
@@ -147,7 +147,7 @@ const API_SURFACE = [
     method: "GET",
     path: "/api/metrics",
     key: "Prometheus",
-    body: "Exposes low-cardinality counters and histograms for extraction, AI enrichment, AI iteration, quota outcomes, and Builder Connect credential resolution.",
+    body: "Exposes low-cardinality counters and histograms for extraction, AI enrichment, AI iteration, quota outcomes, and artifact exports.",
   },
 ];
 
@@ -429,7 +429,7 @@ export default function ApiAndCliRoute() {
               Use the hosted API for deterministic design.md extraction. The
               same endpoint can return structured JSON, raw Markdown, or MDX.
               Hosted AI routes are available through the web app's
-              Builder-connected credit flow, not by sending your Anthropic key
+              signed-in credit wallet, not by sending your Anthropic key
               to Free design.md.
             </SectionHeading>
 
@@ -655,7 +655,7 @@ export default function ApiAndCliRoute() {
             >
               Free design.md exposes process-local Prometheus metrics for the
               hosted API wrapper. Metrics use bounded labels only: route,
-              status, key source, quota outcome, format, and Builder org kind.
+              status, key source, quota outcome, and artifact format.
               They never include URLs, prompts, user IDs, org names, saved
               design IDs, or API keys.
             </SectionHeading>
@@ -664,7 +664,7 @@ export default function ApiAndCliRoute() {
               {[
                 {
                   title: "Request counters",
-                  body: "Track deterministic extraction, AI enrichment, AI iteration, saved-design iteration, and Builder credential resolution outcomes.",
+                  body: "Track deterministic extraction, AI enrichment, AI iteration, saved-design iteration, and credit outcomes.",
                   icon: IconChartBar,
                 },
                 {

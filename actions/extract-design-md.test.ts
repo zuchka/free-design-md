@@ -68,7 +68,11 @@ describe("dismissConsent", () => {
       intent: "decline",
       selector: "#onetrust-reject-all-handler",
     });
-    expect(await page.evaluate(() => window.clickedConsent)).toBe("decline");
+    expect(
+      await page.evaluate(
+        () => (window as Window & { clickedConsent?: string }).clickedConsent,
+      ),
+    ).toBe("decline");
     expect(await page.locator("#onetrust-banner-sdk").count()).toBe(0);
   });
 
@@ -99,7 +103,11 @@ describe("dismissConsent", () => {
       intent: "accept",
       selector: "#didomi-notice-agree-button",
     });
-    expect(await page.evaluate(() => window.clickedConsent)).toBe("accept");
+    expect(
+      await page.evaluate(
+        () => (window as Window & { clickedConsent?: string }).clickedConsent,
+      ),
+    ).toBe("accept");
     expect(await page.locator("#didomi-host").count()).toBe(0);
   });
 
@@ -114,7 +122,11 @@ describe("dismissConsent", () => {
     const result = await dismissConsent(page);
 
     expect(result).toEqual({ attempted: false, dismissed: true });
-    expect(await page.evaluate(() => window.clickedConsent)).toBeUndefined();
+    expect(
+      await page.evaluate(
+        () => (window as Window & { clickedConsent?: string }).clickedConsent,
+      ),
+    ).toBeUndefined();
   });
 
   it("covers the common CMP families with selectors or guarded text buttons", () => {

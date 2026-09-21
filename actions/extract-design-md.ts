@@ -1,4 +1,4 @@
-import { defineAction } from "@agent-native/core";
+import { defineAction } from "./define-action.js";
 import { z } from "zod";
 import { chromium, type Page } from "playwright";
 import { designSystemToDesignMd } from "../shared/design-md.js";

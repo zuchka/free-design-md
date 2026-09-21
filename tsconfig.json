@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "6.0",
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
@@ -33,7 +32,9 @@
   },
   "include": [
     "app/**/*",
+    "actions/**/*",
     "server/**/*",
+    "scripts/**/*",
     "shared/**/*",
     "vite.config.ts",
     "vite.config.server.ts",

@@ -1,16 +1,12 @@
-import { getDbExec } from "@agent-native/core/db";
+import { getDbExec } from "../db/index.js";
 import { nanoid } from "nanoid";
-import type { ConnectedBuilderOwner } from "./builder-connection.js";
 
 export interface SavedEnrichmentOwner {
   ownerId: string;
-  builderUserId?: string | null;
-  orgName?: string | null;
-  orgKind?: string | null;
 }
 
 export interface SaveEnrichmentInput {
-  owner: ConnectedBuilderOwner | SavedEnrichmentOwner;
+  owner: SavedEnrichmentOwner;
   sourceUrl: string;
   deterministicMarkdown: string;
   enrichedMarkdown: string;
@@ -92,9 +88,6 @@ export async function saveEnrichmentSnapshot(
     sql: `INSERT INTO fdmd_saved_enrichments (
             id,
             owner_id,
-            builder_user_id,
-            builder_org_name,
-            builder_org_kind,
             source_url,
             title,
             parent_id,
@@ -110,13 +103,10 @@ export async function saveEnrichmentSnapshot(
             stop_reason,
             created_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       input.owner.ownerId,
-      input.owner.builderUserId ?? "",
-      input.owner.orgName ?? null,
-      input.owner.orgKind ?? null,
       input.sourceUrl,
       title,
       input.parentId ?? null,

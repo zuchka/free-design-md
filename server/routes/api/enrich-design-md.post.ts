@@ -13,9 +13,15 @@ import {
   containsRequestAnthropicApiKey,
   resolveAnthropicKey,
 } from "../../lib/anthropic-key.js";
-import { resolveConnectedBuilderOwner } from "../../lib/builder-connection.js";
-import { isAnonymousOwner, resolveAgentContextOwner } from "../../lib/owner.js";
-import { decrementCredits, refundCredit } from "../../lib/quota.js";
+import {
+  resolveAgentContextOwner,
+  resolveVerifiedOwner,
+} from "../../lib/owner.js";
+import {
+  commitCredit,
+  decrementCredits,
+  refundCredit,
+} from "../../lib/quota.js";
 import { saveEnrichmentSnapshot } from "../../lib/saved-enrichments.js";
 import { createSseSender } from "../../lib/sse.js";
 import {
@@ -32,7 +38,7 @@ import {
  *
  * Gated: hosted calls use the deployment's server key and quota rules.
  * Self-hosted calls may use ANTHROPIC_API_KEY from the deployment environment
- * without Builder Connect or quota.
+ * without account billing or quota.
  *
  * Body: JSON payload from a prior /api/extract?format=json call.
  * Response: text/event-stream with delta/done/error events.
@@ -143,15 +149,9 @@ export default defineEventHandler(async (event) => {
   const keySource = keySourceLabel(resolvedKey.source);
 
   let quotaOwner = owner;
-  let connectedBuilderOwner: Awaited<
-    ReturnType<typeof resolveConnectedBuilderOwner>
-  > | null = null;
-
-  // Hosted anonymous callers may use the server key only after Builder Connect has
-  // stored a complete credential bundle under this browser's fdmd_anon owner.
-  if (isAnonymousOwner(owner) && resolvedKey.consumesQuota) {
-    connectedBuilderOwner = await resolveConnectedBuilderOwner(owner);
-    if (!connectedBuilderOwner) {
+  if (resolvedKey.consumesQuota) {
+    const verifiedOwner = await resolveVerifiedOwner(event);
+    if (!verifiedOwner) {
       setResponseStatus(event, 401);
       await recordEnrichRequest({
         status: "sign_in_required",
@@ -161,15 +161,15 @@ export default defineEventHandler(async (event) => {
       });
       return {
         error: "sign_in_required",
-        reason: "connect Builder to use hosted AI credits",
+        reason: "sign in with email to purchase and use AI credits",
       };
     }
-    quotaOwner = connectedBuilderOwner.ownerId;
+    quotaOwner = verifiedOwner;
   }
 
-  let dec: { ok: boolean; remaining: number } | null = null;
+  let dec: { ok: boolean; remaining: number; operationId: string } | null = null;
   if (resolvedKey.consumesQuota) {
-    dec = await decrementCredits(quotaOwner);
+    dec = await decrementCredits(quotaOwner, undefined, "enrich");
     if (!dec.ok) {
       setResponseStatus(event, 402);
       await recordQuotaEvent({ route: "enrich", event: "exhausted" });
@@ -217,33 +217,28 @@ export default defineEventHandler(async (event) => {
                 | { saveError: string }
                 | null = null;
               try {
-                const connected =
-                  connectedBuilderOwner ??
-                  (await resolveConnectedBuilderOwner(owner));
-                if (connected) {
-                  const saved = await saveEnrichmentSnapshot({
-                    owner: connected,
-                    sourceUrl: url,
-                    deterministicMarkdown: md,
-                    enrichedMarkdown: result.markdown,
-                    designSystemData,
-                    signals,
-                    screenshotDataUrl,
-                    model: result.model,
-                    usage: result.usage,
-                    stopReason: result.stopReason,
-                  });
-                  await recordDesignArtifactEvent({
-                    action: "public_snapshot_saved",
-                    source: "home",
-                    variant: "enriched",
-                    format: "snapshot",
-                  });
-                  saveResult = {
-                    savedDesignId: saved.id,
-                    savedDesignUrl: saved.url,
-                  };
-                }
+                const saved = await saveEnrichmentSnapshot({
+                  owner: { ownerId: quotaOwner },
+                  sourceUrl: url,
+                  deterministicMarkdown: md,
+                  enrichedMarkdown: result.markdown,
+                  designSystemData,
+                  signals,
+                  screenshotDataUrl,
+                  model: result.model,
+                  usage: result.usage,
+                  stopReason: result.stopReason,
+                });
+                await recordDesignArtifactEvent({
+                  action: "public_snapshot_saved",
+                  source: "home",
+                  variant: "enriched",
+                  format: "snapshot",
+                });
+                saveResult = {
+                  savedDesignId: saved.id,
+                  savedDesignUrl: saved.url,
+                };
               } catch (saveErr) {
                 saveResult = {
                   saveError:
@@ -258,6 +253,7 @@ export default defineEventHandler(async (event) => {
                 quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
                 startedAt,
               });
+              if (dec?.ok) await commitCredit(dec.operationId);
               sse.send("done", { ...result, ...(saveResult ?? {}) });
             }
           }
@@ -265,7 +261,7 @@ export default defineEventHandler(async (event) => {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (resolvedKey.consumesQuota && dec?.ok) {
-          await refundCredit(quotaOwner).catch(() => {});
+          await refundCredit(quotaOwner, dec.operationId).catch(() => {});
           await recordQuotaEvent({ route: "enrich", event: "refunded" });
         }
         await recordEnrichRequest({

@@ -1,4 +1,4 @@
-import { appBasePath } from "@agent-native/core/client";
+import { appBasePath } from "./base-path";
 
 export type DesignArtifactEventAction =
   | "copy"

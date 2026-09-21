@@ -4,6 +4,7 @@ import {
   classifyAiAccessErrorPayload,
   formatAiAccessError,
   readAiAccessErrorResponse,
+  shouldOpenFeedbackForAiError,
 } from "./ai-access-errors";
 
 describe("AI access error helpers", () => {
@@ -25,6 +26,13 @@ describe("AI access error helpers", () => {
     expect(formatAiAccessError({ error: "no_api_key_available" })).toContain(
       "not configured",
     );
+  });
+
+  it("keeps expected access and configuration errors in the recovery UI", () => {
+    expect(shouldOpenFeedbackForAiError("no_api_key_available")).toBe(false);
+    expect(shouldOpenFeedbackForAiError("out_of_credits")).toBe(false);
+    expect(shouldOpenFeedbackForAiError("sign_in_required")).toBe(false);
+    expect(shouldOpenFeedbackForAiError(null)).toBe(true);
   });
 
   it("reads JSON error responses without exposing raw JSON", async () => {
