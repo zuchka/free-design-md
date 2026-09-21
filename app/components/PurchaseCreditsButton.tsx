@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { IconBolt, IconCreditCard, IconMail } from "@tabler/icons-react";
+import { IconBolt, IconCheck, IconCreditCard } from "@tabler/icons-react";
 import { authClient } from "@/lib/auth-client";
+import MagicLinkSignInForm from "@/components/MagicLinkSignInForm";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,49 +11,39 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { AI_RUN_PACK } from "../../shared/billing";
+import { cn } from "@/lib/utils";
+import {
+  AI_RUN_PACK,
+  AI_RUN_PACKS,
+  getAiRunPack,
+  type AiRunPackId,
+} from "../../shared/billing";
 
 interface PurchaseCreditsButtonProps {
   variant?: "default" | "outline" | "ghost";
   className?: string;
   label?: string;
+  compactOnMobile?: boolean;
 }
 
 export default function PurchaseCreditsButton({
   variant = "default",
   className,
   label = `Buy ${AI_RUN_PACK.name} — ${AI_RUN_PACK.priceLabel}`,
+  compactOnMobile = false,
 }: PurchaseCreditsButtonProps) {
   const session = authClient.useSession();
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPackId, setSelectedPackId] = useState<AiRunPackId>(
+    AI_RUN_PACK.id,
+  );
   const sessionData = session.data as unknown as {
     user: { email: string; isAnonymous?: boolean | null };
   } | null;
   const signedIn = Boolean(sessionData && !sessionData.user.isAnonymous);
-
-  async function sendSignInLink(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!email.trim()) return;
-    setPending(true);
-    setError(null);
-    const result = await authClient.signIn.magicLink({
-      email: email.trim(),
-      callbackURL: window.location.href,
-    });
-    setPending(false);
-    if (result.error) {
-      setError(
-        "Could not send the sign-in link. Please check the email and try again.",
-      );
-      return;
-    }
-    setSent(true);
-  }
+  const selectedPack = getAiRunPack(selectedPackId) ?? AI_RUN_PACK;
 
   async function beginCheckout() {
     setPending(true);
@@ -61,7 +52,7 @@ export default function PurchaseCreditsButton({
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packId: AI_RUN_PACK.id }),
+        body: JSON.stringify({ packId: selectedPack.id }),
       });
       const result = (await response.json().catch(() => ({}))) as {
         url?: string;
@@ -87,24 +78,63 @@ export default function PurchaseCreditsButton({
         type="button"
         variant={variant}
         className={className}
+        aria-label={label}
         onClick={() => setOpen(true)}
       >
         <IconBolt size={15} />
-        {label}
+        <span
+          className={compactOnMobile ? "hidden min-[480px]:inline" : undefined}
+        >
+          {label}
+        </span>
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {AI_RUN_PACK.name} for {AI_RUN_PACK.priceLabel}
-            </DialogTitle>
+            <DialogTitle>Buy AI runs</DialogTitle>
             <DialogDescription>
-              Use a run to enrich a design.md or revise it with AI.
-              Deterministic URL extraction stays free, and purchased runs do not
-              expire.
+              Each run enriches a design.md or revises it with AI. Deterministic
+              URL extraction stays free, and purchased runs do not expire.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="grid gap-2 sm:grid-cols-2" aria-label="AI run packs">
+            {AI_RUN_PACKS.map((pack) => {
+              const selected = pack.id === selectedPack.id;
+              return (
+                <button
+                  key={pack.id}
+                  type="button"
+                  aria-pressed={selected}
+                  className={cn(
+                    "relative grid gap-2 rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    selected
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/50",
+                  )}
+                  onClick={() => setSelectedPackId(pack.id)}
+                >
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="font-semibold text-foreground">
+                      {pack.name}
+                    </span>
+                    {selected && (
+                      <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <IconCheck />
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-2xl font-semibold tracking-tight text-foreground">
+                    {pack.priceLabel}
+                  </span>
+                  <span className="text-xs leading-5 text-muted-foreground">
+                    {pack.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
           {signedIn ? (
             <div className="rounded-md border bg-muted/30 p-4 text-sm">
@@ -116,40 +146,11 @@ export default function PurchaseCreditsButton({
                 Your AI runs will be attached to {sessionData?.user.email}.
               </p>
             </div>
-          ) : sent ? (
-            <div className="rounded-md border border-primary/25 bg-primary/10 p-4 text-sm">
-              Check your inbox. Open the sign-in link, then return here to buy
-              AI runs.
-            </div>
           ) : (
-            <form className="grid gap-3" onSubmit={sendSignInLink}>
-              <label htmlFor="credit-email" className="text-sm font-medium">
-                Sign in to keep your AI runs
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  id="credit-email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    setError(null);
-                  }}
-                  placeholder="you@example.com"
-                  required
-                  aria-invalid={Boolean(error)}
-                  aria-describedby={error ? "credit-email-error" : undefined}
-                />
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={pending || !email.trim()}
-                >
-                  <IconMail size={15} />
-                  Send link
-                </Button>
-              </div>
-            </form>
+            <MagicLinkSignInForm
+              label="Sign in to keep your AI runs"
+              sentMessage="Open the link in this browser, then return here to finish your purchase."
+            />
           )}
 
           {error && (
@@ -166,7 +167,9 @@ export default function PurchaseCreditsButton({
             {signedIn && (
               <Button type="button" disabled={pending} onClick={beginCheckout}>
                 <IconCreditCard size={16} />
-                {pending ? "Opening Stripe…" : "Continue to Stripe"}
+                {pending
+                  ? "Opening Stripe…"
+                  : `Buy ${selectedPack.name} for ${selectedPack.priceLabel}`}
               </Button>
             )}
           </DialogFooter>

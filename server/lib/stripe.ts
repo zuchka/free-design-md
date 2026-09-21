@@ -1,7 +1,13 @@
 import Stripe from "stripe";
-import { AI_RUN_PACK } from "../../shared/billing.js";
+import { AI_RUN_PACK, SINGLE_AI_RUN_PACK } from "../../shared/billing.js";
 
 export const CREDIT_PACKS = {
+  [SINGLE_AI_RUN_PACK.id]: {
+    id: SINGLE_AI_RUN_PACK.id,
+    name: SINGLE_AI_RUN_PACK.name,
+    credits: SINGLE_AI_RUN_PACK.runs,
+    priceId: process.env.STRIPE_PRICE_1_CREDIT ?? "",
+  },
   [AI_RUN_PACK.id]: {
     id: AI_RUN_PACK.id,
     name: AI_RUN_PACK.name,

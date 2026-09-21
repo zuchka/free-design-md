@@ -7,8 +7,8 @@ Paste any public URL and get a portable `design.md` specification. The determini
 - Deterministic extraction uses Playwright and computed CSS. It does not require an account or an LLM.
 - AI enrichment sends the deterministic artifact and screenshot to Claude Sonnet 4.6.
 - One AI enrichment or revision costs one AI run.
-- The launch pack is 10 AI runs for $5; runs do not expire.
-- AI runs are sold in packs of 10 through Stripe Checkout. There is no signup grant or subscription.
+- AI runs cost $0.89 for one or $4.99 for 10; runs do not expire.
+- AI runs are sold as one-time purchases through Stripe Checkout. There is no signup grant or subscription.
 - Email magic links provide account recovery and attach purchases to a stable identity.
 - Self-hosted mode uses the deployment's `ANTHROPIC_API_KEY` without metering.
 
@@ -48,11 +48,12 @@ pnpm action extract-design-md --url stripe.com
 
 ## Stripe setup
 
-Create a one-time $5 Stripe Price for a pack of 10 AI runs, then configure:
+Create one-time Stripe Prices for a single $0.89 AI run and a $4.99 pack of 10, then configure:
 
 ```bash
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_1_CREDIT=price_...
 STRIPE_PRICE_10_CREDITS=price_...
 ```
 

@@ -4,8 +4,19 @@ import {
   IconChartBar,
   IconHome,
   IconLayoutGrid,
+  IconMenu2,
 } from "@tabler/icons-react";
 import CreditsChip from "@/components/CreditsChip";
+import AccountMenu from "@/components/AccountMenu";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function navLinkClass(isActive: boolean) {
   return `inline-flex items-center gap-2 rounded-md px-1.5 py-2 text-base font-semibold transition-colors ${
@@ -42,48 +53,102 @@ export default function NavBar() {
             </span>
           </Link>
         </div>
-        <nav aria-label="Main" className="flex items-center gap-2 sm:gap-5">
-          <Link
-            to="/"
-            aria-label="My workspace"
-            aria-current={onWorkspace ? "page" : undefined}
-            title="My workspace"
-            className={navLinkClass(onWorkspace)}
-          >
-            <IconHome size={16} />
-            <span className="hidden sm:inline">My workspace</span>
-          </Link>
-          <Link
-            to="/docs"
-            aria-label="Docs"
-            aria-current={onDocs ? "page" : undefined}
-            title="Docs"
-            className={navLinkClass(onDocs)}
-          >
-            <IconBook2 size={16} />
-            <span className="hidden sm:inline">Docs</span>
-          </Link>
-          <Link
-            to="/examples"
-            aria-label="Examples"
-            aria-current={onExamples ? "page" : undefined}
-            title="Examples"
-            className={navLinkClass(onExamples)}
-          >
-            <IconLayoutGrid size={16} />
-            <span className="hidden sm:inline">Examples</span>
-          </Link>
-          <Link
-            to="/quality"
-            aria-label="Quality"
-            aria-current={onQuality ? "page" : undefined}
-            title="Quality"
-            className={navLinkClass(onQuality)}
-          >
-            <IconChartBar size={16} />
-            <span className="hidden sm:inline">Quality</span>
-          </Link>
+        <nav
+          aria-label="Main"
+          className="flex items-center gap-1 sm:gap-2 lg:gap-5"
+        >
+          <div className="hidden items-center gap-2 md:flex lg:gap-5">
+            <Link
+              to="/"
+              aria-label="My workspace"
+              aria-current={onWorkspace ? "page" : undefined}
+              title="My workspace"
+              className={navLinkClass(onWorkspace)}
+            >
+              <IconHome size={16} />
+              <span className="hidden lg:inline">My workspace</span>
+            </Link>
+            <Link
+              to="/docs"
+              aria-label="Docs"
+              aria-current={onDocs ? "page" : undefined}
+              title="Docs"
+              className={navLinkClass(onDocs)}
+            >
+              <IconBook2 size={16} />
+              <span className="hidden lg:inline">Docs</span>
+            </Link>
+            <Link
+              to="/examples"
+              aria-label="Examples"
+              aria-current={onExamples ? "page" : undefined}
+              title="Examples"
+              className={navLinkClass(onExamples)}
+            >
+              <IconLayoutGrid size={16} />
+              <span className="hidden lg:inline">Examples</span>
+            </Link>
+            <Link
+              to="/quality"
+              aria-label="Quality"
+              aria-current={onQuality ? "page" : undefined}
+              title="Quality"
+              className={navLinkClass(onQuality)}
+            >
+              <IconChartBar size={16} />
+              <span className="hidden lg:inline">Quality</span>
+            </Link>
+          </div>
           {showCredits && <CreditsChip />}
+          <AccountMenu />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="size-9 md:hidden"
+                aria-label="Open navigation"
+              >
+                <IconMenu2 />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 md:hidden">
+              <DropdownMenuLabel>Navigation</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuItem asChild>
+                  <Link to="/" aria-current={onWorkspace ? "page" : undefined}>
+                    <IconHome />
+                    My workspace
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/docs" aria-current={onDocs ? "page" : undefined}>
+                    <IconBook2 />
+                    Docs
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    to="/examples"
+                    aria-current={onExamples ? "page" : undefined}
+                  >
+                    <IconLayoutGrid />
+                    Examples
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    to="/quality"
+                    aria-current={onQuality ? "page" : undefined}
+                  >
+                    <IconChartBar />
+                    Quality
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
       </div>
     </header>

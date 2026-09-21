@@ -37,7 +37,7 @@ export default function CreditsRecoveryBanner({
               ? "Buy another pack to keep enriching and revising design.md files."
               : noApiKey
                 ? "This deployment does not have a server Anthropic key configured. A local or self-hosted deployment can set ANTHROPIC_API_KEY in the environment."
-                : "Sign in with your email, then buy 10 AI runs for $5. Each run can enrich or revise a design.md. The hosted service does not accept user Anthropic keys."}
+                : "Sign in with your email, then buy a single AI run for $0.89 or 10 for $4.99. Each run can enrich or revise a design.md. The hosted service does not accept user Anthropic keys."}
           </p>
 
           <div className="mt-3 grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
@@ -57,8 +57,8 @@ export default function CreditsRecoveryBanner({
                 className="mt-0.5 shrink-0 text-foreground"
               />
               <span>
-                Ten AI runs cost $5 as a one-time Stripe purchase. No
-                subscription is required, and runs do not expire.
+                Buy one AI run for $0.89 or 10 for $4.99 as a one-time Stripe
+                purchase. No subscription is required, and runs do not expire.
               </span>
             </div>
           </div>
