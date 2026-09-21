@@ -113,7 +113,7 @@ export default defineEventHandler(async (event) => {
     return {
       error: "user_keys_not_accepted",
       reason:
-        "Hosted API calls do not accept Anthropic keys. Use Free design.md credits or run a local/self-hosted deployment with ANTHROPIC_API_KEY.",
+        "Hosted API calls do not accept Anthropic keys. Use purchased AI runs or run a local/self-hosted deployment with ANTHROPIC_API_KEY.",
     };
   }
 
@@ -161,13 +161,14 @@ export default defineEventHandler(async (event) => {
       });
       return {
         error: "sign_in_required",
-        reason: "sign in with email to purchase and use AI credits",
+        reason: "sign in with email to purchase and use AI runs",
       };
     }
     quotaOwner = verifiedOwner;
   }
 
-  let dec: { ok: boolean; remaining: number; operationId: string } | null = null;
+  let dec: { ok: boolean; remaining: number; operationId: string } | null =
+    null;
   if (resolvedKey.consumesQuota) {
     dec = await decrementCredits(quotaOwner, undefined, "enrich");
     if (!dec.ok) {

@@ -1,4 +1,8 @@
-import { IconAlertCircle, IconCreditCard, IconSparkles } from "@tabler/icons-react";
+import {
+  IconAlertCircle,
+  IconCreditCard,
+  IconSparkles,
+} from "@tabler/icons-react";
 import PurchaseCreditsButton from "@/components/PurchaseCreditsButton";
 import type { AiAccessRecoveryReason } from "@/lib/ai-access-errors";
 
@@ -23,7 +27,7 @@ export default function CreditsRecoveryBanner({
               <IconAlertCircle size={16} />
             </span>
             {outOfCredits
-              ? "You're out of AI credits"
+              ? "You're out of AI runs"
               : noApiKey
                 ? "AI enrichment is not configured"
                 : "Sign in to use AI enrichment"}
@@ -33,7 +37,7 @@ export default function CreditsRecoveryBanner({
               ? "Buy another pack to keep enriching and revising design.md files."
               : noApiKey
                 ? "This deployment does not have a server Anthropic key configured. A local or self-hosted deployment can set ANTHROPIC_API_KEY in the environment."
-                : "Sign in with your email, then buy a pack of 10 AI extractions. The hosted service does not accept user Anthropic keys."}
+                : "Sign in with your email, then buy 10 AI runs for $5. Each run can enrich or revise a design.md. The hosted service does not accept user Anthropic keys."}
           </p>
 
           <div className="mt-3 grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
@@ -43,8 +47,8 @@ export default function CreditsRecoveryBanner({
                 className="mt-0.5 shrink-0 text-foreground"
               />
               <span>
-                Hosted AI runs on Free design.md credits, never user-supplied
-                Anthropic keys.
+                Hosted AI uses purchased runs, never user-supplied Anthropic
+                keys.
               </span>
             </div>
             <div className="flex gap-2 rounded-md border bg-muted/30 px-3 py-2">
@@ -53,8 +57,8 @@ export default function CreditsRecoveryBanner({
                 className="mt-0.5 shrink-0 text-foreground"
               />
               <span>
-                Credits are sold as simple one-time packs through Stripe. No
-                subscription is required.
+                Ten AI runs cost $5 as a one-time Stripe purchase. No
+                subscription is required, and runs do not expire.
               </span>
             </div>
           </div>

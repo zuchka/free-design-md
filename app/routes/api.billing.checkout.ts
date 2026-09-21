@@ -3,19 +3,21 @@ import { randomUUID } from "node:crypto";
 import { getRequestSession } from "../../server/lib/auth.js";
 import { getDbExec } from "../../server/db/index.js";
 import { getCreditPack, getStripe } from "../../server/lib/stripe.js";
+import { AI_RUN_PACK } from "../../shared/billing.js";
 
 export async function action({ request }: Route.ActionArgs) {
   const session = await getRequestSession(request);
   if (!session || session.user.isAnonymous) {
     return Response.json(
-      { error: "Sign in with your email before purchasing credits." },
+      { error: "Sign in with your email before purchasing AI runs." },
       { status: 401 },
     );
   }
 
   const body = (await request.json().catch(() => ({}))) as { packId?: string };
-  const pack = getCreditPack(body.packId ?? "credits-10");
-  if (!pack) return Response.json({ error: "Unknown credit pack." }, { status: 400 });
+  const pack = getCreditPack(body.packId ?? AI_RUN_PACK.id);
+  if (!pack)
+    return Response.json({ error: "Unknown credit pack." }, { status: 400 });
   if (!pack.priceId) {
     return Response.json(
       { error: "Credit purchases are not configured yet." },
@@ -24,7 +26,9 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const origin =
-    process.env.PUBLIC_ORIGIN ?? process.env.BETTER_AUTH_URL ?? new URL(request.url).origin;
+    process.env.PUBLIC_ORIGIN ??
+    process.env.BETTER_AUTH_URL ??
+    new URL(request.url).origin;
   const checkout = await getStripe().checkout.sessions.create({
     mode: "payment",
     customer_creation: "always",

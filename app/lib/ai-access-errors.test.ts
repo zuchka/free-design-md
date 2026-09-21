@@ -47,7 +47,7 @@ describe("AI access error helpers", () => {
     await expect(
       readAiAccessErrorResponse(response, "failed"),
     ).resolves.toEqual({
-      message: "You've used all available AI credits.",
+      message: "You've used all purchased AI runs.",
       recoveryReason: "out_of_credits",
     });
   });

@@ -1,17 +1,16 @@
 /**
  * AI-enrichment: take the deterministic DesignSystemData + screenshot
  * + deterministic markdown produced by `extract-design-md`, send them to
- * Claude with a schema reference (VoltAgent's MIT-licensed
- * Vercel DESIGN.md), and return a richer DESIGN.md following the Google
- * Stitch schema.
+ * Claude with a compact schema rubric, and return a richer DESIGN.md
+ * following the Google Stitch schema.
  *
  * Phase 2 changes vs. the spike:
  * - Streamed output (messages.stream) so the UI can render deltas as
  *   they arrive instead of blocking ~30-60s on a single response.
- * - max_tokens bumped from 16K → 32K so Linear-class rich brands no
- *   longer hit `stop_reason: "max_tokens"` truncation.
- * - System prompt sent as content blocks with cache_control:ephemeral
- *   for prompt caching on the ~40 KB VoltAgent reference.
+ * - Output is deliberately concise: the prompt targets 1,200–2,000 words and
+ *   max_tokens is a 16K runaway ceiling, not an output target.
+ * - The stable schema rubric is prompt-cached without attaching a 40 KB
+ *   reference artifact to every request.
  *
  * The action layer's `run()` consumes the stream and returns a single
  * result so CLI invocations (pnpm action enrich-design-md ...) still
@@ -21,9 +20,6 @@
 import { defineAction } from "./define-action.js";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
-import { existsSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { eq } from "drizzle-orm";
 import { buildEnrichmentPrompt, PROMPT_VERSION } from "./enrich-prompt.js";
 import { getDb, schema } from "../server/db/index.js";
@@ -34,7 +30,7 @@ import { applyDeterministicRadiusFidelity } from "../shared/radius-fidelity.js";
 import { recordActionRun } from "../server/lib/metrics.js";
 
 const ENRICH_MODEL = "claude-sonnet-4-6";
-const ENRICH_MAX_TOKENS = 64000;
+const ENRICH_MAX_TOKENS = 16_000;
 
 export interface EnrichUsage {
   inputTokens: number;
@@ -90,21 +86,6 @@ function parseDataUrl(dataUrl: string): {
     mediaType: m[1] as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
     data: m[2],
   };
-}
-
-function loadVoltAgentReference(): string {
-  const sourcePath = join(
-    process.cwd(),
-    "actions",
-    "voltagent-vercel-reference.md",
-  );
-  if (existsSync(sourcePath)) {
-    return readFileSync(sourcePath, "utf8");
-  }
-
-  const here = dirname(fileURLToPath(import.meta.url));
-  const bundledSiblingPath = join(here, "voltagent-vercel-reference.md");
-  return readFileSync(bundledSiblingPath, "utf8");
 }
 
 function cacheKey(url: string): string {
@@ -213,13 +194,11 @@ async function* enrichStreamInner(
     );
   }
 
-  const schemaReference = loadVoltAgentReference();
   const { systemBlocks, userText } = buildEnrichmentPrompt({
     url: input.url,
     designSystemData: input.designSystemData as DesignSystemData,
     deterministicMarkdown: input.deterministicMarkdown,
     signals: input.signals as ExtractedSignals,
-    schemaReference,
   });
 
   const { mediaType, data: imageData } = parseDataUrl(input.screenshotDataUrl);
@@ -232,7 +211,7 @@ async function* enrichStreamInner(
     stream = client.messages.stream({
       model: ENRICH_MODEL,
       max_tokens: ENRICH_MAX_TOKENS,
-      output_config: { effort: "max" },
+      output_config: { effort: "medium" },
       system: systemBlocks,
       messages: [
         {

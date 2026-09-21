@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { AI_RUN_PACK } from "../../shared/billing";
 
 interface PurchaseCreditsButtonProps {
   variant?: "default" | "outline" | "ghost";
@@ -21,7 +22,7 @@ interface PurchaseCreditsButtonProps {
 export default function PurchaseCreditsButton({
   variant = "default",
   className,
-  label = "Buy 10 credits",
+  label = `Buy ${AI_RUN_PACK.name} — ${AI_RUN_PACK.priceLabel}`,
 }: PurchaseCreditsButtonProps) {
   const session = authClient.useSession();
   const [open, setOpen] = useState(false);
@@ -45,7 +46,9 @@ export default function PurchaseCreditsButton({
     });
     setPending(false);
     if (result.error) {
-      setError("Could not send the sign-in link. Please check the email and try again.");
+      setError(
+        "Could not send the sign-in link. Please check the email and try again.",
+      );
       return;
     }
     setSent(true);
@@ -58,7 +61,7 @@ export default function PurchaseCreditsButton({
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packId: "credits-10" }),
+        body: JSON.stringify({ packId: AI_RUN_PACK.id }),
       });
       const result = (await response.json().catch(() => ({}))) as {
         url?: string;
@@ -93,10 +96,13 @@ export default function PurchaseCreditsButton({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>10 AI extractions</DialogTitle>
+            <DialogTitle>
+              {AI_RUN_PACK.name} for {AI_RUN_PACK.priceLabel}
+            </DialogTitle>
             <DialogDescription>
-              One credit runs one AI enrichment or one follow-up revision.
-              Deterministic URL extraction stays free.
+              Use a run to enrich a design.md or revise it with AI.
+              Deterministic URL extraction stays free, and purchased runs do not
+              expire.
             </DialogDescription>
           </DialogHeader>
 
@@ -107,17 +113,18 @@ export default function PurchaseCreditsButton({
                 One-time purchase through Stripe
               </div>
               <p className="mt-2 text-muted-foreground">
-                Credits do not expire and are attached to {sessionData?.user.email}.
+                Your AI runs will be attached to {sessionData?.user.email}.
               </p>
             </div>
           ) : sent ? (
             <div className="rounded-md border border-primary/25 bg-primary/10 p-4 text-sm">
-              Check your inbox. Open the sign-in link, then return here to buy credits.
+              Check your inbox. Open the sign-in link, then return here to buy
+              AI runs.
             </div>
           ) : (
             <form className="grid gap-3" onSubmit={sendSignInLink}>
               <label htmlFor="credit-email" className="text-sm font-medium">
-                Sign in to keep your credits
+                Sign in to keep your AI runs
               </label>
               <div className="flex gap-2">
                 <Input
@@ -146,7 +153,11 @@ export default function PurchaseCreditsButton({
           )}
 
           {error && (
-            <p id="credit-email-error" role="alert" className="text-sm text-destructive">
+            <p
+              id="credit-email-error"
+              role="alert"
+              className="text-sm text-destructive"
+            >
               {error}
             </p>
           )}

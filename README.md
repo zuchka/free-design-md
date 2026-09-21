@@ -1,13 +1,14 @@
 # free-design-md
 
-Paste any public URL and get a portable `design.md` specification. The deterministic extraction is free. AI enrichment and follow-up revisions use credits purchased as one-time packs through Stripe.
+Paste any public URL and get a portable `design.md` specification. The deterministic extraction is free. AI enrichment and follow-up revisions use AI runs purchased as one-time packs through Stripe.
 
 ## Product model
 
 - Deterministic extraction uses Playwright and computed CSS. It does not require an account or an LLM.
 - AI enrichment sends the deterministic artifact and screenshot to Claude Sonnet 4.6.
-- One AI enrichment or revision costs one credit.
-- Credits are sold in packs of 10 through Stripe Checkout. There is no signup grant or subscription.
+- One AI enrichment or revision costs one AI run.
+- The launch pack is 10 AI runs for $5; runs do not expire.
+- AI runs are sold in packs of 10 through Stripe Checkout. There is no signup grant or subscription.
 - Email magic links provide account recovery and attach purchases to a stable identity.
 - Self-hosted mode uses the deployment's `ANTHROPIC_API_KEY` without metering.
 
@@ -47,7 +48,7 @@ pnpm action extract-design-md --url stripe.com
 
 ## Stripe setup
 
-Create a one-time Stripe Price for a pack of 10 credits, then configure:
+Create a one-time $5 Stripe Price for a pack of 10 AI runs, then configure:
 
 ```bash
 STRIPE_SECRET_KEY=sk_test_...
@@ -112,14 +113,14 @@ CLI AI actions read `ANTHROPIC_API_KEY` from the environment. Action output is J
 
 ## API summary
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/extract?url=<url>&format=json` | Public deterministic extraction |
-| `POST` | `/api/enrich-design-md` | Stream AI enrichment; spends one hosted credit |
-| `POST` | `/api/iterate-design-md` | Stream a revision; spends one hosted credit |
-| `GET` | `/api/me/credits` | Read the signed-in user's wallet |
-| `POST` | `/api/billing/checkout` | Create a Stripe Checkout Session |
-| `POST` | `/api/billing/webhook` | Fulfill paid Checkout Sessions |
-| `GET` | `/api/saved-enrichments/:id` | Read a public saved artifact |
+| Method | Path                                 | Purpose                                        |
+| ------ | ------------------------------------ | ---------------------------------------------- |
+| `GET`  | `/api/extract?url=<url>&format=json` | Public deterministic extraction                |
+| `POST` | `/api/enrich-design-md`              | Stream AI enrichment; spends one hosted credit |
+| `POST` | `/api/iterate-design-md`             | Stream a revision; spends one hosted credit    |
+| `GET`  | `/api/me/credits`                    | Read the signed-in user's wallet               |
+| `POST` | `/api/billing/checkout`              | Create a Stripe Checkout Session               |
+| `POST` | `/api/billing/webhook`               | Fulfill paid Checkout Sessions                 |
+| `GET`  | `/api/saved-enrichments/:id`         | Read a public saved artifact                   |
 
 The public CLI and curated catalog live in [`zuchka/free-design-md-catalog`](https://github.com/zuchka/free-design-md-catalog).

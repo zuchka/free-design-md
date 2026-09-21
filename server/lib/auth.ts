@@ -56,7 +56,13 @@ async function transferAnonymousData(
   );
 }
 
-async function sendMagicLinkEmail({ email, url }: { email: string; url: string }) {
+async function sendMagicLinkEmail({
+  email,
+  url,
+}: {
+  email: string;
+  url: string;
+}) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     if (process.env.NODE_ENV !== "production") {
@@ -73,10 +79,11 @@ async function sendMagicLinkEmail({ email, url }: { email: string; url: string }
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: process.env.AUTH_EMAIL_FROM ?? "Free design.md <noreply@free.design>",
+      from:
+        process.env.AUTH_EMAIL_FROM ?? "Free design.md <noreply@free.design>",
       to: email,
       subject: "Sign in to Free design.md",
-      html: `<p>Use this link to sign in and access your extraction credits:</p><p><a href="${url}">Sign in to Free design.md</a></p><p>This link expires shortly.</p>`,
+      html: `<p>Use this link to sign in and access your AI runs:</p><p><a href="${url}">Sign in to Free design.md</a></p><p>This link expires shortly.</p>`,
     }),
   });
 

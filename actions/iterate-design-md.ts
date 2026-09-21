@@ -27,7 +27,7 @@ import { validateSectionScope } from "../shared/iteration-scope.js";
 import { recordActionRun } from "../server/lib/metrics.js";
 
 const ITERATE_MODEL = "claude-sonnet-4-6";
-const ITERATE_MAX_TOKENS = 16_000;
+const ITERATE_MAX_TOKENS = 12_000;
 
 export interface IterationUsage {
   inputTokens: number;
@@ -199,6 +199,7 @@ async function* iterateStreamInner(
     stream = client.messages.stream({
       model: ITERATE_MODEL,
       max_tokens: ITERATE_MAX_TOKENS,
+      output_config: { effort: "medium" },
       system: [
         { type: "text", text: system, cache_control: { type: "ephemeral" } },
       ],
@@ -269,6 +270,7 @@ async function collectIterationAttempt(
     stream = client.messages.stream({
       model: ITERATE_MODEL,
       max_tokens: ITERATE_MAX_TOKENS,
+      output_config: { effort: "medium" },
       system: [
         { type: "text", text: system, cache_control: { type: "ephemeral" } },
       ],

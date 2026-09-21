@@ -19,7 +19,7 @@ const PAGE_PATH = "/docs/api-and-cli";
 const PAGE_URL = docsUrl(PAGE_PATH);
 const PAGE_TITLE = "Free design.md API and CLI: Extract design.md from a URL";
 const PAGE_DESCRIPTION =
-  "Use Free design.md from HTTP APIs, the command line, or the public Docker image. Learn keyless hosted extraction, JSON, Markdown, and MDX outputs, hosted AI credits, local Anthropic environment keys, SSE responses, and CLI actions.";
+  "Use Free design.md from HTTP APIs, the command line, or the public Docker image. Learn keyless hosted extraction, JSON, Markdown, and MDX outputs, purchased AI runs, local Anthropic environment keys, SSE responses, and CLI actions.";
 
 export const links: LinksFunction = () => [
   { rel: "canonical", href: PAGE_URL },
@@ -128,14 +128,14 @@ const API_SURFACE = [
   {
     method: "POST",
     path: "/api/enrich-design-md",
-    key: "Hosted credits",
-    body: "Streams an AI-enriched design.md as Server-Sent Events. Hosted Free design.md uses its own server key and credits; it rejects user-supplied Anthropic keys.",
+    key: "Hosted AI runs",
+    body: "Streams an AI-enriched design.md as Server-Sent Events. Hosted Free design.md uses its own server key and purchased AI runs; it rejects user-supplied Anthropic keys.",
   },
   {
     method: "POST",
     path: "/api/iterate-design-md",
-    key: "Hosted credits",
-    body: "Streams a revised design.md from previousMarkdown and userPrompt. The hosted route uses purchased credits, not user Anthropic keys.",
+    key: "Hosted AI runs",
+    body: "Streams a revised design.md from previousMarkdown and userPrompt. The hosted route uses purchased AI runs, not user Anthropic keys.",
   },
   {
     method: "GET",
@@ -154,7 +154,7 @@ const API_SURFACE = [
 const KEY_RULES = [
   "Deterministic extraction does not call an LLM and does not need an Anthropic key.",
   "HTTP extraction can return JSON, raw design.md Markdown, or deterministic MDX.",
-  "Hosted AI enrichment runs on Free design.md credits and the deployment's server key.",
+  "Hosted AI enrichment uses purchased AI runs and the deployment's server key.",
   "The hosted service does not accept or store user Anthropic keys.",
   "Use your own Anthropic key only in a local checkout or self-hosted deployment via ANTHROPIC_API_KEY.",
 ];
@@ -206,7 +206,7 @@ const FAQS = [
   {
     question: "Can I send my Anthropic key to the hosted API?",
     answer:
-      "No. The hosted API rejects user-supplied Anthropic keys. Hosted AI runs through Free design.md credits.",
+      "No. The hosted API rejects user-supplied Anthropic keys. Hosted AI uses purchased AI runs.",
   },
   {
     question: "Is there a Brew package or desktop binary?",
@@ -349,9 +349,8 @@ export default function ApiAndCliRoute() {
               You can use Free design.md without the browser UI. The
               deterministic extractor works over HTTP and CLI with no AI key,
               and the HTTP API can return JSON, raw design.md Markdown, or MDX.
-              Hosted AI enrichment runs on Free design.md credits, while local
-              Docker and self-hosted deployments can use your own environment
-              key.
+              Hosted AI enrichment uses purchased AI runs, while local Docker
+              and self-hosted deployments can use your own environment key.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
@@ -392,8 +391,8 @@ export default function ApiAndCliRoute() {
 
       <section className="px-6 py-14">
         <SectionHeading eyebrow="API surface" title="What the hosted API does">
-          The hosted API exposes keyless extraction and credit-backed AI routes.
-          It does not accept user Anthropic keys in headers, bodies, or stored
+          The hosted API exposes keyless extraction and AI-run-backed routes. It
+          does not accept user Anthropic keys in headers, bodies, or stored
           browser settings.
         </SectionHeading>
 
@@ -428,9 +427,9 @@ export default function ApiAndCliRoute() {
             <SectionHeading eyebrow="HTTP" title="Hosted extraction is keyless">
               Use the hosted API for deterministic design.md extraction. The
               same endpoint can return structured JSON, raw Markdown, or MDX.
-              Hosted AI routes are available through the web app's
-              signed-in credit wallet, not by sending your Anthropic key
-              to Free design.md.
+              Hosted AI routes are available through the web app's signed-in
+              AI-run balance, not by sending your Anthropic key to Free
+              design.md.
             </SectionHeading>
 
             <div className="mt-8 grid gap-4">
@@ -566,8 +565,8 @@ export default function ApiAndCliRoute() {
             title="Run private AI behind your own key"
           >
             Self-host mode is explicit. It uses ANTHROPIC_API_KEY from the
-            deployment environment and does not spend hosted Free design.md
-            credits. Packaged binaries and Homebrew installs are a future
+            deployment environment and does not spend hosted Free design.md AI
+            runs. Packaged binaries and Homebrew installs are a future
             distribution path, not something this branch promises.
           </SectionHeading>
 
@@ -655,9 +654,9 @@ export default function ApiAndCliRoute() {
             >
               Free design.md exposes process-local Prometheus metrics for the
               hosted API wrapper. Metrics use bounded labels only: route,
-              status, key source, quota outcome, and artifact format.
-              They never include URLs, prompts, user IDs, org names, saved
-              design IDs, or API keys.
+              status, key source, quota outcome, and artifact format. They never
+              include URLs, prompts, user IDs, org names, saved design IDs, or
+              API keys.
             </SectionHeading>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -736,9 +735,8 @@ export default function ApiAndCliRoute() {
               The hosted service does not accept your Anthropic key.
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-background/70">
-              Hosted AI uses Free design.md credits. Local and self-hosted
-              runtimes use your own environment, where your key stays under your
-              control.
+              Hosted AI uses purchased AI runs. Local and self-hosted runtimes
+              use your own environment, where your key stays under your control.
             </p>
           </div>
           <Button asChild size="lg" variant="secondary">

@@ -43,6 +43,7 @@ export function buildIterationPrompt(
     "6. For dark-mode requests, keep the existing component names as the primary surface (for example button-primary, card-feature, section-band-light). It is acceptable to add dark-* helper tokens or variants, but the canonical components must point at dark surfaces, light text, and dark-compatible borders.",
     "7. If the user says an objective token is wrong (for example button radius, card radius, spacing, padding, font size, or line height), compare <previous_memo> against <deterministic_memo> and use the deterministic value as the source of truth. Preserve the enriched memo's editorial voice while correcting the token and any component references that must resolve to it.",
     "8. Never invent unrelated colors, fonts, or components. When a requested change needs new contrast values, derive them from the previous memo's palette and brand voice.",
+    "9. Keep the revision at or below the previous memo's length. Be concise and do not expand unchanged sections.",
     "",
     "Output: only the new design.md, starting with the YAML frontmatter. No code fences, no commentary.",
   ].join("\n");

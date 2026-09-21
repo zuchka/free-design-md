@@ -8,7 +8,7 @@ import type { ExtractedSignals } from "../shared/extract-design-system.js";
  * whenever the prompt structure changes in a way that should produce
  * different output for the same URL.
  */
-export const PROMPT_VERSION = "v3";
+export const PROMPT_VERSION = "v4";
 
 export interface EnrichmentPromptInput {
   /** The URL the user is enriching a DESIGN.md for. */
@@ -19,21 +19,13 @@ export interface EnrichmentPromptInput {
   deterministicMarkdown: string;
   /** Raw signals from the Playwright pass (so the LLM sees what we saw). */
   signals: ExtractedSignals;
-  /**
-   * Reference DESIGN.md to use as the schema exemplar. We pass it in
-   * rather than reading it from disk inside this module so the prompt
-   * builder stays a pure function. The action layer reads the .md off
-   * disk and threads it through.
-   */
-  schemaReference: string;
 }
 
 export interface EnrichmentPrompt {
   /**
-   * System prompt as Anthropic content blocks. The single block has
-   * `cache_control: { type: "ephemeral" }` so the entire ~40 KB
-   * VoltAgent reference + stable instructions hit the prompt cache on
-   * the second and subsequent calls.
+   * System prompt as Anthropic content blocks. The stable rubric uses
+   * `cache_control: { type: "ephemeral" }` so bursts of enrichments can
+   * still benefit from prompt caching.
    */
   systemBlocks: Anthropic.TextBlockParam[];
   /** Prose part of the user message. The action layer adds the screenshot as an image content block alongside this. */
@@ -44,45 +36,40 @@ export interface EnrichmentPrompt {
  * Build the system + user prompt for AI enrichment of a DESIGN.md file.
  *
  * The LLM's job is to take our deterministic CSS-derived extraction
- * and synthesise a richer DESIGN.md following Google Stitch's schema
- * (as exemplified by VoltAgent's hand-curated catalogue). It MUST
- * stay grounded in the signals/screenshot we provide — no invention
- * of colours, fonts, components that aren't visibly present.
+ * and synthesise a concise, richer DESIGN.md following the Google Stitch
+ * schema. It MUST stay grounded in the signals/screenshot we provide — no
+ * invention of colours, fonts, components that aren't visibly present.
  */
 export function buildEnrichmentPrompt(
   input: EnrichmentPromptInput,
 ): EnrichmentPrompt {
-  const {
-    url,
-    designSystemData,
-    deterministicMarkdown,
-    signals,
-    schemaReference,
-  } = input;
+  const { url, designSystemData, deterministicMarkdown, signals } = input;
 
-  const systemPrompt = `You are a senior design-systems writer producing a DESIGN.md file for a brand. DESIGN.md is a plain-text design-system document (concept introduced by Google Stitch) that AI agents read to generate consistent UI.
+  const systemPrompt = `You are a senior design-systems writer producing a concise DESIGN.md file for a brand. DESIGN.md is a plain-text design-system document that humans and AI agents use to recreate a site's visual language consistently.
 
-Your job: given (a) a deterministic CSS-derived extraction of a real live website, (b) a full-page screenshot of that site, and (c) a reference DESIGN.md showing the target schema, produce a new DESIGN.md for the user's URL that matches the reference's schema and editorial quality.
+Your job: given a deterministic CSS-derived extraction and a screenshot of a real website, produce an accurate, useful DESIGN.md for the user's URL.
 
 ## Schema you must produce
 
-Match the reference's structure exactly:
+Start with YAML frontmatter delimited by '---'. Use these top-level keys in order:
 
-1. YAML frontmatter with these top-level blocks (in this order):
-   - 'version', 'name', 'description' (one paragraph of editorial brand-voice prose — see Editorial voice below)
-   - 'colors' — flat key:value pairs with SEMANTIC names (e.g. 'primary', 'on-primary', 'ink', 'body', 'mute', 'hairline', 'canvas', 'canvas-soft', 'link', 'success', 'error', 'warning', plus any brand-distinctive accents and gradient stop pairs). Aim for 15–30 colour tokens.
-   - 'typography' — named type-scale tokens (e.g. 'display-xl', 'display-lg', 'display-md', 'body-lg', 'body-md', 'body-sm', 'caption', 'code', 'button-md', 'button-lg'), each with 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', and 'letterSpacing' where applicable.
-   - 'rounded' — named radii ('none', 'xs', 'sm', 'md', 'lg', 'xl', 'pill', 'full' etc.).
-   - 'spacing' — named scale ('xxs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', etc.).
-   - 'components' — 15+ named components (e.g. 'nav-bar', 'nav-link', 'nav-cta-signup', 'button-primary', 'button-secondary', 'card-marketing', 'pricing-card', 'pricing-card-featured', 'hero-band', 'feature-card', 'footer', 'badge', 'form-input', 'tab-pill', 'link-inline' etc.). Each component's values MUST use token references to the scales above using the curly-brace syntax: e.g. 'padding: "{spacing.lg} {spacing.xl}"', 'backgroundColor: "{colors.primary}"', 'rounded: "{rounded.md}"', 'typography: "{typography.body-md}"'.
+1. 'version', 'name', and a one-paragraph 'description'.
+2. 'colors': 10–18 semantically named tokens grounded in observed values.
+3. 'typography': 7–10 named roles with fontFamily, fontSize, fontWeight, lineHeight, and letterSpacing when observed.
+4. 'rounded': only distinct radii the site actually uses.
+5. 'spacing': a compact named scale based on observed spacing.
+6. 'components': 8–12 high-value components visible on the page. Component values must reference the scales above using strings such as "{colors.primary}", "{spacing.lg}", and "{rounded.md}" instead of repeating raw values.
 
-2. After the frontmatter, prose sections (use H2 headings):
-   - '## Overview' — 2–4 short paragraphs about the brand's design language.
-   - '## Colors' — categorised colour bullets, each linking back to its token name.
-   - '## Typography' — type-scale table (Markdown table) + a 'Principles' subsection capturing the brand's typographic voice (e.g. 'negative tracking is part of the voice', 'sentence-case headlines').
-   - '## Layout' — 'Spacing System', 'Grid & Container', and 'Whitespace Philosophy' subsections.
-   - '## Elevation & Depth' — table of shadow levels if the brand uses elevated cards / modals.
-   - Closing 'Dos / Don'ts' lists where applicable.
+After the frontmatter, use these H2 sections:
+- '## Overview': 1–2 short paragraphs identifying the strongest visual rules.
+- '## Colors': grouped bullets explaining where the important tokens appear.
+- '## Typography': a compact type-scale table followed by 2–4 brand-specific principles.
+- '## Layout': concise notes on spacing, container/grid, and whitespace.
+- '## Components': short implementation notes for the most important components. Do not repeat every YAML property.
+- '## Elevation & Depth' only when the page visibly uses shadows, overlays, or elevation.
+- '## Do's and Don'ts': 4–6 concrete bullets per list.
+
+Target 1,200–2,000 words. Every paragraph must add implementation guidance; do not restate the YAML line by line. Prefer a smaller accurate system over an exhaustive speculative one.
 
 ## Editorial voice
 
@@ -97,18 +84,10 @@ Match the reference's structure exactly:
 2. **Never invent components.** If you can't see a 'pricing-card' in the screenshot, don't add one. Better to ship a smaller, accurate component list than a confabulated rich one.
 3. **Never invent font names.** Use only the fonts present in the extracted typography signals. If the brand uses a proprietary face you can't name, write its closest open-source substitute as a 'fallback' note.
 4. **Token references are mandatory in components.** Component values must reference scales by '{token}' syntax, never raw values. The scales must be defined in the frontmatter blocks above.
-5. **The reference is for SCHEMA, not CONTENT.** Match the reference's SHAPE. Do not copy its colours, names, or prose — those belong to Vercel, not to the URL you're enriching.
-6. **fontFamily must be a single fully-quoted string.** Write fontFamily: "Courier New, Courier, monospace" — the entire font stack inside one set of double quotes. Never write fontFamily: "Courier New", Courier, monospace — quoting only the first name breaks YAML because the parser reads "Courier New" as the complete scalar and errors on the unquoted tail.
-7. **Scalar values containing ": " must be quoted.** If any value (especially the top-level description) contains a colon followed by a space, wrap the entire value in double quotes, e.g. description: "A brand: that uses colons".
-8. **Measured radii are source-of-truth tokens.** When deterministic extraction or raw signals include button, card, or pill radii, preserve those exact measured radius values in the 'rounded' scale and make the matching components reference them. Do not convert a measured square/4px/6px/8px button into a pill just because the reference DESIGN.md uses pill buttons. For example, if the extracted primary button radius is 4px, 'button-primary' must resolve to 4px.
-
-## Reference DESIGN.md (Vercel — VoltAgent, MIT)
-
-This is the SCHEMA TARGET. Match the structure. Do NOT reuse Vercel's specifics.
-
-\`\`\`markdown
-${schemaReference}
-\`\`\`
+5. **fontFamily must be a single fully-quoted string.** Write fontFamily: "Courier New, Courier, monospace" — the entire font stack inside one set of double quotes.
+6. **Scalar values containing ": " must be quoted.** If any value contains a colon followed by a space, wrap the entire value in double quotes.
+7. **Measured radii are source-of-truth tokens.** Preserve exact measured button, card, and pill radii. Never turn a measured square or lightly rounded CTA into a pill.
+8. **Be concise.** Do not add speculative ecommerce, dashboard, authentication, or modal components just to make the document look comprehensive.
 
 ## Output
 
@@ -147,11 +126,12 @@ ${signalsSummary}
 ---
 
 Produce a richer DESIGN.md that:
-- Matches the reference's SCHEMA exactly (frontmatter blocks with named tokens + token references, then prose sections).
+- Uses the required schema (frontmatter blocks with named tokens and token references, followed by concise implementation guidance).
 - Uses ONLY the colours/fonts present above or visible in the screenshot.
 - Preserves objective measurements from the deterministic extraction, especially button radius, card radius, pill radius, padding, and typography sizes.
 - Has a brand-specific editorial voice in the description and Overview — not generic.
-- Names 15+ components based on what is actually visible in the screenshot.
+- Names 8–12 useful components based on what is actually visible in the screenshot.
+- Stays within 1,200–2,000 words and avoids repeating the same observation in multiple sections.
 
 Reply with the DESIGN.md file content only.`;
 
@@ -240,7 +220,7 @@ function summariseSignals(signals: ExtractedSignals): string {
   ];
   const cssVarsOfInterest = Object.entries(signals.cssVars ?? {})
     .filter(([k]) => interestingVarPatterns.some((p) => p.test(k)))
-    .slice(0, 40);
+    .slice(0, 20);
   if (cssVarsOfInterest.length) {
     lines.push("- Brand-relevant CSS custom properties from `:root`:");
     for (const [k, v] of cssVarsOfInterest) lines.push(`  - \`${k}: ${v}\``);

@@ -7,7 +7,7 @@ export default function CreditsChip() {
     <PurchaseCreditsButton
       variant="outline"
       className="h-8 px-2.5 text-xs"
-      label={credits ? `${credits.remaining} credits` : "Buy credits"}
+      label={credits ? `${credits.remaining} AI runs` : "Buy AI runs"}
     />
   );
 }
