@@ -31,7 +31,7 @@ const CODE_SNIPPETS = [
     id: "http",
     label: "HTTP",
     icon: IconApi,
-    code: 'curl "https://free-design-md.agent-native.com/api/extract?url=https://stripe.com&format=json"',
+    code: 'curl "https://freedesign.md/api/extract?url=https://stripe.com&format=json"',
   },
   {
     id: "cli",

@@ -1,4 +1,4 @@
-export const DOCS_SITE_URL = "https://free-design-md.agent-native.com";
+export const DOCS_SITE_URL = "https://freedesign.md";
 
 export const DOCS_ARTICLES = [
   {

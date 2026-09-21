@@ -11,7 +11,7 @@ import { DocsPageLayout } from "@/components/DocsPageLayout";
 import { DocsRelatedArticles } from "@/components/DocsRelatedArticles";
 import { Button } from "@/components/ui/button";
 
-const SITE_URL = "https://free-design-md.agent-native.com";
+const SITE_URL = "https://freedesign.md";
 const PAGE_PATH = "/docs/what-is-design-md";
 const PAGE_URL = `${SITE_URL}${PAGE_PATH}`;
 const PAGE_TITLE = "What is a design.md? - Free design.md";

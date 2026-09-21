@@ -45,15 +45,15 @@ export function meta() {
 }
 
 const HTTP_EXAMPLE = `# Hosted deterministic extraction: no Anthropic key required.
-curl "https://free-design-md.agent-native.com/api/extract?url=https://stripe.com&format=json" \\
+curl "https://freedesign.md/api/extract?url=https://stripe.com&format=json" \\
   -o extract.json
 
 # Raw design.md Markdown. You can also omit format or use format=md.
-curl "https://free-design-md.agent-native.com/api/extract?url=https://stripe.com&format=markdown" \\
+curl "https://freedesign.md/api/extract?url=https://stripe.com&format=markdown" \\
   -o design.md
 
 # Export-ready MDX with designMd, previewHtml, and a TokenPreview component.
-curl "https://free-design-md.agent-native.com/api/extract?url=https://stripe.com&format=mdx" \\
+curl "https://freedesign.md/api/extract?url=https://stripe.com&format=mdx" \\
   -o design.mdx`;
 
 const CATALOG_CLI_EXAMPLE = `# Browse every curated design.md available for download.
@@ -116,7 +116,7 @@ scrape_configs:
       credentials: replace-with-a-long-random-token
     static_configs:
       - targets:
-          - free-design-md.agent-native.com`;
+          - freedesign.md`;
 
 const API_SURFACE = [
   {
