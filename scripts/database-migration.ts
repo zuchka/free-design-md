@@ -405,6 +405,7 @@ function canonicalRows(
     .map((row) =>
       JSON.stringify(columns.map((column) => canonicalValue(row[column]))),
     )
+    .sort()
     .join("\n");
 }
 
