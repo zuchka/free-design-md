@@ -115,6 +115,13 @@ export const auth = betterAuth({
     }),
     magicLink({ sendMagicLink: sendMagicLinkEmail }),
   ],
+  advanced: {
+    ipAddress: {
+      // Railway overwrites this single-value header at its public edge.
+      // Avoid trusting the client-controllable X-Forwarded-For chain.
+      ipAddressHeaders: ["x-real-ip"],
+    },
+  },
   trustedOrigins: [baseURL],
 });
 
