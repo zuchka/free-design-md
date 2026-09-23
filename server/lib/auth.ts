@@ -15,45 +15,42 @@ async function transferAnonymousData(
   if (anonymousOwnerId === verifiedOwnerId) return;
 
   const db = getDbExec();
-  await db.batch(
-    [
-      {
-        sql: `INSERT INTO credit_wallets (owner_id, balance, lifetime_purchased)
-              VALUES (?, 0, 0)
+  await db.batch([
+    {
+      sql: `INSERT INTO app.credit_wallets (owner_id, balance, lifetime_purchased)
+              VALUES ($1, 0, 0)
               ON CONFLICT(owner_id) DO NOTHING`,
-        args: [verifiedOwnerId],
-      },
-      {
-        sql: `UPDATE credit_wallets
-              SET balance = balance + COALESCE((SELECT balance FROM credit_wallets WHERE owner_id = ?), 0),
-                  lifetime_purchased = lifetime_purchased + COALESCE((SELECT lifetime_purchased FROM credit_wallets WHERE owner_id = ?), 0),
-                  updated_at = datetime('now')
-              WHERE owner_id = ?`,
-        args: [anonymousOwnerId, anonymousOwnerId, verifiedOwnerId],
-      },
-      {
-        sql: "UPDATE fdmd_saved_enrichments SET owner_id = ? WHERE owner_id = ?",
-        args: [verifiedOwnerId, anonymousOwnerId],
-      },
-      {
-        sql: "UPDATE credit_ledger SET owner_id = ? WHERE owner_id = ?",
-        args: [verifiedOwnerId, anonymousOwnerId],
-      },
-      {
-        sql: "UPDATE credit_operations SET owner_id = ? WHERE owner_id = ?",
-        args: [verifiedOwnerId, anonymousOwnerId],
-      },
-      {
-        sql: "UPDATE purchases SET owner_id = ? WHERE owner_id = ?",
-        args: [verifiedOwnerId, anonymousOwnerId],
-      },
-      {
-        sql: "DELETE FROM credit_wallets WHERE owner_id = ?",
-        args: [anonymousOwnerId],
-      },
-    ],
-    "write",
-  );
+      args: [verifiedOwnerId],
+    },
+    {
+      sql: `UPDATE app.credit_wallets
+              SET balance = balance + COALESCE((SELECT balance FROM app.credit_wallets WHERE owner_id = $1), 0),
+                  lifetime_purchased = lifetime_purchased + COALESCE((SELECT lifetime_purchased FROM app.credit_wallets WHERE owner_id = $1), 0),
+                  updated_at = to_char(timezone('utc', statement_timestamp()), 'YYYY-MM-DD HH24:MI:SS')
+              WHERE owner_id = $2`,
+      args: [anonymousOwnerId, verifiedOwnerId],
+    },
+    {
+      sql: "UPDATE app.fdmd_saved_enrichments SET owner_id = $1 WHERE owner_id = $2",
+      args: [verifiedOwnerId, anonymousOwnerId],
+    },
+    {
+      sql: "UPDATE app.credit_ledger SET owner_id = $1 WHERE owner_id = $2",
+      args: [verifiedOwnerId, anonymousOwnerId],
+    },
+    {
+      sql: "UPDATE app.credit_operations SET owner_id = $1 WHERE owner_id = $2",
+      args: [verifiedOwnerId, anonymousOwnerId],
+    },
+    {
+      sql: "UPDATE app.purchases SET owner_id = $1 WHERE owner_id = $2",
+      args: [verifiedOwnerId, anonymousOwnerId],
+    },
+    {
+      sql: "DELETE FROM app.credit_wallets WHERE owner_id = $1",
+      args: [anonymousOwnerId],
+    },
+  ]);
 }
 
 async function sendMagicLinkEmail({
@@ -101,7 +98,8 @@ export const auth = betterAuth({
       ? undefined
       : "free-design-md-local-development-secret-change-me"),
   database: drizzleAdapter(getDb(), {
-    provider: "sqlite",
+    provider: "pg",
+    schemaName: "app",
     schema: {
       user: schema.authUsers,
       session: schema.authSessions,

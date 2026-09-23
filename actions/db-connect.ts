@@ -38,13 +38,11 @@ function upsertEnvLine(lines: string[], key: string, value: string): string[] {
 }
 
 export default async function main(args: string[]) {
-  const { url, token, help } = parseArgs(args);
+  const { url, help } = parseArgs(args);
 
   if (help) {
-    console.log(
-      "Usage: pnpm action db-connect --url <DATABASE_URL> [--token <DATABASE_AUTH_TOKEN>]",
-    );
-    console.log("\nWrites DATABASE_URL and DATABASE_AUTH_TOKEN to .env");
+    console.log("Usage: pnpm action db-connect --url <POSTGRES_DATABASE_URL>");
+    console.log("\nWrites DATABASE_URL to .env");
     return;
   }
 
@@ -62,9 +60,6 @@ export default async function main(args: string[]) {
 
   try {
     upsertEnvLine(lines, "DATABASE_URL", url);
-    if (token) {
-      upsertEnvLine(lines, "DATABASE_AUTH_TOKEN", token);
-    }
   } catch (err) {
     console.error(
       `Error: ${err instanceof Error ? err.message : "Invalid value"}`,
@@ -75,9 +70,6 @@ export default async function main(args: string[]) {
   fs.writeFileSync(envPath, lines.join("\n"));
 
   console.log(`\nDatabase connection saved to .env`);
-  console.log(
-    `  DATABASE_URL=${url.startsWith("file:") ? url : url.replace(/\/\/.*@/, "//***@")}`,
-  );
-  if (token) console.log(`  DATABASE_AUTH_TOKEN=***`);
+  console.log(`  DATABASE_URL=${url.replace(/\/\/.*@/, "//***@")}`);
   console.log(`\nRestart the dev server for changes to take effect.`);
 }

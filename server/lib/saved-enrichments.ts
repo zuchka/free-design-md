@@ -85,7 +85,7 @@ export async function saveEnrichmentSnapshot(
   const exec = getDbExec();
 
   await exec.execute({
-    sql: `INSERT INTO fdmd_saved_enrichments (
+    sql: `INSERT INTO app.fdmd_saved_enrichments (
             id,
             owner_id,
             source_url,
@@ -103,7 +103,7 @@ export async function saveEnrichmentSnapshot(
             stop_reason,
             created_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
     args: [
       id,
       input.owner.ownerId,
@@ -134,8 +134,8 @@ export async function listSavedEnrichmentsForOwner(
   const exec = getDbExec();
   const result = await exec.execute({
     sql: `SELECT id, source_url, title, parent_id, root_id, iteration_prompt, model, stop_reason, created_at, updated_at
-          FROM fdmd_saved_enrichments
-          WHERE owner_id = ?
+          FROM app.fdmd_saved_enrichments
+          WHERE owner_id = $1
           ORDER BY created_at DESC`,
     args: [ownerId],
   });
@@ -190,8 +190,8 @@ export async function getPublicSavedEnrichment(
                  stop_reason,
                  created_at,
                  updated_at
-          FROM fdmd_saved_enrichments
-          WHERE id = ?`,
+          FROM app.fdmd_saved_enrichments
+          WHERE id = $1`,
     args: [id],
   });
   const row = result.rows[0] as unknown as SavedEnrichmentRow | undefined;
@@ -205,8 +205,8 @@ export async function deleteSavedEnrichmentForOwner(
 ): Promise<boolean> {
   const exec = getDbExec();
   const result = await exec.execute({
-    sql: `DELETE FROM fdmd_saved_enrichments
-          WHERE id = ? AND owner_id = ?`,
+    sql: `DELETE FROM app.fdmd_saved_enrichments
+          WHERE id = $1 AND owner_id = $2`,
     args: [id, ownerId],
   });
   return Number(result.rowsAffected ?? 0) > 0;

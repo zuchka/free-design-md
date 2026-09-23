@@ -430,10 +430,10 @@ interface SuccessArgs {
 async function insertSuccess(a: SuccessArgs): Promise<void> {
   const exec = getDbExec();
   await exec.execute({
-    sql: `INSERT INTO fdmd_iterations
+    sql: `INSERT INTO app.fdmd_iterations
           (id, session_id, parent_id, url, owner, user_prompt, section_target,
            markdown, model, usage_json, stop_reason)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     args: [
       a.id,
       a.sessionId,
@@ -463,10 +463,10 @@ interface RejectedArgs {
 async function insertRejected(a: RejectedArgs): Promise<void> {
   const exec = getDbExec();
   await exec.execute({
-    sql: `INSERT INTO fdmd_iterations
+    sql: `INSERT INTO app.fdmd_iterations
           (id, session_id, parent_id, url, owner, user_prompt, section_target,
            markdown, model, rejected_reason)
-          VALUES (?, ?, ?, ?, ?, ?, ?, '', '', ?)`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7, '', '', $8)`,
     args: [
       randomUUID(),
       a.sessionId,

@@ -2,14 +2,12 @@ import "dotenv/config";
 import extractDesignMd from "./extract-design-md.js";
 import enrichDesignMd from "./enrich-design-md.js";
 import iterateDesignMd from "./iterate-design-md.js";
-import exportDesignMd from "./export-design-md.js";
 import dbHealth from "./db-health.js";
 
 const actions = {
   "extract-design-md": extractDesignMd,
   "enrich-design-md": enrichDesignMd,
   "iterate-design-md": iterateDesignMd,
-  "export-design-md": exportDesignMd,
   "db-health": dbHealth,
 } as const;
 
@@ -32,7 +30,8 @@ function parseArgs(argv: string[]): Record<string, unknown> {
   const input: Record<string, unknown> = {};
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
-    if (!token?.startsWith("--")) throw new Error(`Unexpected argument: ${token}`);
+    if (!token?.startsWith("--"))
+      throw new Error(`Unexpected argument: ${token}`);
     const key = token.slice(2);
     const next = argv[index + 1];
     if (!next || next.startsWith("--")) {
@@ -47,7 +46,9 @@ function parseArgs(argv: string[]): Record<string, unknown> {
 
 const [actionName, ...argv] = process.argv.slice(2);
 if (!actionName || !(actionName in actions)) {
-  console.error(`Usage: pnpm action <${Object.keys(actions).join("|")}> [--key value]`);
+  console.error(
+    `Usage: pnpm action <${Object.keys(actions).join("|")}> [--key value]`,
+  );
   process.exitCode = 1;
 } else {
   try {

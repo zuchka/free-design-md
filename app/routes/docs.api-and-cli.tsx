@@ -97,8 +97,7 @@ docker run --rm \\
   -p 3000:3000 \\
   -e FREE_DESIGN_MD_SELF_HOSTED=1 \\
   -e ANTHROPIC_API_KEY \\
-  -e DATABASE_URL=file:./data/app.db \\
-  -v free-design-md-data:/app/data \\
+  -e DATABASE_URL=postgresql://user:password@postgres-host:5432/database \\
   ghcr.io/zuchka/free-design-md:latest`;
 
 const DOCKER_BUILD_EXAMPLE = `# Optional: build locally from a repository checkout.
@@ -605,8 +604,8 @@ export default function ApiAndCliRoute() {
                   icon: IconShieldCheck,
                 },
                 {
-                  title: "Persistent SQLite",
-                  body: "Mount /app/data so the local SQLite database survives container restarts.",
+                  title: "External Postgres",
+                  body: "Point DATABASE_URL at a migrated Postgres database; application startup never changes schema.",
                   icon: IconBrandDocker,
                 },
               ].map((item) => {

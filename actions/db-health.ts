@@ -1,4 +1,5 @@
 import { defineAction } from "./define-action.js";
+import { getDatabaseUrl } from "../server/db/client.js";
 import { getDbExec } from "../server/db/index.js";
 import { z } from "zod";
 
@@ -8,8 +9,8 @@ export default defineAction({
   http: { method: "GET" },
   run: async () => {
     const isLocal = (): boolean => {
-      const url = process.env.DATABASE_URL || "file:./data/app.db";
-      return url.startsWith("file:");
+      const hostname = new URL(getDatabaseUrl()).hostname;
+      return hostname === "localhost" || hostname === "127.0.0.1";
     };
 
     try {

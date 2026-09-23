@@ -17,7 +17,7 @@ Public `/d/:id` snapshots created before the billing change remain readable. Leg
 ## Stack
 
 - React Router 7 Framework Mode + Vite
-- Drizzle ORM + libSQL/SQLite
+- Drizzle ORM + Supabase Postgres
 - Better Auth (anonymous sessions and email magic links)
 - Stripe Checkout + signed webhooks
 - H3 for the existing API handler adapter while routes move to native React Router resources
@@ -30,21 +30,36 @@ There is no Agent Native runtime, Builder Connect flow, A2A card, or embedded ag
 ```bash
 nvm use
 pnpm install
+pnpm db:start
+pnpm db:reset
 cp .env.example .env.local
 pnpm dev
 ```
 
-The development server runs at [http://localhost:8080](http://localhost:8080). Database migrations run automatically before development and production startup.
+The development server runs at [http://localhost:8080](http://localhost:8080).
+Schema changes are versioned in `supabase/migrations/`; application startup
+never runs DDL. Docker is required for the local Supabase database.
 
 Useful commands:
 
 ```bash
 pnpm typecheck
 pnpm test
+pnpm test:db
 pnpm build
-pnpm migrate
+pnpm db:test
+pnpm demo:reset
+pnpm demo:verify
 pnpm action extract-design-md --url stripe.com
 ```
+
+See [`docs/sqlite-to-supabase-runbook.md`](docs/sqlite-to-supabase-runbook.md)
+for snapshot, import, deterministic verification, deployment, and rollback.
+`pnpm demo:reset` rebuilds the local Supabase database, creates a sanitized
+production-shaped SQLite fixture, imports it, and prints the migration
+scoreboard. Interview delivery notes and the production safety gates live in
+[`docs/interview-demo-script.md`](docs/interview-demo-script.md) and
+[`docs/production-cutover-checklist.md`](docs/production-cutover-checklist.md).
 
 ## Stripe setup
 
@@ -92,12 +107,12 @@ docker run --rm \
   -p 3000:3000 \
   -e FREE_DESIGN_MD_SELF_HOSTED=1 \
   -e ANTHROPIC_API_KEY \
-  -e DATABASE_URL=file:./data/app.db \
-  -v free-design-md-data:/app/data \
+  -e DATABASE_URL=postgresql://user:password@postgres-host:5432/database \
   ghcr.io/zuchka/free-design-md:latest
 ```
 
-Self-hosted AI calls are unmetered and do not require Stripe or email configuration.
+Self-hosted AI calls are unmetered and do not require Stripe or email
+configuration. Apply the SQL migrations before starting the container.
 
 ## CLI actions
 

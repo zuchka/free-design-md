@@ -231,11 +231,7 @@ const metrics = [
   actionRuns,
 ];
 
-const counterMetrics = [
-  quotaEvents,
-  designArtifactEvents,
-  actionRuns,
-];
+const counterMetrics = [quotaEvents, designArtifactEvents, actionRuns];
 
 const histogramMetrics = [extractDuration, aiStreamDuration];
 
@@ -250,31 +246,19 @@ interface RawCounterRow {
   value: number | bigint;
 }
 
-let ensureCountersTablePromise: Promise<void> | null = null;
 let loggedPersistentMetricsError = false;
 const actionMetricCallerStorage = new AsyncLocalStorage<ActionMetricCaller>();
 
+function persistentMetricsDisabledForTests(): boolean {
+  return (
+    process.env.NODE_ENV === "test" && process.env.DATABASE_TESTS !== "true"
+  );
+}
+
 async function ensurePersistentCountersTable(): Promise<void> {
-  if (!ensureCountersTablePromise) {
-    ensureCountersTablePromise = (async () => {
-      const exec = getDbExec();
-      await exec.execute({
-        sql: `CREATE TABLE IF NOT EXISTS fdmd_metric_counters (
-          name TEXT NOT NULL,
-          label_key TEXT NOT NULL,
-          labels_json TEXT NOT NULL,
-          value INTEGER NOT NULL DEFAULT 0,
-          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-          PRIMARY KEY (name, label_key)
-        )`,
-        args: [],
-      });
-    })().catch((err) => {
-      ensureCountersTablePromise = null;
-      throw err;
-    });
-  }
-  await ensureCountersTablePromise;
+  // The table is created by versioned Supabase migrations. Runtime code never
+  // mutates database structure, so a missing table is surfaced as an operator
+  // error instead of being silently created with a divergent definition.
 }
 
 function logPersistentMetricsError(err: unknown): void {
@@ -288,16 +272,17 @@ async function persistCounterIncrement(
   labels: Labels,
   value: number,
 ): Promise<void> {
+  if (persistentMetricsDisabledForTests()) return;
   await ensurePersistentCountersTable();
   const exec = getDbExec();
   const key = labelKey(Object.keys(labels), labels);
   await exec.execute({
-    sql: `INSERT INTO fdmd_metric_counters (name, label_key, labels_json, value)
-          VALUES (?, ?, ?, ?)
+    sql: `INSERT INTO app.fdmd_metric_counters AS counters (name, label_key, labels_json, value)
+          VALUES ($1, $2, $3, $4)
           ON CONFLICT(name, label_key) DO UPDATE SET
             labels_json = excluded.labels_json,
-            value = fdmd_metric_counters.value + excluded.value,
-            updated_at = datetime('now')`,
+            value = counters.value + excluded.value,
+            updated_at = to_char(timezone('utc', statement_timestamp()), 'YYYY-MM-DD HH24:MI:SS')`,
     args: [metric.name, key, JSON.stringify(labels), value],
   });
 }
@@ -305,13 +290,16 @@ async function persistCounterIncrement(
 async function loadPersistedCounters(): Promise<
   Map<string, PersistedCounterRow[]>
 > {
+  if (persistentMetricsDisabledForTests()) {
+    throw new Error("Persistent metrics are disabled for unit tests");
+  }
   await ensurePersistentCountersTable();
   const names = counterMetrics.map((metric) => metric.name);
-  const placeholders = names.map(() => "?").join(", ");
+  const placeholders = names.map((_, index) => `$${index + 1}`).join(", ");
   const exec = getDbExec();
   const result = await exec.execute({
     sql: `SELECT name, labels_json, value
-          FROM fdmd_metric_counters
+          FROM app.fdmd_metric_counters
           WHERE name IN (${placeholders})
           ORDER BY name, label_key`,
     args: names,
@@ -335,11 +323,12 @@ async function loadPersistedCounters(): Promise<
 }
 
 async function resetPersistedCountersForTests(): Promise<void> {
+  if (persistentMetricsDisabledForTests()) return;
   try {
     await ensurePersistentCountersTable();
     const exec = getDbExec();
     await exec.execute({
-      sql: `DELETE FROM fdmd_metric_counters`,
+      sql: `DELETE FROM app.fdmd_metric_counters`,
       args: [],
     });
   } catch {

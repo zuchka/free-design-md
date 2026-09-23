@@ -8,7 +8,6 @@ import {
   recordIterateRequest,
   recordQuotaEvent,
   renderPrometheusMetrics,
-  resetInMemoryMetricsForTests,
   resetMetricsForTests,
   withActionMetricCaller,
 } from "./metrics";
@@ -91,19 +90,6 @@ describe("metrics registry", () => {
 
     expect(await renderPrometheusMetrics()).not.toContain(
       'fdmd_extract_duration_seconds_count{status="success"}',
-    );
-  });
-
-  it("renders persisted business counters after in-memory reset", async () => {
-    await recordActionRun({
-      action: "enrich-design-md",
-      status: "success",
-    });
-
-    resetInMemoryMetricsForTests();
-
-    expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_action_runs_total{action="enrich-design-md",status="success",caller="direct"} 1',
     );
   });
 

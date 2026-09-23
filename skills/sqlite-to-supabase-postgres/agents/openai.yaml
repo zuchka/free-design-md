@@ -1,0 +1,3 @@
+interface:
+  display_name: "SQLite to Supabase Postgres"
+  short_description: "Help with SQLite to Supabase Postgres tasks"
