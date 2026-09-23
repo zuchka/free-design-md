@@ -68,6 +68,8 @@ Open the private JSON report only if the interviewer asks how the checks work.
 
 ## 10:30–13:00 — Railway preview
 
+- Open
+  `https://free-design-md-supabase-preview-supabase-preview.up.railway.app`.
 - Load `/api/health` and show that it checks Postgres schema access.
 - Restore an imported session.
 - Open an imported public artifact by the same ID.
