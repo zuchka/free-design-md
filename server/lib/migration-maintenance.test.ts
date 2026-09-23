@@ -4,13 +4,30 @@ import { migrationWritePauseResponse } from "./migration-maintenance.js";
 describe("migration write pause", () => {
   afterEach(() => delete process.env.MIGRATION_WRITE_PAUSED);
 
-  it("allows reads during a cutover", () => {
+  it("allows health checks and pages during a cutover", () => {
     process.env.MIGRATION_WRITE_PAUSED = "1";
     expect(
       migrationWritePauseResponse(
         new Request("https://example.test/api/health", { method: "GET" }),
       ),
     ).toBeNull();
+    expect(
+      migrationWritePauseResponse(new Request("https://example.test/docs")),
+    ).toBeNull();
+  });
+
+  it("rejects API reads that can write caches, metrics, or sessions", () => {
+    process.env.MIGRATION_WRITE_PAUSED = "1";
+    expect(
+      migrationWritePauseResponse(
+        new Request("https://example.test/api/extract?url=https://example.com"),
+      )?.status,
+    ).toBe(503);
+    expect(
+      migrationWritePauseResponse(
+        new Request("https://example.test/api/auth/get-session"),
+      )?.status,
+    ).toBe(503);
   });
 
   it("rejects writes with a retryable response", async () => {

@@ -4,8 +4,11 @@ import { getRequestSession } from "../../server/lib/auth.js";
 import { getDbExec } from "../../server/db/index.js";
 import { getCreditPack, getStripe } from "../../server/lib/stripe.js";
 import { AI_RUN_PACK } from "../../shared/billing.js";
+import { migrationWritePauseResponse } from "../../server/lib/migration-maintenance.js";
 
 export async function action({ request }: Route.ActionArgs) {
+  const maintenanceResponse = migrationWritePauseResponse(request);
+  if (maintenanceResponse) return maintenanceResponse;
   const session = await getRequestSession(request);
   if (!session || session.user.isAnonymous) {
     return Response.json(

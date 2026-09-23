@@ -1,8 +1,11 @@
 import type { Route } from "./+types/api.billing.purchase.$sessionId";
 import { getRequestSession } from "../../server/lib/auth.js";
 import { getDbExec } from "../../server/db/index.js";
+import { migrationWritePauseResponse } from "../../server/lib/migration-maintenance.js";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
+  const maintenanceResponse = migrationWritePauseResponse(request);
+  if (maintenanceResponse) return maintenanceResponse;
   const session = await getRequestSession(request);
   if (!session || session.user.isAnonymous) {
     return Response.json({ error: "Sign in required." }, { status: 401 });
