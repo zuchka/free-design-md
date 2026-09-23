@@ -5,6 +5,8 @@
 - Railway project: `freedesign.md`
 - Environment: `supabase-preview`
 - Environment ID: `6c9317d3-b475-4641-aa80-b29b3bec9608`
+- Service: `free-design-md-supabase-preview`
+- Service ID: `aa995408-280d-4a8a-8c48-a7ac3af6f6c9`
 - Supabase project: `free-design-md-migration-demo`
 - Supabase project ref: `eigswwtmuptcizadsctd`
 - Region: Railway `us-west2`, Supabase `us-west-1`
@@ -22,6 +24,31 @@ ghcr.io/zuchka/free-design-md:supabase-preview
 
 It also publishes an immutable `sha-<commit>` tag. Production continues to use
 `latest`; a preview workflow dispatch cannot overwrite that tag.
+
+The image built from commit `1d34df18152a73c44d059b8c141981734a47d734`
+and was verified as a multi-architecture OCI image at digest:
+
+```text
+sha256:13e71f39991c3118ab1b14f8f386bb8e0efb7f3b0050f722f350d1e16a207e92
+```
+
+The Railway service is staged with this image and the `/api/health` deployment
+healthcheck. It has not been deployed yet.
+
+## Hosted import rehearsal
+
+A dedicated `free_design_preview` login inherits only the `free_design_app`
+group role. The synthetic SQLite fixture was imported through the Supavisor
+session pooler using that login, exercising the same connection path as the
+Railway service.
+
+- 18 rows imported across all 13 application tables.
+- Every table count and canonical digest matched the SQLite fixture.
+- Owner distributions matched for all tenant-owned tables.
+- All referential, wallet, ledger, checkout, and public-ID integrity checks
+  passed.
+- Reports are kept under the ignored `.migration-artifacts/demo/` directory so
+  connection metadata and rehearsal artifacts cannot be committed.
 
 ## Required preview variables
 
@@ -56,6 +83,7 @@ The preview is ready for traffic only when all checks pass:
 7. Credit reserve, commit, and refund pass.
 8. A service restart preserves all reads and writes without a volume.
 
-The preview service and its variables remain intentionally pending until the
-preview database credential can be transferred into Railway with explicit
-operator confirmation.
+The non-sensitive Railway variables are staged. `DATABASE_URL` and
+`BETTER_AUTH_SECRET` remain intentionally pending until those credentials can
+be transferred into Railway with explicit operator confirmation. Public origin
+variables and the Railway domain are set after the first healthy deployment.
