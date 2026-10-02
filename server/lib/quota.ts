@@ -199,7 +199,7 @@ export async function grantPurchasedCredits(
     if (event.rows.length === 0) return false;
 
     const purchase = await transaction.execute({
-      sql: `INSERT INTO app.purchases (
+      sql: `INSERT INTO app.purchases AS purchase (
               id, owner_id, stripe_checkout_session_id,
               stripe_payment_intent_id, pack_id, credits,
               amount_total, currency, status, fulfilled_at
@@ -207,7 +207,16 @@ export async function grantPurchasedCredits(
               $1, $2, $3, $4, $5, $6, $7, $8, 'fulfilled',
               to_char(timezone('utc', statement_timestamp()), 'YYYY-MM-DD HH24:MI:SS')
             )
-            ON CONFLICT(stripe_checkout_session_id) DO NOTHING
+            ON CONFLICT(stripe_checkout_session_id) DO UPDATE SET
+              status = 'fulfilled',
+              stripe_payment_intent_id = EXCLUDED.stripe_payment_intent_id,
+              credits = EXCLUDED.credits,
+              amount_total = EXCLUDED.amount_total,
+              currency = EXCLUDED.currency,
+              fulfilled_at = EXCLUDED.fulfilled_at
+            WHERE purchase.status = 'pending'
+              AND purchase.owner_id = EXCLUDED.owner_id
+              AND purchase.pack_id = EXCLUDED.pack_id
             RETURNING id`,
       args: [
         randomUUID(),
