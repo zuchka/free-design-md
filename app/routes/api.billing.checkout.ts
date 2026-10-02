@@ -10,7 +10,7 @@ export async function action({ request }: Route.ActionArgs) {
   const maintenanceResponse = migrationWritePauseResponse(request);
   if (maintenanceResponse) return maintenanceResponse;
   const session = await getRequestSession(request);
-  if (!session || session.user.isAnonymous) {
+  if (!session || session.user.isAnonymous || !session.user.emailVerified) {
     return Response.json(
       { error: "Sign in with your email before purchasing AI runs." },
       { status: 401 },
@@ -48,9 +48,9 @@ export async function action({ request }: Route.ActionArgs) {
   });
 
   await getDbExec().execute({
-    sql: `INSERT INTO purchases (
+    sql: `INSERT INTO app.purchases (
             id, owner_id, stripe_checkout_session_id, pack_id, credits, status
-          ) VALUES (?, ?, ?, ?, ?, 'pending')
+          ) VALUES ($1, $2, $3, $4, $5, 'pending')
           ON CONFLICT(stripe_checkout_session_id) DO NOTHING`,
     args: [randomUUID(), session.user.id, checkout.id, pack.id, pack.credits],
   });
