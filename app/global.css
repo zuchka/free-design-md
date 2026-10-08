@@ -13,6 +13,7 @@
   --color-popover: hsl(var(--popover));
   --color-popover-foreground: hsl(var(--popover-foreground));
   --color-primary: hsl(var(--primary));
+  --color-brand-text: hsl(var(--brand-text));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
@@ -44,13 +45,14 @@
   --popover-foreground: 0 0% 7%;
 
   --primary: 160.118 84.08% 39.412%; /* brand green #10b981 */
+  --brand-text: 162 94% 24%;         /* readable green on light surfaces */
   --primary-foreground: 0 0% 0%;     /* black-on-green */
 
   --secondary: 0 0% 94%;
   --secondary-foreground: 0 0% 14%;
 
   --muted: 0 0% 94%;
-  --muted-foreground: 0 0% 53%;      /* mute #888 */
+  --muted-foreground: 0 0% 40%;      /* readable secondary text #666 */
 
   --accent: 0 0% 94%;
   --accent-foreground: 0 0% 14%;

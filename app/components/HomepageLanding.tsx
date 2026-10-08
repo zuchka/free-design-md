@@ -135,7 +135,7 @@ export default function HomepageLanding({
             ))}
             <Link
               to="/examples"
-              className="rounded-full border border-primary/30 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+              className="rounded-full border border-primary/30 px-4 py-2 text-sm font-medium text-brand-text transition-colors hover:bg-primary/10"
             >
               Browse library
             </Link>
@@ -147,7 +147,7 @@ export default function HomepageLanding({
 
       <section className="grid min-w-0 gap-6 rounded-md border bg-secondary/25 p-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+          <p className="text-xs font-semibold uppercase tracking-wider text-brand-text">
             Use it from code
           </p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">
@@ -160,7 +160,7 @@ export default function HomepageLanding({
           </p>
           <Link
             to="/docs/api-and-cli"
-            className="mt-5 inline-flex text-sm font-medium text-primary hover:underline"
+            className="mt-5 inline-flex text-sm font-medium text-brand-text hover:underline"
           >
             Read the API and Docker guide
           </Link>
@@ -191,7 +191,7 @@ export default function HomepageLanding({
       <section className="flex flex-col gap-5 rounded-md border bg-secondary/25 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand-text">
               Free example library
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">
@@ -219,7 +219,7 @@ export default function HomepageLanding({
               className="inline-flex text-base font-semibold text-foreground"
               aria-label="free design.md home"
             >
-              free design<span className="text-primary">.md</span>
+              free design<span className="text-brand-text">.md</span>
             </Link>
             <p className="mt-2 max-w-xl leading-6">
               Portable design system artifacts for agents, docs, repos, and
@@ -258,7 +258,7 @@ function PopularExamplesPanel({
     <aside className="hidden rounded-md border bg-secondary/25 p-4 min-[1800px]:block">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+          <p className="text-xs font-semibold uppercase tracking-wider text-brand-text">
             Popular examples
           </p>
           <h2 className="mt-1 text-lg font-semibold tracking-tight">
@@ -267,7 +267,7 @@ function PopularExamplesPanel({
         </div>
         <Link
           to="/examples"
-          className="shrink-0 text-sm font-medium text-primary hover:underline"
+          className="shrink-0 text-sm font-medium text-brand-text hover:underline"
         >
           View all
         </Link>
@@ -318,7 +318,7 @@ function CopyCodeBlock({
     <div className="min-w-0 overflow-hidden rounded-md border bg-secondary/25">
       <div className="flex items-center justify-between border-b px-3 py-2">
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
-          <Icon size={16} className="text-primary" />
+          <Icon size={16} className="text-brand-text" />
           <span className="truncate">{snippet.label}</span>
         </div>
         <button
