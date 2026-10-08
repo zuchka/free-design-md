@@ -17,10 +17,11 @@ describe("ExampleCardGrid", () => {
 
     const stripeLink = screen.getByRole("link", { name: /stripe/i });
     expect(stripeLink.getAttribute("href")).toBe("/examples/stripe");
-    expect(stripeLink.querySelector('img[src="/assets/examples/logos/stripe.svg"]'))
-      .toBeTruthy();
+    expect(
+      stripeLink.querySelector('img[src="/assets/examples/logos/stripe.svg"]'),
+    ).toBeTruthy();
     expect(screen.getByText("stripe.com")).toBeTruthy();
-    expect(screen.getByText("Fintech & Crypto")).toBeTruthy();
+    expect(stripeLink.textContent).toContain("Fintech & Crypto");
     expect(screen.getByText(/Payment infrastructure/i)).toBeTruthy();
   });
 });

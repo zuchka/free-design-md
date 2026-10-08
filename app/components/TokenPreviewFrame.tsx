@@ -14,6 +14,7 @@ export default function TokenPreviewFrame({
   minHeight = 260,
 }: TokenPreviewFrameProps) {
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
   const [height, setHeight] = useState(minHeight);
   const hasHtml = html.trim().length > 0;
 
@@ -28,12 +29,7 @@ export default function TokenPreviewFrame({
     const nextHeight = Math.max(
       minHeight,
       Math.ceil(
-        Math.max(
-          doc.documentElement?.scrollHeight ?? 0,
-          doc.body?.scrollHeight ?? 0,
-          doc.documentElement?.offsetHeight ?? 0,
-          doc.body?.offsetHeight ?? 0,
-        ),
+        Math.max(doc.body?.scrollHeight ?? 0, doc.body?.offsetHeight ?? 0),
       ),
     );
     setHeight((current) =>
@@ -41,23 +37,25 @@ export default function TokenPreviewFrame({
     );
   }, [minHeight]);
 
+  const handleLoad = useCallback(() => {
+    observerRef.current?.disconnect();
+    resizeFrame();
+    const body = frameRef.current?.contentDocument?.body;
+    if (body && "ResizeObserver" in window) {
+      observerRef.current = new ResizeObserver(resizeFrame);
+      observerRef.current.observe(body);
+    }
+  }, [resizeFrame]);
+
   useEffect(() => {
     if (!hasHtml) {
       setHeight(minHeight);
       return undefined;
     }
 
-    let observer: ResizeObserver | null = null;
     const timeoutIds: number[] = [];
     const animationFrame = window.requestAnimationFrame(() => {
-      resizeFrame();
-
-      const doc = frameRef.current?.contentDocument;
-      if (!doc || !("ResizeObserver" in window)) return;
-
-      observer = new ResizeObserver(resizeFrame);
-      if (doc.documentElement) observer.observe(doc.documentElement);
-      if (doc.body) observer.observe(doc.body);
+      handleLoad();
     });
 
     for (const delay of [80, 250, 800]) {
@@ -67,9 +65,9 @@ export default function TokenPreviewFrame({
     return () => {
       window.cancelAnimationFrame(animationFrame);
       for (const timeoutId of timeoutIds) window.clearTimeout(timeoutId);
-      observer?.disconnect();
+      observerRef.current?.disconnect();
     };
-  }, [hasHtml, html, minHeight, resizeFrame]);
+  }, [hasHtml, html, minHeight, resizeFrame, handleLoad]);
 
   if (!hasHtml) {
     return (
@@ -90,7 +88,7 @@ export default function TokenPreviewFrame({
       sandbox="allow-same-origin"
       scrolling="no"
       tabIndex={-1}
-      onLoad={resizeFrame}
+      onLoad={handleLoad}
       className="pointer-events-none block w-full border-0"
       style={{ height }}
     />

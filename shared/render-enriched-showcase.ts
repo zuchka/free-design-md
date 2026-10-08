@@ -4,6 +4,7 @@ import type {
 } from "./parse-enriched-design-md";
 import { buildTokenMap, resolveTokenRefs } from "./parse-enriched-design-md";
 import { safe, escapeHtml, SAFE_COLOR, SAFE_SIZE } from "./preview-template";
+import { mutedColor, previewSurface, readableColor } from "./preview-colors";
 
 const SAFE_WEIGHT = /^[1-9]00$|^\d{3}$/;
 const SAFE_LHEIGHT = /^\d+(\.\d+)?(px|rem|em|%)?$/;
@@ -35,18 +36,34 @@ export function renderEnrichedPreview(
   enriched: EnrichedFrontmatter,
   markdownSource: string,
   title?: string,
+  options: { logoUrl?: string } = {},
 ): string {
   const tokenMap = buildTokenMap(enriched);
 
   // Base color tokens
-  const bg =
-    safe(
-      pick(enriched.colors, "canvas", "canvas-soft", "background"),
-      SAFE_COLOR,
-    ) || "#ffffff";
-  const text =
-    safe(pick(enriched.colors, "ink", "text"), SAFE_COLOR) || "#1a1a1a";
-  const primary = safe(enriched.colors["primary"] ?? "", SAFE_COLOR) || "";
+  const bg = previewSurface(
+    pick(enriched.colors, "canvas", "canvas-soft", "background"),
+  );
+  const text = readableColor(
+    bg,
+    pick(enriched.colors, "ink", "text"),
+    enriched.colors["on-primary"] ?? "",
+  );
+  const primary = enriched.colors["primary"]
+    ? previewSurface(enriched.colors["primary"], bg)
+    : text;
+  const onPrimary = readableColor(
+    primary,
+    enriched.colors["on-primary"] ?? "",
+    bg,
+    text,
+  );
+  const label = readableColor(bg, primary, text);
+  const muted = mutedColor(
+    bg,
+    text,
+    pick(enriched.colors, "mute", "muted", "text-muted"),
+  );
   const border =
     safe(pick(enriched.colors, "hairline", "border"), SAFE_COLOR) || "";
   const radius = safe(pick(enriched.rounded, "md", "sm"), SAFE_SIZE) || "8px";
@@ -122,13 +139,13 @@ export function renderEnrichedPreview(
       SAFE_SIZE,
     ) || radius;
   const cardRadius =
-    safe(pick(enriched.rounded, "xl", "lg", "md"), SAFE_SIZE) || radius;
+    safe(pick(enriched.rounded, "card", "xl", "lg", "md"), SAFE_SIZE) || radius;
 
   const safeTitle = escapeHtml(
-    (enriched.name ?? title ?? "Design System").trim(),
+    (title ?? enriched.name ?? "Design System").trim(),
   );
   const initial = escapeHtml(
-    ((enriched.name ?? title ?? "B").charAt(0) || "B").toUpperCase(),
+    ((title ?? enriched.name ?? "B").charAt(0) || "B").toUpperCase(),
   );
   const lede = escapeHtml(
     (enriched.description ?? "").trim() ||
@@ -137,6 +154,13 @@ export function renderEnrichedPreview(
   const primaryVar = primary || "var(--eds-text)";
   const borderVar =
     border || "color-mix(in srgb, var(--eds-text) 12%, var(--eds-bg))";
+  const logoUrl = options.logoUrl ?? "";
+  const safeLogo = /^(https?:\/\/[^\s"<>]+|\/[A-Za-z0-9/_:.-]+)$/.test(logoUrl)
+    ? logoUrl
+    : "";
+  const brandMark = safeLogo
+    ? `<span class="lp-brand-mark-wrap"><img class="lp-brand-mark" src="${escapeHtml(safeLogo)}" alt="${safeTitle} logo"></span>`
+    : `<div class="lp-brand-initials">${initial}</div>`;
 
   // ── Colors ────────────────────────────────────────────────────────────────────
   const colorEntries = Object.entries(enriched.colors);
@@ -253,14 +277,22 @@ export function renderEnrichedPreview(
         ]),
       );
 
-      const isButtonLike = !!(
-        resolved["backgroundColor"] &&
-        resolved["color"] &&
-        resolved["padding"]
+      const isButtonLike =
+        /button|cta/i.test(compName) &&
+        !!(
+          resolved["backgroundColor"] &&
+          (resolved["textColor"] || resolved["color"]) &&
+          resolved["padding"]
+        );
+      const componentBg = previewSurface(resolved["backgroundColor"] ?? "", bg);
+      const componentText = readableColor(
+        componentBg,
+        resolved["textColor"] ?? resolved["color"] ?? "",
+        text,
       );
       const livePreview = isButtonLike
         ? `<div class="eds-comp-preview">
-          <button style="background:${escapeHtml(safe(resolved["backgroundColor"] ?? "", SAFE_COLOR))};color:${escapeHtml(safe(resolved["color"] ?? "", SAFE_COLOR))};padding:${escapeHtml(safe(resolved["padding"] ?? "8px 16px", SAFE_PADDING))};border-radius:${escapeHtml(safe(resolved["borderRadius"] ?? resolved["rounded"] ?? "4px", SAFE_SIZE))};border:0;font-size:${escapeHtml(safe(resolved["fontSize"] ?? "14px", SAFE_SIZE))};font-weight:${escapeHtml(safe(resolved["fontWeight"] ?? "600", SAFE_WEIGHT))};cursor:pointer;">${escapeHtml(compName)}</button>
+          <button style="background:${componentBg};color:${componentText};padding:${escapeHtml(safe(resolved["padding"] ?? "8px 16px", SAFE_PADDING))};border-radius:${escapeHtml(safe(resolved["borderRadius"] ?? resolved["rounded"] ?? "4px", SAFE_SIZE))};border:1px solid var(--eds-border);font-size:${escapeHtml(safe(resolved["fontSize"] ?? "14px", SAFE_SIZE))};font-weight:${escapeHtml(safe(resolved["fontWeight"] ?? "600", SAFE_WEIGHT))};cursor:pointer;">${escapeHtml(compName)}</button>
         </div>`
         : "";
 
@@ -306,6 +338,7 @@ export function renderEnrichedPreview(
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI-Enriched — ${safeTitle}</title>
 <style>
 :root {
@@ -313,7 +346,9 @@ export function renderEnrichedPreview(
   --eds-text: ${text};
   --eds-primary: ${primaryVar};
   --eds-border: ${borderVar};
-  --eds-muted: color-mix(in srgb, var(--eds-text) 50%, var(--eds-bg));
+  --eds-muted: ${muted};
+  --eds-on-primary: ${onPrimary};
+  --eds-label: ${label};
   --eds-radius: ${radius};
   --eds-heading-font: ${headingFont};
   --eds-heading-weight: ${headingWeight};
@@ -328,19 +363,22 @@ export function renderEnrichedPreview(
 html, body { margin: 0; padding: 0; background: var(--eds-bg); color: var(--eds-text); font-family: var(--eds-body-font); font-weight: var(--eds-body-weight); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
 /* ── Landing page ─────────────────────────────────────── */
 .lp-nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px; border-bottom: 1px solid var(--eds-border); }
-.lp-brand { display: flex; align-items: center; gap: 12px; }
-.lp-brand-initials { width: 32px; height: 32px; border-radius: 6px; background: ${primary || "var(--eds-text)"}; color: var(--eds-bg); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; font-family: var(--eds-heading-font); }
+.lp-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.lp-brand-mark-wrap { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; background: #ffffff; border: 1px solid #d4d4d4; border-radius: 6px; }
+.lp-brand-mark { width: 32px; height: 32px; object-fit: contain; }
+.lp-brand-initials { width: 32px; height: 32px; flex-shrink: 0; border-radius: 6px; background: var(--eds-primary); color: var(--eds-on-primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; font-family: var(--eds-heading-font); }
 .lp-brand-name { font-family: var(--eds-heading-font); font-weight: var(--eds-heading-weight); font-size: 18px; letter-spacing: -0.2px; }
 .lp-nav-links { display: flex; gap: 24px; color: var(--eds-muted); font-size: 14px; }
 .lp-hero { padding: 96px 40px 48px; max-width: 960px; margin: 0 auto; }
-.lp-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${primary || "var(--eds-muted)"}; margin-bottom: 20px; }
+.lp-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--eds-label); margin-bottom: 20px; }
 .lp-hero h1 { font-family: var(--eds-heading-font); font-weight: var(--eds-heading-weight); font-size: var(--eds-h1-size); line-height: 1.08; letter-spacing: -1.5px; margin: 0 0 24px; text-wrap: balance; }
 .lp-lede { font-size: 18px; color: var(--eds-muted); margin: 0 0 40px; max-width: 640px; }
-.lp-ctas { display: flex; gap: 12px; }
-.lp-btn-primary { background: var(--eds-primary); color: var(--eds-bg); border: 0; border-radius: var(--eds-button-radius); padding: 12px 22px; font-family: var(--eds-body-font); font-weight: 600; font-size: 15px; cursor: pointer; }
+.lp-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+button { min-height: 44px; max-width: 100%; overflow-wrap: anywhere; }
+.lp-btn-primary { background: var(--eds-primary); color: var(--eds-on-primary); border: 1px solid var(--eds-border); border-radius: var(--eds-button-radius); padding: 12px 22px; font-family: var(--eds-body-font); font-weight: 600; font-size: 15px; cursor: pointer; }
 .lp-btn-ghost { background: transparent; color: var(--eds-text); border: 1px solid var(--eds-border); border-radius: var(--eds-button-radius); padding: 12px 22px; font-family: var(--eds-body-font); font-weight: 600; font-size: 15px; cursor: pointer; }
 .lp-cards { padding: 24px 40px 64px; max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.lp-card { padding: 24px; border-radius: var(--eds-card-radius); border: 1px solid var(--eds-border); }
+.lp-card { padding: 24px; border-radius: var(--eds-card-radius); border: 1px solid var(--eds-border); min-width: 0; overflow-wrap: anywhere; }
 .lp-card h3 { font-family: var(--eds-heading-font); font-weight: var(--eds-heading-weight); font-size: var(--eds-h3-size); margin: 0 0 12px; letter-spacing: -0.3px; }
 .lp-card p { font-size: 14px; color: var(--eds-muted); margin: 0; line-height: 1.5; }
 .lp-footer { padding: 20px 40px; font-size: 13px; color: var(--eds-muted); border-top: 1px solid var(--eds-border); }
@@ -351,7 +389,7 @@ html, body { margin: 0; padding: 0; background: var(--eds-bg); color: var(--eds-
 .eds-header-sub { font-size: 13px; color: var(--eds-muted); margin-top: 4px; }
 .eds-section { margin-bottom: 56px; }
 .eds-section-title { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--eds-muted); margin: 0 0 20px; display: flex; align-items: center; gap: 8px; }
-.eds-count { font-size: 10px; font-weight: 500; letter-spacing: 0.5px; background: color-mix(in srgb, var(--eds-text) 8%, var(--eds-bg)); border-radius: 10px; padding: 2px 8px; }
+.eds-count { font-size: 10px; font-weight: 500; letter-spacing: 0.5px; color: var(--eds-text); background: color-mix(in srgb, var(--eds-text) 8%, var(--eds-bg)); border-radius: 10px; padding: 2px 8px; }
 .eds-swatches { display: flex; flex-wrap: wrap; gap: 16px; }
 .eds-swatch { display: flex; flex-direction: column; gap: 5px; min-width: 70px; }
 .eds-swatch-chip { width: 56px; height: 56px; border-radius: var(--eds-radius); border: 1px solid var(--eds-border); }
@@ -360,7 +398,7 @@ html, body { margin: 0; padding: 0; background: var(--eds-bg); color: var(--eds-
 .eds-type-stack { display: flex; flex-direction: column; gap: 24px; }
 .eds-type-sample { border-bottom: 1px solid var(--eds-border); padding-bottom: 20px; }
 .eds-type-sample:last-child { border-bottom: none; }
-.eds-type-scale-name { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--eds-primary); margin-bottom: 6px; font-family: monospace; }
+.eds-type-scale-name { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--eds-label); margin-bottom: 6px; font-family: monospace; }
 .eds-type-specimen { color: var(--eds-text); word-break: break-word; }
 .eds-type-meta { font-size: 10px; color: var(--eds-muted); margin-top: 6px; font-family: monospace; }
 .eds-spacing-track { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
@@ -373,9 +411,9 @@ html, body { margin: 0; padding: 0; background: var(--eds-bg); color: var(--eds-
 .eds-radius-chip { width: 56px; height: 56px; background: color-mix(in srgb, var(--eds-primary, var(--eds-text)) 20%, var(--eds-bg)); border: 1.5px solid color-mix(in srgb, var(--eds-primary, var(--eds-text)) 50%, var(--eds-bg)); }
 .eds-radius-name { font-size: 10px; font-weight: 600; font-family: monospace; }
 .eds-radius-val { font-size: 10px; color: var(--eds-muted); font-family: monospace; }
-.eds-comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.eds-comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 16px; }
 .eds-comp-card { border: 1px solid var(--eds-border); border-radius: var(--eds-radius); padding: 16px; overflow: hidden; min-width: 0; }
-.eds-comp-name { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; font-family: monospace; color: var(--eds-primary); margin-bottom: 10px; }
+.eds-comp-name { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; font-family: monospace; color: var(--eds-label); margin-bottom: 10px; overflow-wrap: anywhere; }
 .eds-comp-preview { margin-bottom: 12px; }
 .eds-token-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: monospace; table-layout: fixed; }
 .eds-token-table th { text-align: left; font-weight: 600; color: var(--eds-muted); border-bottom: 1px solid var(--eds-border); padding: 3px 4px 3px 0; }
@@ -387,12 +425,23 @@ html, body { margin: 0; padding: 0; background: var(--eds-bg); color: var(--eds-
 .eds-token-resolved { color: var(--eds-text); }
 .eds-token-ref { color: var(--eds-muted); }
 .eds-source-block { background: color-mix(in srgb, var(--eds-text) 4%, var(--eds-bg)); border: 1px solid var(--eds-border); border-radius: 8px; padding: 20px; font-size: 11px; line-height: 1.7; font-family: ui-monospace, monospace; overflow-wrap: anywhere; white-space: pre-wrap; }
+.lp-brand-name, .lp-hero h1, .eds-header-label, .eds-swatch-name, .eds-swatch-value { overflow-wrap: anywhere; }
+.eds-swatch { min-width: 0; max-width: 100%; }
+@media (max-width: 640px) {
+  .lp-nav { padding: 20px; flex-wrap: wrap; gap: 20px; }
+  .lp-nav-links { flex-wrap: wrap; gap: 16px; }
+  .lp-hero { padding: 48px 20px 24px; }
+  .lp-hero h1 { font-size: min(var(--eds-h1-size), 42px); letter-spacing: -0.5px; }
+  .lp-cards { grid-template-columns: 1fr; padding: 24px 20px 40px; }
+  .lp-footer { padding: 20px; }
+  .eds-wrap { padding: 40px 20px; }
+}
 </style>
 </head>
 <body>
 <header class="lp-nav">
   <div class="lp-brand">
-    <div class="lp-brand-initials">${initial}</div>
+    ${brandMark}
     <div class="lp-brand-name">${safeTitle}</div>
   </div>
   <nav class="lp-nav-links">

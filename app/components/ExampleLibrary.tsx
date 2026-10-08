@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useState } from "react";
 import type { ExampleDesignArtifact } from "@/lib/example-library";
 
 interface ExampleCardGridProps {
@@ -40,6 +41,7 @@ export function ExampleLogoMark({
   example: ExampleDesignArtifact;
   size?: "sm" | "md" | "lg";
 }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const sizeClass =
     size === "lg" ? "size-14" : size === "sm" ? "size-9" : "size-11";
   const imgSizeClass =
@@ -51,15 +53,22 @@ export function ExampleLogoMark({
 
   return (
     <span
-      className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-md border bg-background shadow-sm`}
+      className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-md border bg-white text-neutral-900 shadow-sm`}
       aria-hidden="true"
     >
-      <img
-        src={example.logoPath}
-        alt=""
-        className={`${imgSizeClass} object-contain`}
-        loading="lazy"
-      />
+      {failedSrc === example.logoPath ? (
+        <span className="text-sm font-semibold">
+          {example.title.slice(0, 2)}
+        </span>
+      ) : (
+        <img
+          src={example.logoPath}
+          alt=""
+          className={`${imgSizeClass} object-contain`}
+          loading="lazy"
+          onError={() => setFailedSrc(example.logoPath)}
+        />
+      )}
     </span>
   );
 }
@@ -87,11 +96,11 @@ export function ExampleCardGrid({
               : "bg-background hover:bg-secondary/35"
           }`}
         >
-          <span className="flex items-start justify-between gap-3">
+          <span className="flex flex-col items-start gap-3">
             <span className="flex min-w-0 items-start gap-3">
               <ExampleLogoMark example={example} />
               <span className="min-w-0">
-                <span className="block text-xs font-semibold uppercase tracking-wider text-primary">
+                <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {example.category}
                 </span>
                 <span className="mt-2 block text-lg font-semibold tracking-tight text-foreground">

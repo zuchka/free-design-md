@@ -20,7 +20,7 @@ export default function ExamplesIndexRoute() {
       <section className="border-b bg-muted/25">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-14">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand-text">
               Free example library
             </p>
             <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -28,8 +28,8 @@ export default function ExamplesIndexRoute() {
             </h1>
             <p className="mt-4 text-base leading-7 text-muted-foreground">
               Start with curated examples seeded from public websites. Each
-              artifact includes deterministic and AI-enriched design.md views,
-              a token preview, and a small source-site mark for identification.
+              artifact includes deterministic and AI-enriched design.md views, a
+              token preview, and a small source-site mark for identification.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">

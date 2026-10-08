@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   EXAMPLE_DESIGNS,
   getExampleDesignBySlug,
@@ -28,15 +30,20 @@ describe("example-library", () => {
       expect(example.markdown).toContain("## Colors");
       expect(example.markdown.length).toBeGreaterThan(150);
       expect(example.logoPath).toMatch(
-        /^\/(?:assets\/examples\/logos\/.+\.(svg|png)|placeholder\.svg)$/,
+        /^\/assets\/examples\/logos\/.+\.(svg|png|ico)$/,
       );
+      expect(
+        existsSync(resolve("public", example.logoPath.slice(1))),
+        example.title,
+      ).toBe(true);
       expect(example.data.logos[0]).toMatchObject({
         url: example.logoPath,
         name: example.title,
         variant: "auto",
       });
-      expect(Object.values(example.data.colors).some((value) => value))
-        .toBe(true);
+      expect(Object.values(example.data.colors).some((value) => value)).toBe(
+        true,
+      );
       expect(
         [
           example.data.typography.headingFont,

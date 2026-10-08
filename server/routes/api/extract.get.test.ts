@@ -3,6 +3,7 @@ import {
   renderPrometheusMetrics,
   resetMetricsForTests,
 } from "../../lib/metrics";
+import { ExtractionError } from "../../lib/extraction-diagnostics";
 
 const mockExtractRun = vi.hoisted(() => vi.fn());
 vi.mock("../../../actions/extract-design-md", () => ({
@@ -157,5 +158,44 @@ describe("GET /api/extract metrics", () => {
     expect(await renderPrometheusMetrics()).toContain(
       'fdmd_extract_duration_seconds_count{status="bad_request"} 1',
     );
+  });
+
+  it("returns a structured cause and correlation reference for JSON errors", async () => {
+    mockExtractRun.mockRejectedValueOnce(
+      new ExtractionError("dns", "navigation"),
+    );
+    const event = {
+      _query: { url: "https://missing.example", format: "json" },
+    } as {
+      _query: Record<string, unknown>;
+      _headers?: Record<string, string>;
+      _statusCode?: number;
+    };
+    const result = await routeHandler(event as never);
+    expect(event._statusCode).toBe(422);
+    expect(result).toMatchObject({
+      error: {
+        code: "dns",
+        stage: "navigation",
+        retryable: false,
+        requestId: event._headers?.["X-Request-Id"],
+      },
+    });
+    expect(await renderPrometheusMetrics()).toContain(
+      'fdmd_extraction_results_total{status="error",reason="dns",stage="navigation",caller="http",retried="false"} 1',
+    );
+  });
+
+  it("does not return raw Playwright errors in text responses", async () => {
+    mockExtractRun.mockRejectedValueOnce(
+      new Error(
+        "net::ERR_CONNECTION_RESET at https://user:secret@example.com/?token=private",
+      ),
+    );
+    const event = { _query: { url: "https://example.com" } };
+    const result = await routeHandler(event as never);
+    expect(result).toContain("Reference:");
+    expect(result).not.toContain("secret");
+    expect(result).not.toContain("token=");
   });
 });
