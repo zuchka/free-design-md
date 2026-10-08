@@ -651,18 +651,18 @@ export default function ApiAndCliRoute() {
               eyebrow="Observability"
               title="Scrape Prometheus metrics"
             >
-              Free design.md exposes process-local Prometheus metrics for the
-              hosted API wrapper. Metrics use bounded labels only: route,
-              status, key source, quota outcome, and artifact format. They never
-              include URLs, prompts, user IDs, org names, saved design IDs, or
-              API keys.
+              Free design.md exposes persistent event counters, billing totals,
+              and process-local duration histograms. Metrics use bounded labels:
+              route, status, key source, credit outcome, pack, and artifact
+              format. They never include URLs, prompts, user IDs, org names,
+              saved design IDs, or API keys.
             </SectionHeading>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {[
                 {
                   title: "Request counters",
-                  body: "Track deterministic extraction, AI enrichment, AI iteration, saved-design iteration, and credit outcomes.",
+                  body: "Track free extraction, paid and self-hosted AI requests, fulfilled credit packs, and reserved, committed, refunded, or rejected credits.",
                   icon: IconChartBar,
                 },
                 {
@@ -692,8 +692,10 @@ export default function ApiAndCliRoute() {
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
               When PROMETHEUS_METRICS_TOKEN is set, /api/metrics requires either
               an Authorization: Bearer token or an x-prometheus-token header. If
-              you run multiple app processes, scrape each process or aggregate
-              metrics at the platform layer.
+              you run multiple app processes, scrape each process for latency
+              histograms. Database-backed counters and billing totals are
+              shared; scrape one replica or deduplicate those series before
+              aggregating.
             </p>
           </div>
         </div>

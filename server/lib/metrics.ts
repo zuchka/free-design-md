@@ -1,5 +1,6 @@
 import { getDbExec } from "../db/index.js";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { renderBillingMetrics } from "./billing-metrics.js";
 
 type LabelValue = string | number | boolean | null | undefined;
 type Labels = Record<string, LabelValue>;
@@ -205,6 +206,12 @@ const aiStreamDuration = new HistogramMetric(
   ["route", "status"],
 );
 
+const aiRequests = new CounterMetric(
+  "fdmd_ai_requests_total",
+  "Completed AI HTTP requests by route, outcome, key source and credit outcome. Persisted since paid-credit metrics rollout.",
+  ["route", "status", "key_source", "credit_outcome"],
+);
+
 const quotaEvents = new CounterMetric(
   "fdmd_quota_events_total",
   "Hosted credit quota events by route.",
@@ -224,6 +231,7 @@ const actionRuns = new CounterMetric(
 );
 
 const metrics = [
+  aiRequests,
   extractDuration,
   aiStreamDuration,
   quotaEvents,
@@ -231,7 +239,12 @@ const metrics = [
   actionRuns,
 ];
 
-const counterMetrics = [quotaEvents, designArtifactEvents, actionRuns];
+const counterMetrics = [
+  aiRequests,
+  quotaEvents,
+  designArtifactEvents,
+  actionRuns,
+];
 
 const histogramMetrics = [extractDuration, aiStreamDuration];
 
@@ -352,7 +365,18 @@ function currentActionMetricCaller(): ActionMetricCaller {
   return actionMetricCallerStorage.getStore() ?? "direct";
 }
 
-export function keySourceLabel(source: string | null | undefined): string {
+export type AiKeySource = "hosted_server" | "self_hosted_env" | "none";
+export type CreditOutcome =
+  | "not_applicable"
+  | "blocked"
+  | "exhausted"
+  | "not_consumed"
+  | "consumed"
+  | "reserved"
+  | "refunded"
+  | "refund_failed";
+
+export function keySourceLabel(source: string | null | undefined): AiKeySource {
   if (source === "server") return "hosted_server";
   if (source === "self-host") return "self_hosted_env";
   return "none";
@@ -371,8 +395,8 @@ export function recordExtractRequest(input: {
 
 export function recordEnrichRequest(input: {
   status: string;
-  keySource: string;
-  quota: string;
+  keySource: AiKeySource;
+  quota: CreditOutcome;
   startedAt: number;
 }): Promise<void> {
   const status = safeMetricLabel(input.status);
@@ -380,14 +404,19 @@ export function recordEnrichRequest(input: {
     { route: "enrich", status },
     Math.max(0, nowSeconds() - input.startedAt),
   );
-  return Promise.resolve();
+  return aiRequests.record({
+    route: "enrich",
+    status,
+    key_source: input.keySource,
+    credit_outcome: input.quota,
+  });
 }
 
 export function recordIterateRequest(input: {
   route: "iterate" | "saved_iterate";
   status: string;
-  keySource: string;
-  quota: string;
+  keySource: AiKeySource;
+  quota: CreditOutcome;
   startedAt: number;
 }): Promise<void> {
   const status = safeMetricLabel(input.status);
@@ -396,12 +425,17 @@ export function recordIterateRequest(input: {
     { route, status },
     Math.max(0, nowSeconds() - input.startedAt),
   );
-  return Promise.resolve();
+  return aiRequests.record({
+    route,
+    status,
+    key_source: input.keySource,
+    credit_outcome: input.quota,
+  });
 }
 
 export function recordQuotaEvent(input: {
   route: "enrich" | "iterate" | "saved_iterate";
-  event: "decremented" | "exhausted" | "refunded";
+  event: "decremented" | "exhausted" | "refunded" | "refund_failed";
 }): Promise<void> {
   return quotaEvents.record({ route: input.route, event: input.event });
 }
@@ -437,17 +471,23 @@ export function recordActionRun(input: {
 
 export async function renderPrometheusMetrics(): Promise<string> {
   let renderedCounters: string[];
+  let persistentCountersAvailable = 1;
   try {
     const rowsByMetric = await loadPersistedCounters();
     renderedCounters = counterMetrics.map((metric) =>
       metric.renderPersisted(rowsByMetric.get(metric.name) ?? []),
     );
   } catch {
+    persistentCountersAvailable = 0;
     renderedCounters = counterMetrics.map((metric) => metric.render());
   }
   const rendered = [
+    "# HELP fdmd_persistent_metrics_available Whether persistent event counters were collected successfully.",
+    "# TYPE fdmd_persistent_metrics_available gauge",
+    `fdmd_persistent_metrics_available ${persistentCountersAvailable}`,
     ...renderedCounters,
     ...histogramMetrics.map((metric) => metric.render()),
+    persistentMetricsDisabledForTests() ? "" : await renderBillingMetrics(),
   ].join("\n\n");
   return `${rendered}\n`;
 }
