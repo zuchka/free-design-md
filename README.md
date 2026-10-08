@@ -140,3 +140,10 @@ CLI AI actions read `ANTHROPIC_API_KEY` from the environment. Action output is J
 | `GET`  | `/api/saved-enrichments/:id`         | Read a public saved artifact                   |
 
 The public CLI and curated catalog live in [`zuchka/free-design-md-catalog`](https://github.com/zuchka/free-design-md-catalog).
+
+## Monitoring
+
+`GET /api/metrics` exposes Prometheus metrics for extraction, AI outcomes, fulfilled
+credit packs, and wallet reservations, commits, and refunds. Set
+`PROMETHEUS_METRICS_TOKEN` to protect the endpoint. See [the metrics guide](docs/prometheus.md)
+for metric names, example queries, and replica deduplication requirements.

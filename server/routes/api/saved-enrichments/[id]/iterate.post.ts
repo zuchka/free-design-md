@@ -35,6 +35,7 @@ import {
 import { applyDeterministicRadiusFidelity } from "../../../../../shared/radius-fidelity.js";
 import {
   keySourceLabel,
+  type CreditOutcome,
   metricsStartedAt,
   recordDesignArtifactEvent,
   recordIterateRequest,
@@ -265,6 +266,7 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(event, "Connection", "keep-alive");
   setResponseHeader(event, "X-Accel-Buffering", "no");
 
+  let creditOutcome: CreditOutcome = dec?.ok ? "reserved" : "not_consumed";
   let sse: ReturnType<typeof createSseSender> | null = null;
   return new ReadableStream({
     async start(controller) {
@@ -305,14 +307,17 @@ export default defineEventHandler(async (event) => {
                 variant: "iteration",
                 format: "snapshot",
               });
+              if (dec?.ok) {
+                await commitCredit(dec.operationId);
+                creditOutcome = "consumed";
+              }
               await recordIterateRequest({
                 route: "saved_iterate",
                 status: "success",
                 keySource,
-                quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
+                quota: creditOutcome,
                 startedAt,
               });
-              if (dec?.ok) await commitCredit(dec.operationId);
               sse.send("done", {
                 ...result,
                 savedDesignId: saved.id,
@@ -326,16 +331,23 @@ export default defineEventHandler(async (event) => {
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        if (resolvedKey.consumesQuota && dec?.ok) {
-          await refundCredit(quotaOwner, dec.operationId).catch(() => {});
-          await recordQuotaEvent({ route: "saved_iterate", event: "refunded" });
+        if (creditOutcome === "reserved" && dec?.ok) {
+          try {
+            await refundCredit(quotaOwner, dec.operationId);
+            creditOutcome = "refunded";
+          } catch {
+            creditOutcome = "refund_failed";
+          }
+          await recordQuotaEvent({
+            route: "saved_iterate",
+            event: creditOutcome,
+          });
         }
         await recordIterateRequest({
           route: "saved_iterate",
           status: "stream_error",
           keySource,
-          quota:
-            resolvedKey.consumesQuota && dec?.ok ? "refunded" : "not_consumed",
+          quota: creditOutcome,
           startedAt,
         });
         sse.send("error", { message });
