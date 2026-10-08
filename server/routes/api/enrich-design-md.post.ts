@@ -26,6 +26,7 @@ import { saveEnrichmentSnapshot } from "../../lib/saved-enrichments.js";
 import { createSseSender } from "../../lib/sse.js";
 import {
   keySourceLabel,
+  type CreditOutcome,
   metricsStartedAt,
   recordDesignArtifactEvent,
   recordEnrichRequest,
@@ -45,7 +46,7 @@ import {
  */
 export default defineEventHandler(async (event) => {
   const startedAt = metricsStartedAt();
-  const body = await readBody(event);
+  const body = await readBody(event).catch(() => null);
 
   if (!body || typeof body !== "object") {
     setResponseStatus(event, 400);
@@ -201,6 +202,7 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(event, "Connection", "keep-alive");
   setResponseHeader(event, "X-Accel-Buffering", "no");
 
+  let creditOutcome: CreditOutcome = dec?.ok ? "reserved" : "not_consumed";
   let sse: ReturnType<typeof createSseSender> | null = null;
   return new ReadableStream({
     async start(controller) {
@@ -248,13 +250,16 @@ export default defineEventHandler(async (event) => {
                       : String(saveErr),
                 };
               }
+              if (dec?.ok) {
+                await commitCredit(dec.operationId);
+                creditOutcome = "consumed";
+              }
               await recordEnrichRequest({
                 status: "success",
                 keySource,
-                quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
+                quota: creditOutcome,
                 startedAt,
               });
-              if (dec?.ok) await commitCredit(dec.operationId);
               sse.send("done", {
                 ...result,
                 ...(saveResult ?? {}),
@@ -265,15 +270,19 @@ export default defineEventHandler(async (event) => {
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        if (resolvedKey.consumesQuota && dec?.ok) {
-          await refundCredit(quotaOwner, dec.operationId).catch(() => {});
-          await recordQuotaEvent({ route: "enrich", event: "refunded" });
+        if (creditOutcome === "reserved" && dec?.ok) {
+          try {
+            await refundCredit(quotaOwner, dec.operationId);
+            creditOutcome = "refunded";
+          } catch {
+            creditOutcome = "refund_failed";
+          }
+          await recordQuotaEvent({ route: "enrich", event: creditOutcome });
         }
         await recordEnrichRequest({
           status: "stream_error",
           keySource,
-          quota:
-            resolvedKey.consumesQuota && dec?.ok ? "refunded" : "not_consumed",
+          quota: creditOutcome,
           startedAt,
         });
         sse.send("error", { message });

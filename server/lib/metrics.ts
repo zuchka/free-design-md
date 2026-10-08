@@ -1,5 +1,12 @@
 import { getDbExec } from "../db/index.js";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { renderBillingMetrics } from "./billing-metrics.js";
+import {
+  extractionFailures,
+  type ExtractionFailureCode,
+  type ExtractionStage,
+  type ExtractionWarning,
+} from "../../shared/extraction-diagnostics.js";
 
 type LabelValue = string | number | boolean | null | undefined;
 type Labels = Record<string, LabelValue>;
@@ -97,6 +104,10 @@ class CounterMetric {
 
   reset(): void {
     this.values.clear();
+  }
+
+  snapshot(): PersistedCounterRow[] {
+    return Array.from(this.values.values());
   }
 
   render(): string {
@@ -205,6 +216,12 @@ const aiStreamDuration = new HistogramMetric(
   ["route", "status"],
 );
 
+const aiRequests = new CounterMetric(
+  "fdmd_ai_requests_total",
+  "Completed AI HTTP requests by route, outcome, key source and credit outcome. Persisted since paid-credit metrics rollout.",
+  ["route", "status", "key_source", "credit_outcome"],
+);
+
 const quotaEvents = new CounterMetric(
   "fdmd_quota_events_total",
   "Hosted credit quota events by route.",
@@ -223,21 +240,48 @@ const actionRuns = new CounterMetric(
   ["action", "status", "caller"],
 );
 
+const extractionResults = new CounterMetric(
+  "fdmd_extraction_results_total",
+  "Completed extractions since diagnostics rollout; one outcome per request including retries. Persisted across restarts.",
+  ["status", "reason", "stage", "caller", "retried"],
+);
+const extractionRecoveries = new CounterMetric(
+  "fdmd_extraction_recovery_events_total",
+  "Extraction retry attempts and degraded-result warnings. Persisted across restarts.",
+  ["kind", "reason", "caller"],
+);
+const extractionStageDuration = new HistogramMetric(
+  "fdmd_extraction_stage_duration_seconds",
+  "Extraction stage duration per attempt. Resets on process restart.",
+  ["stage", "status"],
+);
+
 const metrics = [
+  aiRequests,
   extractDuration,
   aiStreamDuration,
   quotaEvents,
   designArtifactEvents,
   actionRuns,
+  extractionResults,
+  extractionRecoveries,
+  extractionStageDuration,
 ];
 
 const counterMetrics = [
+  aiRequests,
   quotaEvents,
   designArtifactEvents,
   actionRuns,
+  extractionResults,
+  extractionRecoveries,
 ];
 
-const histogramMetrics = [extractDuration, aiStreamDuration];
+const histogramMetrics = [
+  extractDuration,
+  aiStreamDuration,
+  extractionStageDuration,
+];
 
 interface PersistedCounterRow {
   labels: Labels;
@@ -352,6 +396,101 @@ export function metricsStartedAt(): number {
   return nowSeconds();
 }
 
+export function recordExtractionResult(input: {
+  status: "success" | "error";
+  reason: ExtractionFailureCode | "none";
+  stage: ExtractionStage | "complete";
+  retried: boolean;
+}): Promise<void> {
+  return extractionResults.record({
+    ...input,
+    caller: currentActionMetricCaller(),
+  });
+}
+
+export function recordExtractionRecovery(
+  kind: "retry" | "warning",
+  reason: ExtractionFailureCode | ExtractionWarning,
+): Promise<void> {
+  return extractionRecoveries.record({
+    kind,
+    reason,
+    caller: currentActionMetricCaller(),
+  });
+}
+
+export function recordExtractionStage(
+  stage: ExtractionStage,
+  status: "success" | "error",
+  duration: number,
+): void {
+  extractionStageDuration.observe({ stage, status }, duration);
+}
+
+export async function getExtractionHealth() {
+  let rows: PersistedCounterRow[];
+  let storage: "persistent" | "process_memory" = "persistent";
+  try {
+    rows = (await loadPersistedCounters()).get(extractionResults.name) ?? [];
+  } catch {
+    rows = extractionResults.snapshot();
+    storage = "process_memory";
+  }
+  // Keep direct CLI probes separate from the experience of website users.
+  rows = rows.filter((row) => row.labels.caller === "http");
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+  const failed = rows
+    .filter((row) => row.labels.status === "error")
+    .reduce((sum, row) => sum + row.value, 0);
+  const recoveredAfterRetry = rows
+    .filter(
+      (row) => row.labels.status === "success" && row.labels.retried === "true",
+    )
+    .reduce((sum, row) => sum + row.value, 0);
+  const failures = new Map<
+    string,
+    {
+      code: ExtractionFailureCode;
+      stage: string;
+      count: number;
+      explanation: string;
+      nextStep: string;
+    }
+  >();
+  for (const row of rows) {
+    const code = String(row.labels.reason) as ExtractionFailureCode;
+    if (
+      row.labels.status !== "error" ||
+      !Object.prototype.hasOwnProperty.call(extractionFailures, code)
+    )
+      continue;
+    const stage = String(row.labels.stage);
+    const key = `${code}:${stage}`;
+    const existing = failures.get(key);
+    if (existing) existing.count += row.value;
+    else
+      failures.set(key, {
+        code,
+        stage,
+        count: row.value,
+        explanation: extractionFailures[code].message,
+        nextStep: extractionFailures[code].hint,
+      });
+  }
+  return {
+    scope: "http",
+    window: "since_diagnostics_rollout",
+    storage,
+    note: "Historical failures before diagnostics were introduced cannot be classified. Use Prometheus rate/increase for recent time windows. Failure counts include invalid requests and target-site refusals.",
+    total,
+    succeeded: total - failed,
+    failed,
+    recoveredAfterRetry,
+    failureRate: total ? failed / total : null,
+    failures: [...failures.values()].sort((a, b) => b.count - a.count),
+  };
+}
+
 export async function withActionMetricCaller<T>(
   caller: ActionMetricCaller,
   fn: () => Promise<T>,
@@ -363,7 +502,18 @@ function currentActionMetricCaller(): ActionMetricCaller {
   return actionMetricCallerStorage.getStore() ?? "direct";
 }
 
-export function keySourceLabel(source: string | null | undefined): string {
+export type AiKeySource = "hosted_server" | "self_hosted_env" | "none";
+export type CreditOutcome =
+  | "not_applicable"
+  | "blocked"
+  | "exhausted"
+  | "not_consumed"
+  | "consumed"
+  | "reserved"
+  | "refunded"
+  | "refund_failed";
+
+export function keySourceLabel(source: string | null | undefined): AiKeySource {
   if (source === "server") return "hosted_server";
   if (source === "self-host") return "self_hosted_env";
   return "none";
@@ -382,8 +532,8 @@ export function recordExtractRequest(input: {
 
 export function recordEnrichRequest(input: {
   status: string;
-  keySource: string;
-  quota: string;
+  keySource: AiKeySource;
+  quota: CreditOutcome;
   startedAt: number;
 }): Promise<void> {
   const status = safeMetricLabel(input.status);
@@ -391,14 +541,19 @@ export function recordEnrichRequest(input: {
     { route: "enrich", status },
     Math.max(0, nowSeconds() - input.startedAt),
   );
-  return Promise.resolve();
+  return aiRequests.record({
+    route: "enrich",
+    status,
+    key_source: input.keySource,
+    credit_outcome: input.quota,
+  });
 }
 
 export function recordIterateRequest(input: {
   route: "iterate" | "saved_iterate";
   status: string;
-  keySource: string;
-  quota: string;
+  keySource: AiKeySource;
+  quota: CreditOutcome;
   startedAt: number;
 }): Promise<void> {
   const status = safeMetricLabel(input.status);
@@ -407,12 +562,17 @@ export function recordIterateRequest(input: {
     { route, status },
     Math.max(0, nowSeconds() - input.startedAt),
   );
-  return Promise.resolve();
+  return aiRequests.record({
+    route,
+    status,
+    key_source: input.keySource,
+    credit_outcome: input.quota,
+  });
 }
 
 export function recordQuotaEvent(input: {
   route: "enrich" | "iterate" | "saved_iterate";
-  event: "decremented" | "exhausted" | "refunded";
+  event: "decremented" | "exhausted" | "refunded" | "refund_failed";
 }): Promise<void> {
   return quotaEvents.record({ route: input.route, event: input.event });
 }
@@ -448,17 +608,23 @@ export function recordActionRun(input: {
 
 export async function renderPrometheusMetrics(): Promise<string> {
   let renderedCounters: string[];
+  let persistentCountersAvailable = 1;
   try {
     const rowsByMetric = await loadPersistedCounters();
     renderedCounters = counterMetrics.map((metric) =>
       metric.renderPersisted(rowsByMetric.get(metric.name) ?? []),
     );
   } catch {
+    persistentCountersAvailable = 0;
     renderedCounters = counterMetrics.map((metric) => metric.render());
   }
   const rendered = [
+    "# HELP fdmd_persistent_metrics_available Whether persistent event counters were collected successfully.",
+    "# TYPE fdmd_persistent_metrics_available gauge",
+    `fdmd_persistent_metrics_available ${persistentCountersAvailable}`,
     ...renderedCounters,
     ...histogramMetrics.map((metric) => metric.render()),
+    await renderBillingMetrics(),
   ].join("\n\n");
   return `${rendered}\n`;
 }

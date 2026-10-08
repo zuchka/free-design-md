@@ -36,6 +36,7 @@ import { createSseSender } from "../../lib/sse.js";
 import { applyDeterministicRadiusFidelity } from "../../../shared/radius-fidelity.js";
 import {
   keySourceLabel,
+  type CreditOutcome,
   metricsStartedAt,
   recordDesignArtifactEvent,
   recordIterateRequest,
@@ -49,8 +50,8 @@ const SECTION_RE = /^[a-z0-9-]{1,40}$/;
  * POST /api/iterate-design-md (SSE)
  *
  * Revises an AI-enriched design.md per a one-off user instruction.
- * Each successful iteration consumes 1 credit from the app-wide
- * `fdmd_quota` row keyed on the resolved owner.
+ * Each successful hosted iteration commits one reserved wallet credit
+ * belonging to the verified account.
  *
  * Body: { sessionId, previousMarkdown, userPrompt, url?, sectionTarget?, parentId?,
  *         deterministicMarkdown?, designSystemData?, signals?, screenshotDataUrl? }
@@ -286,6 +287,7 @@ export default defineEventHandler(async (event) => {
     deterministicMarkdown: deterministicMarkdown ?? undefined,
   };
 
+  let creditOutcome: CreditOutcome = dec?.ok ? "reserved" : "not_consumed";
   let sse: ReturnType<typeof createSseSender> | null = null;
   return new ReadableStream({
     async start(controller) {
@@ -359,14 +361,17 @@ export default defineEventHandler(async (event) => {
                   };
                 }
               }
+              if (dec?.ok) {
+                await commitCredit(dec.operationId);
+                creditOutcome = "consumed";
+              }
               await recordIterateRequest({
                 route: "iterate",
                 status: "success",
                 keySource,
-                quota: resolvedKey.consumesQuota ? "consumed" : "not_consumed",
+                quota: creditOutcome,
                 startedAt,
               });
-              if (dec?.ok) await commitCredit(dec.operationId);
               sse.send("done", {
                 id,
                 ...result,
@@ -378,9 +383,14 @@ export default defineEventHandler(async (event) => {
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        if (resolvedKey.consumesQuota && dec?.ok) {
-          await refundCredit(quotaOwner, dec.operationId).catch(() => {});
-          await recordQuotaEvent({ route: "iterate", event: "refunded" });
+        if (creditOutcome === "reserved" && dec?.ok) {
+          try {
+            await refundCredit(quotaOwner, dec.operationId);
+            creditOutcome = "refunded";
+          } catch {
+            creditOutcome = "refund_failed";
+          }
+          await recordQuotaEvent({ route: "iterate", event: creditOutcome });
         }
         await insertRejected({
           sessionId,
@@ -395,8 +405,7 @@ export default defineEventHandler(async (event) => {
           route: "iterate",
           status: "stream_error",
           keySource,
-          quota:
-            resolvedKey.consumesQuota && dec?.ok ? "refunded" : "not_consumed",
+          quota: creditOutcome,
           startedAt,
         });
         sse.send("error", { message });

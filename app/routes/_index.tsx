@@ -52,6 +52,14 @@ import {
 } from "@/lib/iteration-client";
 import { requestFeedback } from "@/lib/feedback-events";
 import { useCredits } from "@/lib/use-credits";
+import {
+  ExtractionRequestError,
+  readExtractionError,
+} from "@/lib/extraction-errors";
+import {
+  extractionWarningMessages,
+  type ExtractionDiagnostics,
+} from "../../shared/extraction-diagnostics";
 
 export function meta() {
   return [
@@ -78,6 +86,7 @@ interface ExtractResult {
   designSystemData: DesignSystemData;
   signals?: { title?: string };
   screenshotDataUrl?: string;
+  diagnostics?: ExtractionDiagnostics;
 }
 
 interface EnrichResult {
@@ -134,6 +143,9 @@ export default function IndexRoute() {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [extractionError, setExtractionError] =
+    useState<ExtractionRequestError | null>(null);
+  const [failedUrl, setFailedUrl] = useState("");
   const [result, setResult] = useState<ExtractResult | null>(null);
   const [labelIndex, setLabelIndex] = useState(0);
   const [enriched, setEnriched] = useState<EnrichResult | null>(null);
@@ -300,6 +312,7 @@ export default function IndexRoute() {
   async function extractUrl(trimmed: string) {
     setIsLoading(true);
     setError(null);
+    setExtractionError(null);
     setResult(null);
     setEnriched(null);
     setEnrichError(null);
@@ -319,8 +332,7 @@ export default function IndexRoute() {
       const endpoint = `${appBasePath()}/api/extract?url=${encodeURIComponent(trimmed)}&format=json`;
       const res = await fetch(endpoint);
       if (!res.ok) {
-        const body = await res.text();
-        throw new Error(body || `Request failed with ${res.status}`);
+        throw await readExtractionError(res);
       }
       const data = (await res.json()) as ExtractResult;
       setResult(data);
@@ -333,16 +345,13 @@ export default function IndexRoute() {
       });
       history.replaceState(null, "", `?url=${encodeURIComponent(data.url)}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message =
+        err instanceof ExtractionRequestError
+          ? err.message
+          : "We could not connect to the extraction service. Please try again.";
       setError(message);
-      requestFeedback({
-        category: "something_broke",
-        workflowStep: "Extraction",
-        sourceUrl: trimmed,
-        errorSource: "GET /api/extract",
-        errorMessage: message,
-        message: `I tried to extract ${trimmed} and got this error:\n\n${message}`,
-      });
+      setExtractionError(err instanceof ExtractionRequestError ? err : null);
+      setFailedUrl(trimmed);
     } finally {
       setIsLoading(false);
     }
@@ -715,7 +724,7 @@ export default function IndexRoute() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="w-full px-5 py-12 sm:px-8 lg:px-12">
-        {!result && !isLoading ? (
+        {!result && !isLoading && !error ? (
           <HomepageLanding
             url={url}
             isLoading={isLoading}
@@ -746,6 +755,8 @@ export default function IndexRoute() {
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="stripe.com"
                 aria-label="Website URL"
+                aria-invalid={!!error}
+                aria-describedby={error ? "extraction-error" : undefined}
                 required
                 disabled={isLoading}
                 className="flex-1"
@@ -784,6 +795,8 @@ export default function IndexRoute() {
 
         {error && (
           <div
+            role="alert"
+            id="extraction-error"
             className="mb-8 rounded-md border px-4 py-3 text-sm"
             style={{
               borderColor: "rgba(239,68,68,0.25)",
@@ -791,7 +804,57 @@ export default function IndexRoute() {
               color: "var(--intuit-error)",
             }}
           >
-            {error}
+            <p className="font-medium">{error}</p>
+            {extractionError && (
+              <p className="mt-1">{extractionError.detail.hint}</p>
+            )}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {(!extractionError || extractionError.detail.retryable) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void extractUrl(failedUrl)}
+                >
+                  Try again
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  requestFeedback({
+                    category: "something_broke",
+                    workflowStep: "Extraction",
+                    sourceUrl: failedUrl,
+                    errorSource: "GET /api/extract",
+                    errorMessage: `${error}${extractionError ? ` [${extractionError.detail.code}; ${extractionError.detail.stage}; reference ${extractionError.detail.requestId}]` : ""}`,
+                    message: `I tried to extract ${failedUrl}. ${error}${extractionError?.detail.requestId ? ` Reference: ${extractionError.detail.requestId}` : ""}`,
+                  })
+                }
+              >
+                Report issue
+              </Button>
+            </div>
+            {extractionError?.detail.requestId && (
+              <p className="mt-2 break-all text-xs opacity-75">
+                Reference: {extractionError.detail.requestId}
+              </p>
+            )}
+          </div>
+        )}
+
+        {result?.diagnostics?.warnings.some(
+          (warning) => extractionWarningMessages[warning],
+        ) && (
+          <div
+            role="status"
+            className="mb-4 rounded-md border border-border bg-muted px-4 py-3 text-sm text-muted-foreground"
+          >
+            {result.diagnostics.warnings.map((warning) =>
+              extractionWarningMessages[warning] ? (
+                <p key={warning}>{extractionWarningMessages[warning]}</p>
+              ) : null,
+            )}
           </div>
         )}
 
@@ -867,10 +930,7 @@ export default function IndexRoute() {
                         size="sm"
                         variant="outline"
                         onClick={handleEnrich}
-                        disabled={
-                          isEnriching ||
-                          !result.screenshotDataUrl
-                        }
+                        disabled={isEnriching || !result.screenshotDataUrl}
                         title="Enrich with Claude (~30-60s)"
                       >
                         {isEnriching ? (

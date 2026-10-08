@@ -46,6 +46,10 @@ pnpm migrate
 pnpm action extract-design-md --url stripe.com
 ```
 
+For extraction failure causes, recovery counters, and troubleshooting, see
+[Extraction diagnostics](docs/extraction-diagnostics.md). `/api/extraction-health`
+provides an aggregate health summary alongside the Prometheus `/api/metrics` endpoint.
+
 ## Stripe setup
 
 Create one-time Stripe Prices for a single $0.89 AI run and a $4.99 pack of 10, then configure:
@@ -125,3 +129,10 @@ CLI AI actions read `ANTHROPIC_API_KEY` from the environment. Action output is J
 | `GET`  | `/api/saved-enrichments/:id`         | Read a public saved artifact                   |
 
 The public CLI and curated catalog live in [`zuchka/free-design-md-catalog`](https://github.com/zuchka/free-design-md-catalog).
+
+## Monitoring
+
+`GET /api/metrics` exposes Prometheus metrics for extraction, AI outcomes, fulfilled
+credit packs, and wallet reservations, commits, and refunds. Set
+`PROMETHEUS_METRICS_TOKEN` to protect the endpoint. See [the metrics guide](docs/prometheus.md)
+for metric names, example queries, and replica deduplication requirements.

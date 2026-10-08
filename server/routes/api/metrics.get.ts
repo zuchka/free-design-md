@@ -5,19 +5,15 @@ import {
   setResponseStatus,
 } from "h3";
 import { renderPrometheusMetrics } from "../../lib/metrics.js";
-
-function hasMetricsAccess(event: Parameters<typeof getHeader>[0]): boolean {
-  const token = process.env.PROMETHEUS_METRICS_TOKEN?.trim();
-  if (!token) return true;
-
-  const authorization = getHeader(event, "authorization");
-  if (authorization === `Bearer ${token}`) return true;
-
-  return getHeader(event, "x-prometheus-token") === token;
-}
+import { hasMetricsAccess } from "../../lib/metrics-access.js";
 
 export default defineEventHandler(async (event) => {
-  if (!hasMetricsAccess(event)) {
+  if (
+    !hasMetricsAccess(
+      getHeader(event, "authorization"),
+      getHeader(event, "x-prometheus-token"),
+    )
+  ) {
     setResponseStatus(event, 401);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
     return "metrics token required";

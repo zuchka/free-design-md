@@ -13,6 +13,8 @@ import {
   CONSENT_OVERLAY_SELECTORS,
   dismissConsent,
 } from "./extract-design-md";
+import { navigateForExtraction } from "../server/lib/extraction-browser";
+import { ExtractionTrace } from "../server/lib/extraction-diagnostics";
 
 let browser: Browser;
 let page: Page;
@@ -166,4 +168,35 @@ describe("dismissConsent", () => {
       expect(intents.has("accept")).toBe(true);
     }
   });
+
+  it("extracts a usable document even when an image prevents the load event", async () => {
+    let releaseImage!: () => void;
+    const pendingImage = new Promise<void>((resolve) => {
+      releaseImage = resolve;
+    });
+    await page.route("https://extraction-fixture.example/**", async (route) => {
+      if (route.request().resourceType() === "image") {
+        await pendingImage;
+        await route.abort().catch(() => undefined);
+      } else {
+        await route.fulfill({
+          contentType: "text/html",
+          body: '<html><head><title>Fixture</title></head><body><h1>Visible design</h1><img src="/slow.png"></body></html>',
+        });
+      }
+    });
+    try {
+      const trace = new ExtractionTrace();
+      await navigateForExtraction(
+        page,
+        new URL("https://extraction-fixture.example/"),
+        trace,
+      );
+      expect(await page.locator("h1").textContent()).toBe("Visible design");
+      expect(trace.retries).toEqual([]);
+      expect(trace.warnings).toContain("page_still_loading");
+    } finally {
+      releaseImage();
+    }
+  }, 12_000);
 });

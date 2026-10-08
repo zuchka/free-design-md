@@ -15,6 +15,14 @@ import {
   withActionMetricCaller,
 } from "../../lib/metrics.js";
 
+import {
+  ExtractionTrace,
+  ExtractionError,
+  withExtractionTrace,
+  classifyExtractionError,
+} from "../../lib/extraction-diagnostics.js";
+import { extractionFailures } from "../../../shared/extraction-diagnostics.js";
+
 type ExtractFormat = "json" | "markdown" | "mdx";
 
 interface ExtractActionResult {
@@ -42,67 +50,98 @@ export default defineEventHandler(async (event) => {
   const url = query.url;
   const format = normalizeFormat(query.format);
 
-  if (!format) {
-    setResponseStatus(event, 400);
-    setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
-    await recordExtractRequest({
-      status: "bad_request",
-      format: "invalid",
-      startedAt,
-    });
-    return "format must be one of: json, markdown, md, mdx";
-  }
-
-  if (typeof url !== "string" || !url.trim()) {
-    setResponseStatus(event, 400);
-    setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
-    await recordExtractRequest({ status: "bad_request", format, startedAt });
-    return "missing url query param";
-  }
+  const trace = new ExtractionTrace();
+  setResponseHeader(event, "X-Request-Id", trace.requestId);
+  setResponseHeader(event, "Cache-Control", "no-store");
 
   try {
-    const result = (await withActionMetricCaller("http", () =>
-      extractAction.run({ url }),
-    )) as ExtractActionResult;
-    await recordExtractRequest({ status: "success", format, startedAt });
+    const response = await withActionMetricCaller("http", () =>
+      withExtractionTrace(async () => {
+        if (!format || typeof url !== "string" || !url.trim()) {
+          throw new ExtractionError("invalid_request", "validation");
+        }
+        const result = (await extractAction.run({
+          url,
+        })) as ExtractActionResult;
+        return trace.run("response", () => {
+          if (format === "json") {
+            setResponseHeader(
+              event,
+              "Content-Type",
+              "application/json; charset=utf-8",
+            );
+            return {
+              ...result,
+              diagnostics: {
+                requestId: trace.requestId,
+                warnings: trace.warnings,
+              },
+            };
+          }
+          if (format === "mdx") {
+            const title = result.signals.title || new URL(result.url).hostname;
+            const previewHtml = renderPreview(result.designSystemData, {
+              title,
+              designMd: result.markdown,
+            });
+            setResponseHeader(event, "Content-Type", "text/mdx; charset=utf-8");
+            return designArtifactToMdx({
+              title,
+              markdown: result.markdown,
+              previewHtml,
+              sourceUrl: result.url,
+              variant: "deterministic",
+            });
+          }
+          setResponseHeader(
+            event,
+            "Content-Type",
+            "text/markdown; charset=utf-8",
+          );
+          return result.markdown;
+        });
+      }, trace),
+    );
+    await recordExtractRequest({
+      status: "success",
+      format: format!,
+      startedAt,
+    });
+    return response;
+  } catch (err) {
+    const failure = classifyExtractionError(err, trace.stage);
+    const detail = extractionFailures[failure.code];
+    setResponseStatus(event, detail.status);
+    if (failure.code === "rate_limited")
+      setResponseHeader(event, "Retry-After", "60");
+    await recordExtractRequest({
+      status: detail.status === 400 ? "bad_request" : "error",
+      format: format ?? "invalid",
+      startedAt,
+    });
     if (format === "json") {
       setResponseHeader(
         event,
         "Content-Type",
         "application/json; charset=utf-8",
       );
-      return result;
+      return {
+        error: {
+          code: failure.code,
+          message: detail.message,
+          hint: detail.hint,
+          retryable: detail.retryable,
+          stage: failure.stage,
+          requestId: trace.requestId,
+        },
+      };
     }
-    if (format === "mdx") {
-      const title = result.signals.title || new URL(result.url).hostname;
-      const previewHtml = renderPreview(result.designSystemData, {
-        title,
-        designMd: result.markdown,
-      });
-      setResponseHeader(event, "Content-Type", "text/mdx; charset=utf-8");
-      return designArtifactToMdx({
-        title,
-        markdown: result.markdown,
-        previewHtml,
-        sourceUrl: result.url,
-        variant: "deterministic",
-      });
-    }
-    setResponseHeader(event, "Content-Type", "text/markdown; charset=utf-8");
-    return result.markdown;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const isBadUrl =
-      message.includes("Internal/private") ||
-      message.includes("Only http") ||
-      message.includes("Invalid URL");
-    setResponseStatus(event, isBadUrl ? 400 : 500);
     setResponseHeader(event, "Content-Type", "text/plain; charset=utf-8");
-    await recordExtractRequest({
-      status: isBadUrl ? "bad_request" : "error",
-      format,
-      startedAt,
-    });
-    return isBadUrl ? message : `extraction failed: ${message}`;
+    const message = !format
+      ? "format must be one of: json, markdown, md, mdx"
+      : typeof url !== "string" || !url.trim()
+        ? "missing url query param"
+        : `${detail.message} ${detail.hint}`;
+    return `${message} (Reference: ${trace.requestId})`;
   }
 });
