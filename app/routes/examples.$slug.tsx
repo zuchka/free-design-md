@@ -51,6 +51,7 @@ export default function ExampleDetailRoute() {
         parsed,
         example.enrichedMarkdown,
         example.title,
+        { logoUrl: example.logoPath },
       );
     } catch {
       return null;
@@ -140,7 +141,7 @@ export default function ExampleDetailRoute() {
                   <div className="flex min-w-0 items-start gap-4">
                     <ExampleLogoMark example={example} size="lg" />
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         {example.category}
                       </p>
                       <h2 className="mt-2 text-2xl font-semibold tracking-tight">
@@ -256,32 +257,24 @@ function OutputToggle({
       <button
         type="button"
         onClick={() => onViewChange("deterministic")}
+        aria-pressed={view === "deterministic"}
         className={`whitespace-nowrap px-2 py-1 transition-colors ${
           view === "deterministic"
-            ? "text-white"
+            ? "bg-primary text-primary-foreground"
             : "bg-transparent text-muted-foreground"
         }`}
-        style={
-          view === "deterministic"
-            ? { backgroundColor: "var(--intuit-primary)" }
-            : undefined
-        }
       >
         Deterministic
       </button>
       <button
         type="button"
         onClick={() => onViewChange("enriched")}
+        aria-pressed={view === "enriched"}
         className={`whitespace-nowrap px-2 py-1 transition-colors ${
           view === "enriched"
-            ? "text-white"
+            ? "bg-primary text-primary-foreground"
             : "bg-transparent text-muted-foreground"
         }`}
-        style={
-          view === "enriched"
-            ? { backgroundColor: "var(--intuit-primary)" }
-            : undefined
-        }
       >
         AI-enriched
       </button>
@@ -301,7 +294,7 @@ function Pane({ title, action, children, className }: PaneProps) {
     <section
       className={`flex flex-col gap-2${className ? ` ${className}` : ""}`}
     >
-      <div className="flex h-9 items-center justify-between gap-3">
+      <div className="flex min-h-9 flex-wrap items-center justify-between gap-3">
         <div className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
         </div>

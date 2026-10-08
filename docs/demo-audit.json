@@ -1,0 +1,2116 @@
+{
+  "date": "2026-10-08",
+  "scope": "Local curated demo library; existing saved extractions and AI-enriched artifacts. No production deployment or paid regeneration.",
+  "examples": 77,
+  "previewVariants": 154,
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "changes": [
+    "Added 61 missing local brand marks and replaced 6 inaccurate marks.",
+    "Added brand marks to enriched previews and used the catalog brand title in previews.",
+    "Fixed page, card, button, link, muted-text and token-label contrast without modifying the captured Markdown.",
+    "Fixed mobile card and component layout overflow, cramped gallery labels, and preview frames that could not shrink.",
+    "Replaced internal catalog categories with readable public categories.",
+    "Darkened gallery and homepage secondary text and green labels."
+  ],
+  "results": {
+    "detailPagesPassed": 77,
+    "brandAssetsLoaded": 77,
+    "desktopPreviewFailures": 0,
+    "mobilePreviewFailures": 0,
+    "testsPassed": 485,
+    "typecheck": "passed",
+    "productionBuild": "passed"
+  },
+  "method": "Browser-rendered DOM contrast checks for text with solid or composited backgrounds, plus overflow and image-load checks; screenshots of gallery, brand marks, and representative previews. Automated contrast checks are not a full accessibility audit.",
+  "sources": "../public/assets/examples/logos/sources.json",
+  "brands": [
+    {
+      "slug": "stripe",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 634,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 634,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "intuit",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 333,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 33,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 333,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 33,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "walmart",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 745,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 745,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "apple",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 572,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 572,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "shopify",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 738,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 738,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "vercel",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 724,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 724,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "airbnb",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 510,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 54,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 510,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 54,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "nike",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 676,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 52,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 676,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 52,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "claude",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 657,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 657,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "figma",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 648,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 648,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "linear.app",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 698,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 63,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 698,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 63,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "notion",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 678,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 678,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "supabase",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 725,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 725,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "github",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 591,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 63,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 591,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 63,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "bmw",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 667,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 45,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 667,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 45,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "spotify",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 638,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 638,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "airtable",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 630,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 630,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "binance",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 784,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 784,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "bmw-m",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 605,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 49,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 605,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 49,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "bugatti",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 596,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 52,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 596,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 52,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "cal",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 704,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 704,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "clay",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 622,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 622,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "clickhouse",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 625,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 625,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "cohere",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 578,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 53,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 578,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 53,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "coinbase",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 695,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 695,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "composio",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 651,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 53,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 651,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 53,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "cursor",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 689,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 689,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "dell-1996",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 408,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 38,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 408,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 38,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "elevenlabs",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 651,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 651,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "expo",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 692,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 692,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "ferrari",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 583,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 45,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 583,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 45,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "framer",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 629,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 629,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "hashicorp",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 752,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 752,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "hp",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 576,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 49,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 576,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 49,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "ibm",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 765,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 765,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "intercom",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 754,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 43,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 754,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 43,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "kraken",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 649,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 58,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 649,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 58,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "lamborghini",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 610,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 47,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 610,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 47,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "lovable",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 676,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 676,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "mastercard",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 671,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 33,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 671,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 33,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "meta",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 659,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 63,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 659,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 63,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "minimax",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 692,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 692,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "mintlify",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 681,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 51,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 681,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 51,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "miro",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 693,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 693,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "mistral.ai",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 586,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 49,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 586,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 49,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "mongodb",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 700,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 700,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "nintendo-2001",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 529,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 38,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 529,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 38,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "nvidia",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 678,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 43,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 678,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 43,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "ollama",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 635,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 50,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 635,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 50,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "opencode.ai",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 625,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 52,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 625,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 52,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "pinterest",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 625,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 58,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 625,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 58,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "playstation",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 652,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 652,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "posthog",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 651,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 651,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "raycast",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 664,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 664,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "renault",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 684,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 684,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "replicate",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 640,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 50,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 640,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 50,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "resend",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 614,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 614,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "revolut",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 637,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 54,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 637,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 54,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "runwayml",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 612,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 52,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 612,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 52,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "sanity",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 595,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 63,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 595,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 63,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "sentry",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 678,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 678,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "slack",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 712,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 712,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "spacex",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 563,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 52,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 563,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 52,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "starbucks",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 637,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 637,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "superhuman",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 666,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 54,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 666,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 54,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "tesla",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 597,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 33,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 597,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 33,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "theverge",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 663,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 56,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 663,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 56,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "together.ai",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 700,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 55,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 700,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 55,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "uber",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 649,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 55,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 649,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 55,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "vodafone",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 691,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 47,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 691,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 47,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "voltagent",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 690,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 690,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 59,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "warp",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 699,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 699,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 57,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "webflow",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 652,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 652,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "wired",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 691,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 48,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 691,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 48,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "wise",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 670,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 63,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 670,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 63,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "x.ai",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 666,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 55,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 666,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 55,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    },
+    {
+      "slug": "zapier",
+      "desktop": {
+        "enriched": {
+          "textElementsChecked": 686,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      },
+      "mobile": {
+        "enriched": {
+          "textElementsChecked": 686,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        },
+        "deterministic": {
+          "textElementsChecked": 61,
+          "contrastFailures": 0,
+          "overflowFailures": 0
+        }
+      }
+    }
+  ]
+}

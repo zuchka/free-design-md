@@ -1,0 +1,471 @@
+[
+  {
+    "slug": "airtable",
+    "file": "airtable.svg",
+    "source": "https://airtable.com/newsroom",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "binance",
+    "file": "binance.svg",
+    "source": "https://binance.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "bmw",
+    "file": "bmw.svg",
+    "source": "https://bmw.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "bmw-m",
+    "file": "bmw-m.png",
+    "source": "https://www.bmw-m.com/etc.clientlibs/settings/wcm/designs/bmwcom/base/resources/ci2020/context-bmw-m/img/favicon.png",
+    "provider": "Source website favicon",
+    "website": "https://www.bmw-m.com/en/index.html"
+  },
+  {
+    "slug": "bugatti",
+    "file": "bugatti.svg",
+    "source": "https://newsroom.bugatti.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "cal",
+    "file": "cal.svg",
+    "source": "https://design.cal.com/assets/logos",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "claude",
+    "file": "claude.svg",
+    "source": "https://claude.ai",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "clay",
+    "file": "clay.png",
+    "source": "https://cdn.prod.website-files.com/61477f2c24a826836f969afe/6a3a92ab3c92c9caa6245619_dot-com_favicon_2026_512.png",
+    "provider": "Source website favicon",
+    "website": "https://www.clay.com/"
+  },
+  {
+    "slug": "clickhouse",
+    "file": "clickhouse.svg",
+    "source": "https://github.com/ClickHouse/ClickHouse/blob/12bd453a43819176d25ecf247033f6cb1af54beb/website/images/logo-clickhouse.svg",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "cohere",
+    "file": "cohere.png",
+    "source": "https://cohere.com/apple-touch-icon.png",
+    "provider": "Source website favicon",
+    "website": "https://cohere.com/"
+  },
+  {
+    "slug": "coinbase",
+    "file": "coinbase.svg",
+    "source": "https://www.coinbase.com/press",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "composio",
+    "file": "composio.png",
+    "source": "https://composio.dev/apple-touch-icon.png",
+    "provider": "Source website favicon",
+    "website": "https://composio.dev/"
+  },
+  {
+    "slug": "cursor",
+    "file": "cursor.svg",
+    "source": "https://cursor.com/brand",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "dell-1996",
+    "file": "dell-1996.svg",
+    "source": "https://www.dell.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "elevenlabs",
+    "file": "elevenlabs.svg",
+    "source": "https://elevenlabs.io/brand",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "expo",
+    "file": "expo.svg",
+    "source": "https://expo.dev/brand/",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "ferrari",
+    "file": "ferrari.svg",
+    "source": "https://www.ferrari.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "framer",
+    "file": "framer.svg",
+    "source": "https://framer.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "github",
+    "file": "github.svg",
+    "source": "https://github.com/logos",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "hashicorp",
+    "file": "hashicorp.svg",
+    "source": "https://www.hashicorp.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "hp",
+    "file": "hp.svg",
+    "source": "https://brandcentral.hp.com/us/en/elements/hp-logo.html",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "ibm",
+    "file": "ibm.svg",
+    "source": "https://github.com/lobehub/lobe-icons/tree/master/packages/static-svg/icons/ibm.svg",
+    "provider": "Lobe Icons 1.95.1",
+    "license": "https://github.com/lobehub/lobe-icons/blob/master/LICENSE"
+  },
+  {
+    "slug": "intercom",
+    "file": "intercom.svg",
+    "source": "https://www.intercom.com/press",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "kraken",
+    "file": "kraken.png",
+    "source": "https://www.kraken.com/_assets/icons/apple-touch-icon.png",
+    "provider": "Source website favicon",
+    "website": "https://www.kraken.com/"
+  },
+  {
+    "slug": "lamborghini",
+    "file": "lamborghini.svg",
+    "source": "https://www.lamborghini.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "linear.app",
+    "file": "linear.svg",
+    "source": "https://linear.app",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "lovable",
+    "file": "lovable.svg",
+    "source": "https://github.com/lobehub/lobe-icons/tree/master/packages/static-svg/icons/lovable-color.svg",
+    "provider": "Lobe Icons 1.95.1",
+    "license": "https://github.com/lobehub/lobe-icons/blob/master/LICENSE"
+  },
+  {
+    "slug": "mastercard",
+    "file": "mastercard.svg",
+    "source": "https://www.mastercard.com/brandcenter/us/en/download-artwork.html",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "meta",
+    "file": "meta.svg",
+    "source": "https://www.meta.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "minimax",
+    "file": "minimax.svg",
+    "source": "https://github.com/MiniMax-AI/MiniMax-01/blob/57cf223b177e99636c7711a0f179e9fdc9c38e8a/figures/minimax.svg",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "mintlify",
+    "file": "mintlify.svg",
+    "source": "https://mintlify.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "miro",
+    "file": "miro.svg",
+    "source": "https://miro.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "mistral.ai",
+    "file": "mistral.ai.svg",
+    "source": "https://chat.mistral.ai",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "mongodb",
+    "file": "mongodb.svg",
+    "source": "https://www.mongodb.com/pressroom",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "nintendo-2001",
+    "file": "nintendo-2001.png",
+    "source": "https://assets.nintendo.com/image/upload/ncom/icons/fav-icons/apple-touch-icon.png",
+    "provider": "Source website favicon",
+    "website": "https://www.nintendo.com/"
+  },
+  {
+    "slug": "nvidia",
+    "file": "nvidia.svg",
+    "source": "https://www.nvidia.com/en-us",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "ollama",
+    "file": "ollama.svg",
+    "source": "https://github.com/ollama/ollama/issues/2152#issuecomment-1905286922",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "opencode.ai",
+    "file": "opencode.ai.svg",
+    "source": "https://github.com/anomalyco/opencode/blob/1251a870cb384543c150c4a72fb101b55eec971b/packages/identity/mark.svg",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "pinterest",
+    "file": "pinterest.svg",
+    "source": "https://business.pinterest.com/en/brand-guidelines",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "playstation",
+    "file": "playstation.svg",
+    "source": "https://www.playstation.com/en-us/",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "posthog",
+    "file": "posthog.svg",
+    "source": "https://posthog.com/handbook/company/brand-assets",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "raycast",
+    "file": "raycast.svg",
+    "source": "https://www.raycast.com/press",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "renault",
+    "file": "renault.svg",
+    "source": "https://media.renaultgroup.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "replicate",
+    "file": "replicate.svg",
+    "source": "https://replicate.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "resend",
+    "file": "resend.svg",
+    "source": "https://resend.com/brand",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "revolut",
+    "file": "revolut.svg",
+    "source": "https://developer.revolut.com/docs/resources/marketing-assets-guidelines/marketing-guidelines",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "runwayml",
+    "file": "runwayml.png",
+    "source": "https://runwayml.com/icon.png?icon.35ps9bmugbe1e.png",
+    "provider": "Source website favicon",
+    "website": "https://runwayml.com/"
+  },
+  {
+    "slug": "sanity",
+    "file": "sanity.svg",
+    "source": "https://github.com/sanity-io/logos/blob/e298a1ac2757c83910fe08b496a115bc9aef06bd/src/sanityMonogram.tsx",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "sentry",
+    "file": "sentry.svg",
+    "source": "https://sentry.io/branding/",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "slack",
+    "file": "slack.png",
+    "source": "https://a.slack-edge.com/9cc0056/img/icons/favicon-32.png",
+    "provider": "Source website favicon",
+    "website": "https://slack.com/"
+  },
+  {
+    "slug": "spacex",
+    "file": "spacex.svg",
+    "source": "https://www.spacex.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "spotify",
+    "file": "spotify.svg",
+    "source": "https://developer.spotify.com/documentation/general/design-and-branding/#using-our-logo",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "starbucks",
+    "file": "starbucks.svg",
+    "source": "https://starbucks.com",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "supabase",
+    "file": "supabase.svg",
+    "source": "https://github.com/supabase/supabase/blob/4031a7549f5d46da7bc79c01d56be4177dc7c114/packages/common/assets/images/supabase-logo-wordmark--light.svg",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "superhuman",
+    "file": "superhuman.png",
+    "source": "https://superhumanstatic.com/super-funnel/main/public/images/v4/favicons/superhuman-icon-96x96.png",
+    "provider": "Source website favicon",
+    "website": "https://superhuman.com/"
+  },
+  {
+    "slug": "tesla",
+    "file": "tesla.svg",
+    "source": "https://www.tesla.com/tesla-gallery",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "theverge",
+    "file": "theverge.png",
+    "source": "https://www.theverge.com/static-assets/icons/apple-touch-icon.png",
+    "provider": "Source website favicon",
+    "website": "https://www.theverge.com/"
+  },
+  {
+    "slug": "together.ai",
+    "file": "together.ai.png",
+    "source": "https://cdn.prod.website-files.com/69654e88dce9154b5f1206dd/699e382b218f39bfa0a115d9_favicon.png",
+    "provider": "Source website favicon",
+    "website": "https://www.together.ai/"
+  },
+  {
+    "slug": "uber",
+    "file": "uber.svg",
+    "source": "https://assets.uber.com/d/k4nuxdZ8MC7E/logos/collection/151",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "vodafone",
+    "file": "vodafone.svg",
+    "source": "https://web.vodafone.com.eg",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "voltagent",
+    "file": "voltagent.ico",
+    "source": "https://voltagent.dev/img/favicon.ico",
+    "provider": "Source website favicon",
+    "website": "https://voltagent.dev/"
+  },
+  {
+    "slug": "warp",
+    "file": "warp.svg",
+    "source": "https://warp.dev",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "webflow",
+    "file": "webflow.svg",
+    "source": "https://brand-at.webflow.io/resources#logos",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "wired",
+    "file": "wired.ico",
+    "source": "https://www.wired.com/verso/static/wired-us/assets/favicon.ico",
+    "provider": "Source website favicon",
+    "website": "https://www.wired.com/"
+  },
+  {
+    "slug": "wise",
+    "file": "wise.svg",
+    "source": "https://wise.design/foundations/logo",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  },
+  {
+    "slug": "x.ai",
+    "file": "x.ai.svg",
+    "source": "https://github.com/lobehub/lobe-icons/tree/master/packages/static-svg/icons/xai.svg",
+    "provider": "Lobe Icons 1.95.1",
+    "license": "https://github.com/lobehub/lobe-icons/blob/master/LICENSE"
+  },
+  {
+    "slug": "zapier",
+    "file": "zapier.svg",
+    "source": "https://www.figma.com/file/NQFxTCE5pGR3dHZt0DkOyy/Zapier-Brand-Guidelines-%5BExternal%5D?type=design&node-id=101-9701&mode=design",
+    "provider": "Simple Icons 16.34.0",
+    "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
+  }
+]

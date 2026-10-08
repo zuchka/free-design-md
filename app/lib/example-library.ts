@@ -43,6 +43,67 @@ export interface ExampleDesignSummary {
 }
 
 const EXAMPLE_LOGO_FILENAMES: Record<string, string> = {
+  airtable: "airtable.svg",
+  binance: "binance.svg",
+  "bmw-m": "bmw-m.png",
+  bugatti: "bugatti.svg",
+  cal: "cal.svg",
+  clay: "clay.png",
+  clickhouse: "clickhouse.svg",
+  cohere: "cohere.png",
+  coinbase: "coinbase.svg",
+  composio: "composio.png",
+  cursor: "cursor.svg",
+  "dell-1996": "dell-1996.svg",
+  elevenlabs: "elevenlabs.svg",
+  expo: "expo.svg",
+  ferrari: "ferrari.svg",
+  framer: "framer.svg",
+  hashicorp: "hashicorp.svg",
+  hp: "hp.svg",
+  ibm: "ibm.svg",
+  intercom: "intercom.svg",
+  kraken: "kraken.png",
+  lamborghini: "lamborghini.svg",
+  lovable: "lovable.svg",
+  mastercard: "mastercard.svg",
+  meta: "meta.svg",
+  minimax: "minimax.svg",
+  mintlify: "mintlify.svg",
+  miro: "miro.svg",
+  "mistral.ai": "mistral.ai.svg",
+  mongodb: "mongodb.svg",
+  "nintendo-2001": "nintendo-2001.png",
+  nvidia: "nvidia.svg",
+  ollama: "ollama.svg",
+  "opencode.ai": "opencode.ai.svg",
+  pinterest: "pinterest.svg",
+  playstation: "playstation.svg",
+  posthog: "posthog.svg",
+  raycast: "raycast.svg",
+  renault: "renault.svg",
+  replicate: "replicate.svg",
+  resend: "resend.svg",
+  revolut: "revolut.svg",
+  runwayml: "runwayml.png",
+  sanity: "sanity.svg",
+  sentry: "sentry.svg",
+  slack: "slack.png",
+  spacex: "spacex.svg",
+  starbucks: "starbucks.svg",
+  superhuman: "superhuman.png",
+  tesla: "tesla.svg",
+  theverge: "theverge.png",
+  "together.ai": "together.ai.png",
+  uber: "uber.svg",
+  vodafone: "vodafone.svg",
+  voltagent: "voltagent.ico",
+  warp: "warp.svg",
+  webflow: "webflow.svg",
+  wired: "wired.ico",
+  wise: "wise.svg",
+  "x.ai": "x.ai.svg",
+  zapier: "zapier.svg",
   airbnb: "airbnb.svg",
   apple: "apple.svg",
   bmw: "bmw.svg",
@@ -109,8 +170,8 @@ function hostFromUrl(url: string): string {
 }
 
 function logoPathForSlug(slug: string): string {
-  const filename = EXAMPLE_LOGO_FILENAMES[slug];
-  return filename ? `/assets/examples/logos/${filename}` : "/placeholder.svg";
+  const filename = EXAMPLE_LOGO_FILENAMES[slug] ?? `${slug}.svg`;
+  return `/assets/examples/logos/${filename}`;
 }
 
 function generatedArtifactForEntry(

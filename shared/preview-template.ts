@@ -1,4 +1,5 @@
 import type { DesignSystemData } from "./api";
+import { mutedColor, previewSurface, readableColor } from "./preview-colors";
 
 export interface RenderPreviewOptions {
   title?: string;
@@ -82,7 +83,47 @@ function buildFontFamily(stack: string, primary: string): string {
   return "system-ui, sans-serif";
 }
 
+function previewColors(data: DesignSystemData) {
+  const bg = previewSurface(data.colors.background);
+  const text = readableColor(bg, data.colors.text);
+  const primary = data.colors.primary
+    ? previewSurface(data.colors.primary, bg)
+    : "";
+  const buttonBg = previewSurface(
+    data.components?.button?.primary?.background || primary || text,
+    bg,
+  );
+  const cardBg = previewSurface(
+    data.components?.card?.background || data.colors.surface,
+    bg,
+  );
+  const cardText = readableColor(
+    cardBg,
+    data.components?.card?.color ?? "",
+    text,
+  );
+  return {
+    bg,
+    text,
+    primary,
+    buttonBg,
+    cardBg,
+    cardText,
+    buttonText: readableColor(
+      buttonBg,
+      data.components?.button?.primary?.color ?? "",
+      bg,
+      text,
+    ),
+    muted: mutedColor(bg, text, data.colors.textMuted),
+    cardMuted: mutedColor(cardBg, cardText, data.colors.textMuted),
+    label: readableColor(bg, primary, text),
+    link: readableColor(bg, data.components?.link?.color ?? "", primary, text),
+  };
+}
+
 function renderShowcase(data: DesignSystemData, designMd: string): string {
+  const colors = previewColors(data);
   // ── Colors ──────────────────────────────────────────────────
   const colorSwatches = COLOR_LABELS.filter(({ key }) =>
     (data.colors[key] ?? "").trim(),
@@ -227,25 +268,21 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
     const hasLink = !!(link && link.color);
 
     if (hasButton || hasCard || hasLink) {
-      const btnBg =
-        safe(bp?.background ?? "", SAFE_COLOR) || "var(--ds-primary)";
-      const btnColor = safe(bp?.color ?? "", SAFE_COLOR) || "var(--ds-bg)";
+      const btnBg = colors.buttonBg;
+      const btnColor = colors.buttonText;
       const btnRadius =
         safe(bp?.radius ?? "", SAFE_SIZE) || "var(--ds-button-radius)";
       const btnPad = safe(bp?.padding ?? "", SAFE_PADDING) || "12px 22px";
       const btnFs = safe(bp?.fontSize ?? "", SAFE_SIZE) || "15px";
       const btnFw = safe(bp?.fontWeight ?? "", SAFE_WEIGHT) || "600";
 
-      const cardBgC =
-        safe(card?.background ?? "", SAFE_COLOR) || "var(--ds-bg)";
+      const cardBgC = colors.cardBg;
       const cardBorderC =
         safe(card?.border ?? "", SAFE_BORDER) || "1px solid var(--ds-border)";
-      const cardRadiusC =
-        safe(card?.radius ?? "", SAFE_SIZE) || "var(--ds-card-radius)";
+      const cardRadiusC = "var(--ds-card-radius)";
       const cardPadC = safe(card?.padding ?? "", SAFE_PADDING) || "24px";
 
-      const linkColorC =
-        safe(link?.color ?? "", SAFE_COLOR) || "var(--ds-primary)";
+      const linkColorC = colors.link;
       const linkDeco =
         (link?.textDecoration ?? "").trim() === "underline"
           ? "underline"
@@ -273,9 +310,9 @@ function renderShowcase(data: DesignSystemData, designMd: string): string {
         ${
           hasCard
             ? `<div class="sc-comp-item">
-          <div style="background:${cardBgC};border:${cardBorderC};border-radius:${cardRadiusC};padding:${cardPadC};max-width:220px;">
+          <div style="background:${cardBgC};color:${colors.cardText};border:${cardBorderC};border-radius:${cardRadiusC};padding:${cardPadC};max-width:100%;width:280px;overflow-wrap:anywhere;">
             <div style="font-family:var(--ds-heading-font);font-weight:var(--ds-heading-weight);font-size:var(--ds-h3-size);margin:0 0 8px 0;">Card Title</div>
-            <div style="font-size:14px;color:var(--ds-muted);">Sample card body text extracted from the site.</div>
+            <div style="font-size:14px;color:${colors.cardMuted};">Sample card body text extracted from the site.</div>
           </div>
           <div class="sc-comp-label">Card</div>
         </div>`
@@ -349,9 +386,8 @@ export function renderPreview(
       "A synthetic landing page styled with the design system extracted from the live site. Squint — does it feel like the brand?",
   );
 
-  const primary = safe(data.colors.primary, SAFE_COLOR);
-  const bg = safe(data.colors.background, SAFE_COLOR) || "#ffffff";
-  const text = safe(data.colors.text, SAFE_COLOR) || "#1a1a1a";
+  const colors = previewColors(data);
+  const { primary, bg, text } = colors;
   const headingFont = safe(data.typography.headingFont, SAFE_FONT);
   const bodyFont = safe(data.typography.bodyFont, SAFE_FONT);
   const headingStack = data.typography.headingFontStack ?? "";
@@ -381,7 +417,11 @@ export function renderPreview(
   // render as ovals.
   const buttonRadius = safe(data.borders.radii.button, SAFE_SIZE) || radius;
   const cardFallback = isPillLike(radius) ? "8px" : radius;
-  const cardRadius = safe(data.borders.radii.card, SAFE_SIZE) || cardFallback;
+  const capturedCardRadius = safe(data.borders.radii.card, SAFE_SIZE);
+  const cardRadius =
+    capturedCardRadius && !isPillLike(capturedCardRadius)
+      ? capturedCardRadius
+      : cardFallback;
 
   // C5 component anatomy — empty when the brand didn't supply this signal or
   // the value didn't pass sanitization. Each preview consumer keeps its
@@ -401,8 +441,7 @@ export function renderPreview(
 
   const cardPadding =
     safe(data.components?.card?.padding ?? "", SAFE_PADDING) || "24px";
-  const cardBgRaw = safe(data.components?.card?.background ?? "", SAFE_COLOR);
-  const cardBg = cardBgRaw || "transparent";
+  const cardBg = colors.cardBg;
   const cardBorder =
     safe(data.components?.card?.border ?? "", SAFE_BORDER) ||
     "1px solid var(--ds-border)";
@@ -423,13 +462,14 @@ export function renderPreview(
       : "";
 
   const brandMark = safeLogoUrl
-    ? `<img class="brand-mark" src="${escapeHtml(safeLogoUrl)}" alt="${safeTitle} logo">`
+    ? `<span class="brand-mark-wrap"><img class="brand-mark" src="${escapeHtml(safeLogoUrl)}" alt="${safeTitle} logo"></span>`
     : `<div class="brand-initials">${initial}</div>`;
 
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Preview — ${safeTitle}</title>
 <style>
 :root {
@@ -451,8 +491,13 @@ export function renderPreview(
   --ds-button-font-weight: ${buttonFontWeight};
   --ds-card-padding: ${cardPadding};
   --ds-card-bg: ${cardBg};
+  --ds-card-text: ${colors.cardText};
+  --ds-card-muted: ${colors.cardMuted};
+  --ds-button-bg: ${colors.buttonBg};
+  --ds-button-text: ${colors.buttonText};
+  --ds-label: ${colors.label};
   --ds-border: color-mix(in srgb, var(--ds-text) 12%, var(--ds-bg));
-  --ds-muted: color-mix(in srgb, var(--ds-text) 55%, var(--ds-bg));
+  --ds-muted: ${colors.muted};
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -470,11 +515,12 @@ body {
   padding: 20px 40px;
   border-bottom: 1px solid var(--ds-border);
 }
-.brand { display: flex; align-items: center; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark-wrap { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; background: #ffffff; border: 1px solid #d4d4d4; border-radius: 6px; }
 .brand-mark { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; }
 .brand-initials {
   width: 32px; height: 32px; border-radius: 6px;
-  background: ${primary || "var(--ds-text)"}; color: var(--ds-bg);
+  background: var(--ds-button-bg); color: var(--ds-button-text); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 16px; font-family: var(--ds-heading-font);
 }
@@ -499,7 +545,7 @@ body {
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: ${primary || "var(--ds-muted)"};
+  color: var(--ds-label);
   margin-bottom: 20px;
 }
 h1 {
@@ -518,7 +564,7 @@ h1 {
   max-width: 640px;
   text-wrap: pretty;
 }
-.ctas { display: flex; gap: 12px; }
+.ctas { display: flex; gap: 12px; flex-wrap: wrap; }
 button {
   font-family: var(--ds-body-font);
   font-weight: var(--ds-button-font-weight);
@@ -527,21 +573,21 @@ button {
   border: ${buttonBorder || "0"};
   border-radius: var(--ds-button-radius);
   cursor: pointer;
+  min-height: 44px; max-width: 100%; overflow-wrap: anywhere;
 }
 button.primary {
-  background: var(--ds-primary);
-  color: var(--ds-bg);
+  background: var(--ds-button-bg);
+  color: var(--ds-button-text);
 }
 button.primary.missing {
-  background: repeating-linear-gradient(45deg, #d4d4d4 0 8px, #e8e8e8 8px 16px);
-  color: #6b6b6b;
+  background: #d4d4d4 repeating-linear-gradient(45deg, #d4d4d4 0 8px, #e8e8e8 8px 16px);
+  color: #333333;
   position: relative;
 }
 button.primary.missing::after {
   content: " (primary missing)";
   font-size: 11px;
   font-weight: 500;
-  opacity: 0.7;
 }
 button.ghost {
   background: transparent;
@@ -560,7 +606,9 @@ button.ghost {
   padding: var(--ds-card-padding);
   border-radius: var(--ds-card-radius);
   border: ${cardBorder};
-  ${cardBgRaw ? "background: var(--ds-card-bg);" : ""}
+  background: var(--ds-card-bg);
+  color: var(--ds-card-text);
+  min-width: 0; overflow-wrap: anywhere;
 }
 ${linkUnderline ? "a { text-decoration: underline; }" : ""}
 .card h3 {
@@ -572,7 +620,7 @@ ${linkUnderline ? "a { text-decoration: underline; }" : ""}
 }
 .card p {
   font-size: 14px;
-  color: var(--ds-muted);
+  color: var(--ds-card-muted);
   margin: 0;
   line-height: 1.5;
 }
@@ -633,8 +681,20 @@ footer {
 .sc-type-specimen { color: var(--ds-text); word-break: break-word; }
 .sc-type-meta { font-size: 11px; color: var(--ds-muted); margin-top: 8px; font-family: monospace; }
 .sc-comp-grid { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
-.sc-comp-item { display: flex; flex-direction: column; gap: 10px; }
+.sc-comp-item { display: flex; flex-direction: column; gap: 10px; min-width: 0; max-width: 100%; }
 .sc-comp-label { font-size: 11px; color: var(--ds-muted); font-family: monospace; }
+.brand-name, h1, .sc-header-label, .sc-swatch-value { overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .nav { padding: 20px; flex-wrap: wrap; gap: 20px; }
+  .nav-links { flex-wrap: wrap; gap: 16px; }
+  .hero { padding: 48px 20px 24px; }
+  h1 { font-size: min(var(--ds-h1-size), 42px); letter-spacing: -0.5px; }
+  .cards { grid-template-columns: 1fr; padding: 24px 20px 40px; }
+  .card { padding: 24px; }
+  footer { padding: 20px; }
+  .ds-showcase { padding: 40px 20px; }
+  .sc-header { flex-direction: column; gap: 8px; }
+}
 </style>
 </head>
 <body>
