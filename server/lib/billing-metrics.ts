@@ -21,24 +21,23 @@ function family(
 export async function renderBillingMetrics(): Promise<string> {
   const healthName = "fdmd_billing_metrics_available";
   try {
-    // One read transaction keeps purchases, operations and balances consistent.
-    const [purchases, operations, wallets] = await getDbExec().batch(
-      [
-        {
-          sql: "SELECT pack_id, COUNT(*) AS purchases, SUM(credits) AS credits FROM purchases WHERE status = 'fulfilled' GROUP BY pack_id",
-          args: [],
-        },
-        {
-          sql: "SELECT kind, status, COUNT(*) AS count FROM credit_operations GROUP BY kind, status",
-          args: [],
-        },
-        {
-          sql: "SELECT COALESCE(SUM(balance), 0) AS balance FROM credit_wallets",
-          args: [],
-        },
-      ],
-      "read",
-    );
+    // A single statement uses one Postgres snapshot, even under READ COMMITTED.
+    const result = await getDbExec().execute<{
+      purchases: { pack_id: string; purchases: number; credits: number }[];
+      operations: { kind: string; status: string; count: number }[];
+      balance: string | number;
+    }>(`SELECT
+      (SELECT COALESCE(json_agg(p), '[]'::json) FROM (
+        SELECT pack_id, COUNT(*) AS purchases, SUM(credits) AS credits
+        FROM app.purchases WHERE status = 'fulfilled' GROUP BY pack_id
+      ) p) AS purchases,
+      (SELECT COALESCE(json_agg(o), '[]'::json) FROM (
+        SELECT kind, status, COUNT(*) AS count
+        FROM app.credit_operations GROUP BY kind, status
+      ) o) AS operations,
+      (SELECT COALESCE(SUM(balance), 0) FROM app.credit_wallets) AS balance`);
+    const snapshot = result.rows[0];
+    if (!snapshot) throw new Error("Missing billing metrics snapshot");
 
     // Only catalog IDs and a fixed fallback become labels, never arbitrary DB values.
     const packs = new Map<string, { purchases: number; credits: number }>(
@@ -47,7 +46,7 @@ export async function renderBillingMetrics(): Promise<string> {
         { purchases: 0, credits: 0 },
       ]),
     );
-    for (const row of purchases.rows) {
+    for (const row of snapshot.purchases) {
       const value = packs.get(String(row.pack_id)) ?? packs.get("other")!;
       value.purchases += Number(row.purchases);
       value.credits += Number(row.credits);
@@ -59,7 +58,7 @@ export async function renderBillingMetrics(): Promise<string> {
         { reserved: 0, committed: 0, refunded: 0, rejected: 0, pending: 0 },
       ]),
     );
-    for (const row of operations.rows) {
+    for (const row of snapshot.operations) {
       const route =
         row.kind === "saved-iterate"
           ? "saved_iterate"
@@ -120,7 +119,7 @@ export async function renderBillingMetrics(): Promise<string> {
         "fdmd_credit_wallet_balance",
         "Total unspent credits across hosted wallets.",
         "gauge",
-        [` ${Number(wallets.rows[0]?.balance ?? 0)}`],
+        [` ${Number(snapshot.balance)}`],
       ),
     ].join("\n\n");
   } catch {

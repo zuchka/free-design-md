@@ -10,9 +10,14 @@ export default defineConfig({
   },
   test: {
     include: ["**/*.{test,spec}.?(c|m)[jt]s?(x)"],
-    exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**", "**/.output/**"],
-    // Run test files sequentially to prevent concurrent writes to the
-    // shared SQLite database (fdmd_users/sessions/quota tables).
+    exclude: [
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/dist/**",
+      "**/.output/**",
+    ],
+    // Database integration files use one local Postgres schema and clean up
+    // deterministic test owners, so keep files sequential.
     fileParallelism: false,
   },
 });

@@ -1,28 +1,25 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { resetMetricsDatabase } from "./metrics-test-database.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getDbExec, resetDbClientForTests } from "../../db/client.js";
-import { migrateDatabase } from "../../db/migrate.js";
-import * as quota from "../../lib/quota.js";
-import { resetMetricsForTests } from "../../lib/metrics.js";
+import { getDbExec, resetDbClientForTests } from "../db/client.js";
+import * as quota from "./quota.js";
+import { resetMetricsForTests } from "./metrics.js";
 
 const mocks = vi.hoisted(() => ({
   verifiedOwner: vi.fn(),
   stream: vi.fn(),
 }));
-vi.mock("../../lib/owner.js", () => ({
+vi.mock("./owner.js", () => ({
   resolveAgentContextOwner: async () => "metrics-user",
   resolveVerifiedOwner: mocks.verifiedOwner,
 }));
-vi.mock("../../../actions/enrich-design-md.js", () => ({
+vi.mock("../../actions/enrich-design-md.js", () => ({
   enrichStream: mocks.stream,
 }));
-vi.mock("../../../actions/iterate-design-md.js", () => ({
+vi.mock("../../actions/iterate-design-md.js", () => ({
   iterateStream: mocks.stream,
 }));
-vi.mock("../../lib/saved-enrichments.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../lib/saved-enrichments.js")>()),
+vi.mock("./saved-enrichments.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./saved-enrichments.js")>()),
   getPublicSavedEnrichment: async () => ({
     id: "parent",
     sourceUrl: "https://example.com",
@@ -35,7 +32,7 @@ vi.mock("../../lib/saved-enrichments.js", async (importOriginal) => ({
 }));
 
 // Exercise the real H3 HTTP adapter, streaming responses, wallet and scrape route.
-import { apiApp } from "../../api-app.js";
+import { apiApp } from "../api-app.js";
 
 const cases = [
   {
@@ -65,15 +62,13 @@ const cases = [
   },
 ];
 
-let databaseDirectory: string;
 beforeEach(async () => {
-  databaseDirectory = mkdtempSync(join(tmpdir(), "fdmd-metrics-"));
-  vi.stubEnv("DATABASE_URL", `file:${join(databaseDirectory, "test.db")}`);
+  await resetMetricsDatabase();
+  vi.stubEnv("DATABASE_TESTS", "true");
   vi.stubEnv("ANTHROPIC_API_KEY", "test-key-never-sent");
   vi.stubEnv("FREE_DESIGN_MD_SELF_HOSTED", "0");
   vi.stubEnv("PROMETHEUS_METRICS_TOKEN", "scrape-secret");
-  resetDbClientForTests();
-  await migrateDatabase();
+  await resetDbClientForTests();
   await resetMetricsForTests();
   mocks.verifiedOwner.mockResolvedValue("metrics-user");
   mocks.stream.mockImplementation(async function* () {
@@ -86,12 +81,11 @@ beforeEach(async () => {
     };
   });
 });
-afterEach(() => {
+afterEach(async () => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
-  resetDbClientForTests();
+  await resetDbClientForTests();
   vi.unstubAllEnvs();
-  rmSync(databaseDirectory, { recursive: true, force: true });
 });
 
 async function fund() {

@@ -4,5 +4,6 @@ healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 
-# SQLite persistence: add a Railway Volume in the dashboard and mount it at /app/data
-# Database file will live at /app/data/app.db
+# DATABASE_URL is supplied as a Railway secret and points to the private
+# Supabase Postgres connection. The legacy /app/data volume is retained only
+# through the rollback window and is not used by the running application.

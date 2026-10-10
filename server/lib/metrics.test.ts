@@ -8,7 +8,6 @@ import {
   recordIterateRequest,
   recordQuotaEvent,
   renderPrometheusMetrics,
-  resetInMemoryMetricsForTests,
   resetMetricsForTests,
   withActionMetricCaller,
 } from "./metrics";
@@ -91,28 +90,6 @@ describe("metrics registry", () => {
 
     expect(await renderPrometheusMetrics()).not.toContain(
       'fdmd_extract_duration_seconds_count{status="success"}',
-    );
-  });
-
-  it("renders persisted business counters after in-memory reset", async () => {
-    await recordActionRun({
-      action: "enrich-design-md",
-      status: "success",
-    });
-    await recordEnrichRequest({
-      status: "success",
-      keySource: "hosted_server",
-      quota: "consumed",
-      startedAt: metricsStartedAt(),
-    });
-
-    resetInMemoryMetricsForTests();
-
-    expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_action_runs_total{action="enrich-design-md",status="success",caller="direct"} 1',
-    );
-    expect(await renderPrometheusMetrics()).toContain(
-      'fdmd_ai_requests_total{route="enrich",status="success",key_source="hosted_server",credit_outcome="consumed"} 1',
     );
   });
 

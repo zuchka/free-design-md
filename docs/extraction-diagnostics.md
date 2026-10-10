@@ -69,4 +69,8 @@ Outcome/recovery counters persist in the existing metric-counter table. Histogra
 
 Run the extraction/browser/metrics tests, typecheck and production build. Exercise a valid page, an invalid/private address, a missing domain and a target error. Confirm each attempt appears once in results, that response/header/log reference IDs match, and that the next scrape includes its category. Watch hourly failure causes, recovered retries, screenshot warnings and latency to evaluate improvement; some target refusals are outside this service's control.
 
-Production was inspected on October 8, 2026: it uses image `sha-b32af43`, from the Postgres fulfillment branch, while the local main checkout uses SQLite. These changes reuse the metrics abstraction without modifying its database SQL. Apply the feature on top of the currently deployed branch (or merge that branch into main) before releasing; do not replace the live database stack with this checkout's older one.
+The October 2026 reconciliation merges these diagnostics with the production
+Postgres runtime on `main`. Extraction counters persist in
+`app.fdmd_metric_counters`; the Postgres integration suite verifies that outcome
+and recovery counts survive a process-memory reset. Follow
+[production deployment](production-deployment.md) when releasing.
