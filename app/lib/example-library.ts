@@ -42,6 +42,7 @@ export interface ExampleDesignSummary {
   hasArtifact: boolean;
 }
 
+// Public assets are cached immutably; give replacement logos a new filename.
 const EXAMPLE_LOGO_FILENAMES: Record<string, string> = {
   airtable: "airtable.svg",
   binance: "binance.svg",
@@ -106,19 +107,19 @@ const EXAMPLE_LOGO_FILENAMES: Record<string, string> = {
   zapier: "zapier.svg",
   airbnb: "airbnb.svg",
   apple: "apple.svg",
-  bmw: "bmw.svg",
-  claude: "claude.svg",
+  bmw: "bmw-ab0085b5.svg",
+  claude: "claude-aef68a9c.svg",
   figma: "figma.svg",
-  github: "github.svg",
+  github: "github-4a6b3318.svg",
   intuit: "intuit.svg",
-  "linear.app": "linear.svg",
-  linear: "linear.svg",
+  "linear.app": "linear-0e60c740.svg",
+  linear: "linear-0e60c740.svg",
   nike: "nike.svg",
   notion: "notion.svg",
   shopify: "shopify.svg",
-  spotify: "spotify.svg",
+  spotify: "spotify-f41740bf.svg",
   stripe: "stripe.svg",
-  supabase: "supabase.svg",
+  supabase: "supabase-6e362ee5.svg",
   vercel: "vercel.svg",
   walmart: "walmart.png",
 };
