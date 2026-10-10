@@ -491,7 +491,7 @@ export async function withActionMetricCaller<T>(
   return await actionMetricCallerStorage.run(caller, fn);
 }
 
-function currentActionMetricCaller(): ActionMetricCaller {
+export function currentActionMetricCaller(): ActionMetricCaller {
   return actionMetricCallerStorage.getStore() ?? "direct";
 }
 

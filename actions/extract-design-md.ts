@@ -265,6 +265,7 @@ export default defineAction({
   readOnly: true,
   run: async ({ url }) =>
     withExtractionTrace(async (trace) => {
+      trace.setUrl(url);
       try {
         const target = await trace.run("validation", () =>
           assertSafeExtractionUrl(url),

@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, pg_catalog;
 
-select plan(22);
+select plan(23);
 
 select ok(
   exists (select 1 from pg_namespace where nspname = 'app'),
@@ -17,14 +17,15 @@ select is(
     where table_schema = 'app'
       and table_type = 'BASE TABLE'
   ),
-  13,
-  'app schema has exactly the 13 active runtime tables'
+  14,
+  'app schema has exactly the 14 active runtime tables'
 );
 
 select ok(to_regclass('app.enrichment_cache') is not null, 'enrichment_cache exists');
 select ok(to_regclass('app.fdmd_iterations') is not null, 'fdmd_iterations exists');
 select ok(to_regclass('app.fdmd_saved_enrichments') is not null, 'fdmd_saved_enrichments exists');
 select ok(to_regclass('app.fdmd_metric_counters') is not null, 'fdmd_metric_counters exists');
+select ok(to_regclass('app.fdmd_extraction_requests') is not null, 'fdmd_extraction_requests exists');
 select ok(to_regclass('app.auth_users') is not null, 'auth_users exists');
 select ok(to_regclass('app.auth_sessions') is not null, 'auth_sessions exists');
 select ok(to_regclass('app.auth_accounts') is not null, 'auth_accounts exists');
@@ -51,11 +52,13 @@ select is(
         'auth_accounts_user_id_idx',
         'auth_verifications_identifier_idx',
         'credit_ledger_owner_created_idx',
-        'purchases_owner_created_idx'
+        'purchases_owner_created_idx',
+        'fdmd_extraction_requests_completed_idx',
+        'fdmd_extraction_requests_http_status_idx'
       ])
   ),
-  11,
-  'all 11 explicit runtime indexes exist'
+  13,
+  'all 13 explicit runtime indexes exist'
 );
 
 select is(

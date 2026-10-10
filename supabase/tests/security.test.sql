@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, pg_catalog;
 
-select plan(12);
+select plan(16);
 
 select ok(
   not has_schema_privilege('public', 'app', 'usage'),
@@ -33,6 +33,26 @@ select ok(
 select ok(
   not has_table_privilege('authenticated', 'app.credit_wallets', 'update'),
   'Supabase authenticated cannot update wallets directly'
+);
+
+select ok(
+  not has_table_privilege('anon', 'app.fdmd_extraction_requests', 'select'),
+  'Supabase anon cannot read extraction URLs'
+);
+
+select ok(
+  not has_table_privilege('authenticated', 'app.fdmd_extraction_requests', 'select'),
+  'Supabase authenticated cannot read extraction URLs'
+);
+
+select ok(
+  (select relrowsecurity from pg_class where oid = 'app.fdmd_extraction_requests'::regclass),
+  'extraction request history enables RLS'
+);
+
+select ok(
+  has_table_privilege('free_design_app', 'app.fdmd_extraction_requests', 'insert'),
+  'runtime group can persist extraction request history'
 );
 
 select ok(

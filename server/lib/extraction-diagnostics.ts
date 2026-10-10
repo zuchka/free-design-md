@@ -10,7 +10,12 @@ import {
   recordExtractionResult,
   recordExtractionRecovery,
   recordExtractionStage,
+  currentActionMetricCaller,
 } from "./metrics.js";
+import {
+  extractionHistoryUrl,
+  recordExtractionHistory,
+} from "./extraction-history.js";
 
 export class ExtractionError extends Error {
   constructor(
@@ -61,6 +66,11 @@ export class ExtractionTrace {
   hostname: string | undefined;
   upstreamStatus: number | undefined;
   private readonly startedAt = performance.now();
+  private url: string | null = null;
+
+  setUrl(input: unknown) {
+    this.url = extractionHistoryUrl(input);
+  }
 
   async run<T>(stage: ExtractionStage, fn: () => Promise<T> | T): Promise<T> {
     this.stage = stage;
@@ -88,6 +98,7 @@ export class ExtractionTrace {
     const status = error ? "error" : "success";
     const reason = error?.code ?? "none";
     const stage = error?.stage ?? "complete";
+    const durationMs = Math.round(performance.now() - this.startedAt);
     // Only allowlisted fields: no full URLs, paths, queries, user IDs, page
     // content, raw messages or stack traces. Hostnames stay in private logs.
     process.stderr.write(
@@ -99,7 +110,7 @@ export class ExtractionTrace {
         reason,
         stage,
         upstreamStatus: error?.upstreamStatus ?? this.upstreamStatus,
-        durationMs: Math.round(performance.now() - this.startedAt),
+        durationMs,
         stagesMs: this.stages,
         retries: this.retries,
         warnings: this.warnings,
@@ -110,6 +121,17 @@ export class ExtractionTrace {
       status,
       reason,
       stage,
+      retried: this.retries.length > 0,
+    });
+    await recordExtractionHistory({
+      requestId: this.requestId,
+      url: this.url,
+      caller: currentActionMetricCaller(),
+      status,
+      code: reason,
+      stage,
+      durationMs,
+      upstreamStatus: error?.upstreamStatus ?? this.upstreamStatus ?? null,
       retried: this.retries.length > 0,
     });
     for (const retry of this.retries)

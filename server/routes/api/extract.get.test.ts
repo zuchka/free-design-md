@@ -4,6 +4,7 @@ import {
   resetMetricsForTests,
 } from "../../lib/metrics";
 import { ExtractionError } from "../../lib/extraction-diagnostics";
+import * as history from "../../lib/extraction-history";
 
 const mockExtractRun = vi.hoisted(() => vi.fn());
 vi.mock("../../../actions/extract-design-md", () => ({
@@ -44,6 +45,8 @@ const { default: routeHandler } = await import("./extract.get");
 
 describe("GET /api/extract metrics", () => {
   beforeEach(async () => {
+    vi.restoreAllMocks();
+    vi.spyOn(history, "recordExtractionHistory").mockResolvedValue(undefined);
     mockExtractRun.mockReset();
     await resetMetricsForTests();
   });
@@ -154,6 +157,13 @@ describe("GET /api/extract metrics", () => {
     expect(event._statusCode).toBe(400);
     expect(event._headers?.["Content-Type"]).toContain("text/plain");
     expect(result).toContain("format must be one of");
+    expect(history.recordExtractionHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://example.com/",
+        code: "invalid_request",
+        caller: "http",
+      }),
+    );
     expect(mockExtractRun).not.toHaveBeenCalled();
     expect(await renderPrometheusMetrics()).toContain(
       'fdmd_extract_duration_seconds_count{status="bad_request"} 1',
@@ -181,6 +191,16 @@ describe("GET /api/extract metrics", () => {
         requestId: event._headers?.["X-Request-Id"],
       },
     });
+    expect(history.recordExtractionHistory).toHaveBeenCalledTimes(1);
+    expect(history.recordExtractionHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: event._headers?.["X-Request-Id"],
+        url: "https://missing.example/",
+        code: "dns",
+        caller: "http",
+        status: "error",
+      }),
+    );
     expect(await renderPrometheusMetrics()).toContain(
       'fdmd_extraction_results_total{status="error",reason="dns",stage="navigation",caller="http",retried="false"} 1',
     );

@@ -13,5 +13,5 @@ export async function resetMetricsDatabase(): Promise<void> {
   }
   await getDbExec().execute(`TRUNCATE app.stripe_events, app.purchases,
     app.credit_ledger, app.credit_operations, app.credit_wallets,
-    app.fdmd_metric_counters, app.fdmd_iterations`);
+    app.fdmd_metric_counters, app.fdmd_extraction_requests, app.fdmd_iterations`);
 }
