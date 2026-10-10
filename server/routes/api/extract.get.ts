@@ -51,6 +51,7 @@ export default defineEventHandler(async (event) => {
   const format = normalizeFormat(query.format);
 
   const trace = new ExtractionTrace();
+  trace.setUrl(url);
   setResponseHeader(event, "X-Request-Id", trace.requestId);
   setResponseHeader(event, "Cache-Control", "no-store");
 

@@ -5,10 +5,12 @@ import {
   index,
   integer,
   pgSchema,
+  pgPolicy,
   primaryKey,
   text,
   timestamp,
   unique,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 export const appSchema = pgSchema("app");
@@ -172,6 +174,56 @@ export const fdmdMetricCounters = appSchema.table(
   },
   (table) => [primaryKey({ columns: [table.name, table.labelKey] })],
 );
+
+export const fdmdExtractionRequests = appSchema
+  .table(
+    "fdmd_extraction_requests",
+    {
+      requestId: uuid("request_id").primaryKey(),
+      url: text("url"),
+      completedAt: timestamp("completed_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+      caller: text("caller").notNull(),
+      status: text("status").notNull(),
+      code: text("code").notNull(),
+      stage: text("stage").notNull(),
+      durationMs: integer("duration_ms").notNull(),
+      upstreamStatus: integer("upstream_status"),
+      retried: boolean("retried").notNull(),
+    },
+    (table) => [
+      check(
+        "fdmd_extraction_requests_url_check",
+        sql`length(${table.url}) <= 2048`,
+      ),
+      check(
+        "fdmd_extraction_requests_caller_check",
+        sql`${table.caller} in ('http', 'direct')`,
+      ),
+      check(
+        "fdmd_extraction_requests_status_check",
+        sql`${table.status} in ('success', 'error')`,
+      ),
+      check(
+        "fdmd_extraction_requests_duration_ms_check",
+        sql`${table.durationMs} >= 0`,
+      ),
+      index("fdmd_extraction_requests_completed_idx").on(
+        table.completedAt.desc(),
+        table.requestId.desc(),
+      ),
+      index("fdmd_extraction_requests_http_status_idx")
+        .on(table.status, table.completedAt.desc(), table.requestId.desc())
+        .where(sql`${table.caller} = 'http'`),
+      pgPolicy("extraction_history_runtime", {
+        to: "free_design_app",
+        using: sql`true`,
+        withCheck: sql`true`,
+      }),
+    ],
+  )
+  .enableRLS();
 
 export const creditWallets = appSchema.table(
   "credit_wallets",

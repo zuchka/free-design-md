@@ -9,7 +9,43 @@ Initial extraction stays public and free. Diagnostics add no account requirement
 - Server logs contain one `extraction.completed` JSON event per operation, with its reference ID, hostname, cause, failing stage, upstream HTTP status, stage timings, retries, warnings, and classified stage issues (including recovered screenshot failures). Search Railway runtime logs for the reference shown to the user. An action called inside an HTTP request shares its trace, so it is counted once.
 - Errors from `/api/extract?format=json` contain `error.code`, `message`, `hint`, `retryable`, `stage`, and `requestId`. Every response has `X-Request-Id`. Successful JSON responses add `diagnostics.requestId` and `diagnostics.warnings`; successful Markdown/MDX bodies retain their existing format.
 
-The health endpoint uses the same optional `PROMETHEUS_METRICS_TOKEN` protection as metrics (`Authorization: Bearer …` or `x-prometheus-token`). Both endpoints contain aggregates only. Hostnames appear only in server logs. New diagnostic logs omit full URLs, paths, query strings, credentials, raw error text, page content and account identifiers. Existing platform/access logs have their own retention and redaction settings. Diagnostic output uses stderr so direct action stdout remains JSON.
+The default health response uses the same optional `PROMETHEUS_METRICS_TOKEN` protection as metrics (`Authorization: Bearer …` or `x-prometheus-token`). The default health response and Prometheus contain aggregates only. Diagnostic logs omit full URLs, paths, query strings, credentials, raw error text, page content and account identifiers. Existing platform/access logs have their own retention and redaction settings. Diagnostic output uses stderr so direct action stdout remains JSON.
+
+## See which URLs were extracted
+
+Request `/api/extraction-health?include=recent` with a valid metrics token to add
+`recentRequests` to the summary. This mode **requires a configured token** even
+when aggregate metrics are public. Use `status=error` to see only failures, or
+`status=success` for successful requests; omit it for both. `limit` defaults to 50
+and accepts 1–100. Results are newest first, and `hasMore` indicates truncation.
+
+```sh
+curl -H "Authorization: Bearer $PROMETHEUS_METRICS_TOKEN" \
+  'https://freedesign.md/api/extraction-health?include=recent&status=error&limit=50'
+```
+
+The `recentRequests.items` entries include `url`, `requestId`, `completedAt`,
+`status`, `code`, `stage`, `durationMs`, `upstreamStatus`, and `retried`.
+Failures also include `explanation` and `nextStep`. For example, a DNS error now
+identifies `https://missing.example/pricing`, so the operator can distinguish a
+typo from a valid site that needs investigation and correlate its request ID
+with logs or the user's error reference.
+
+URLs are normalized to HTTP(S) site/path, including port when provided.
+Credentials, **all query strings**, and fragments are omitted before storage.
+Unparseable, missing, non-HTTP(S), or over-2048-character sanitized URLs are
+stored as `null`; their outcome and reference still appear. This records the
+submitted destination, not the final URL after redirects. No URL becomes a
+Prometheus label or is added to ordinary diagnostic logs.
+
+History is stored in the private `app.fdmd_extraction_requests` Postgres table.
+Both HTTP and direct action operations are recorded once; the endpoint returns
+only HTTP operations. The endpoint includes the last 30 days; subsequent writes
+prune up to 500 expired rows at a time. During idle periods, expired rows may
+remain in the database but are never returned. Counters retain their existing
+lifetime semantics. History begins with this rollout; earlier URLs cannot be
+reconstructed. A storage failure does not fail extraction, and an unavailable
+history read returns 503 instead of misleading empty results.
 
 ## Find what to fix first
 
@@ -63,9 +99,16 @@ histogram_quantile(0.95, sum by (stage, le) (
 ))
 ```
 
-Outcome/recovery counters persist in the existing metric-counter table. Histograms (including the preexisting overall duration histogram) describe only the current process; Prometheus range queries handle resets. Avoid comparing lifetime action totals with a single process's duration counts. No new database table or migration is needed.
+Outcome/recovery counters persist in the existing metric-counter table. Histograms (including the preexisting overall duration histogram) describe only the current process; Prometheus range queries handle resets. Avoid comparing lifetime action totals with a single process's duration counts. Per-request URL history uses its own table and does not change metric cardinality.
 
 ## Rollout and validation
+
+Before deploying URL history, apply
+`supabase/migrations/20261010042606_add_extraction_request_history.sql` through the
+normal Supabase migration workflow. Runtime startup never runs DDL. Configure
+`PROMETHEUS_METRICS_TOKEN` to access history; without one, only the aggregate
+endpoint remains accessible. Application rollback may leave this additive table
+in place; no existing data needs to be changed or backfilled.
 
 Run the extraction/browser/metrics tests, typecheck and production build. Exercise a valid page, an invalid/private address, a missing domain and a target error. Confirm each attempt appears once in results, that response/header/log reference IDs match, and that the next scrape includes its category. Watch hourly failure causes, recovered retries, screenshot warnings and latency to evaluate improvement; some target refusals are outside this service's control.
 
