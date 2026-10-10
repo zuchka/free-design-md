@@ -7,8 +7,8 @@ Free design.md turns a public URL into a portable `design.md` specification. The
 - React Router 7 Framework Mode is the application and SSR runtime.
 - React Router resource routes own Better Auth and Stripe endpoints.
 - Existing extraction/enrichment handlers are mounted through `server/api-app.ts` using H3. Keep new endpoints as React Router resource routes unless they need the streaming adapter.
-- Drizzle + libSQL/SQLite live in `server/db/`.
-- `scripts/migrate.ts` runs before `dev` and `start`.
+- Drizzle + Postgres live in `server/db/`; application tables are in the private `app` schema.
+- Versioned Supabase migrations live in `supabase/migrations/`. Runtime startup never runs DDL.
 - Reusable CLI operations live in `actions/` and use the local `defineAction()` helper.
 
 Do not add Agent Native, Builder Connect, an A2A card, embedded agent chat, or Builder-based entitlements. Those systems were intentionally removed.
@@ -49,7 +49,7 @@ STRIPE_SECRET_KEY
 STRIPE_WEBHOOK_SECRET
 STRIPE_PRICE_10_CREDITS
 DATABASE_URL
-DATABASE_AUTH_TOKEN (remote libSQL only)
+DATABASE_POOL_SIZE (optional; defaults to 5)
 ```
 
 ## Actions
@@ -58,7 +58,6 @@ DATABASE_AUTH_TOKEN (remote libSQL only)
 pnpm action extract-design-md --url stripe.com
 pnpm action enrich-design-md --url ... --designSystemData '{...}' --signals '{...}' --screenshotDataUrl 'data:...' --deterministicMarkdown '...'
 pnpm action iterate-design-md --previousMarkdown '...' --userPrompt '...'
-pnpm action export-design-md --id <id>
 pnpm action db-health
 ```
 
@@ -69,10 +68,13 @@ Action output is JSON on stdout. AI actions read `ANTHROPIC_API_KEY` from the lo
 ```bash
 nvm use
 pnpm install
+pnpm db:start
+pnpm db:reset
 pnpm dev           # http://localhost:8080
-pnpm migrate
 pnpm typecheck
 pnpm test
+pnpm test:db
+pnpm db:test
 pnpm build
 ```
 
@@ -90,7 +92,9 @@ pnpm exec playwright install chromium
 - `server/lib/auth.ts` — Better Auth configuration and anonymous account linking
 - `server/lib/quota.ts` — wallet, ledger, reservation, commit/refund, purchase grant
 - `server/lib/stripe.ts` — server-side credit pack catalog
-- `server/db/migrate.ts` — schema and destructive removal of Builder-only columns
+- `supabase/migrations/` — canonical Postgres schema
+- `scripts/migrate-sqlite-to-postgres.ts` — one-time transactional data import
+- `scripts/verify-postgres-migration.ts` — deterministic post-import verification
 - `server/api-app.ts` — temporary H3 adapter for existing API handlers
 
 ## Security invariants

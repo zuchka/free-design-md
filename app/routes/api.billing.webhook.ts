@@ -2,8 +2,11 @@ import type { Route } from "./+types/api.billing.webhook";
 import type Stripe from "stripe";
 import { grantPurchasedCredits } from "../../server/lib/quota.js";
 import { getCreditPack, getStripe } from "../../server/lib/stripe.js";
+import { migrationWritePauseResponse } from "../../server/lib/migration-maintenance.js";
 
 export async function action({ request }: Route.ActionArgs) {
+  const maintenanceResponse = migrationWritePauseResponse(request);
+  if (maintenanceResponse) return maintenanceResponse;
   const signature = request.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!signature || !webhookSecret) {

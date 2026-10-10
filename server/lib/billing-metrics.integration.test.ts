@@ -1,9 +1,6 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { resetMetricsDatabase } from "./metrics-test-database.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDbExec, resetDbClientForTests } from "../db/client.js";
-import { migrateDatabase } from "../db/migrate.js";
 import { renderBillingMetrics } from "./billing-metrics.js";
 import {
   commitCredit,
@@ -11,7 +8,12 @@ import {
   grantPurchasedCredits,
   refundCredit,
 } from "./quota.js";
-import { resetInMemoryMetricsForTests } from "./metrics.js";
+import {
+  metricsStartedAt,
+  recordEnrichRequest,
+  renderPrometheusMetrics,
+  resetInMemoryMetricsForTests,
+} from "./metrics.js";
 
 const purchase = {
   eventId: "evt_metrics",
@@ -22,24 +24,35 @@ const purchase = {
   credits: 10,
 };
 
-let databaseDirectory: string;
 beforeEach(async () => {
-  databaseDirectory = mkdtempSync(join(tmpdir(), "fdmd-metrics-"));
-  vi.stubEnv("DATABASE_URL", `file:${join(databaseDirectory, "test.db")}`);
-  resetDbClientForTests();
-  await migrateDatabase();
+  await resetMetricsDatabase();
+  vi.stubEnv("DATABASE_TESTS", "true");
+  await resetDbClientForTests();
 });
-afterEach(() => {
+afterEach(async () => {
   vi.restoreAllMocks();
-  resetDbClientForTests();
+  await resetDbClientForTests();
   vi.unstubAllEnvs();
-  rmSync(databaseDirectory, { recursive: true, force: true });
 });
 
 describe("billing metrics from durable records", () => {
+  it("keeps paid AI outcomes after process memory is reset", async () => {
+    await recordEnrichRequest({
+      status: "success",
+      keySource: "hosted_server",
+      quota: "consumed",
+      startedAt: metricsStartedAt(),
+    });
+    resetInMemoryMetricsForTests();
+    const output = await renderPrometheusMetrics();
+    expect(output).toContain("fdmd_persistent_metrics_available 1");
+    expect(output).toContain(
+      'fdmd_ai_requests_total{route="enrich",status="success",key_source="hosted_server",credit_outcome="consumed"} 1',
+    );
+  });
   it("counts fulfilled packs and granted credits once across event/session retries and memory resets", async () => {
     await getDbExec().execute({
-      sql: "INSERT INTO purchases (id, owner_id, stripe_checkout_session_id, pack_id, credits, status) VALUES ('pending', ?, ?, ?, ?, 'pending')",
+      sql: "INSERT INTO app.purchases (id, owner_id, stripe_checkout_session_id, pack_id, credits, status) VALUES ('pending', $1, $2, $3, $4, 'pending')",
       args: [
         purchase.ownerId,
         purchase.checkoutSessionId,
@@ -141,7 +154,7 @@ describe("billing metrics from durable records", () => {
   });
 
   it("exposes collection failure without substituting zero business totals", async () => {
-    vi.spyOn(getDbExec(), "batch").mockRejectedValueOnce(
+    vi.spyOn(getDbExec(), "execute").mockRejectedValueOnce(
       new Error("unavailable"),
     );
     const output = await renderBillingMetrics();

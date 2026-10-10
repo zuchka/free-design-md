@@ -70,3 +70,26 @@ sum by (status) (increase(fdmd_ai_requests_total{status=~"sign_in_required|out_o
 These are aggregate operational metrics, not a replacement for the payment and
 credit ledger. No revenue is inferred from advertised pack prices, and no
 subscription/MRR metric is emitted for one-time packs.
+
+## Postgres verification
+
+The collector reads the private `app` schema with one SQL statement so purchase,
+operation, and wallet totals use the same snapshot. It requires only the runtime
+role's existing `SELECT` grants; no schema migration or production data write is
+needed.
+
+Run database tests against a dedicated local database ending in `_test`, with
+the repository's Supabase migrations applied. The metrics fixtures clear billing
+and metric tables in that database and reject hosted URLs or other database names:
+
+```sh
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/fdmd_metrics_test \
+  DATABASE_TESTS=true pnpm test:db
+```
+
+Before release, compare the deployed `/api/metrics` counters with
+`app.fdmd_metric_counters`, execute the billing snapshot query read-only, and
+check the runtime role can read the billing tables. After deploying the new
+image, verify both availability gauges are 1 and reconcile purchased credits,
+committed operations, outstanding reservations and wallet balances. Pushing a
+GitHub branch alone does not change the image pinned in Railway.

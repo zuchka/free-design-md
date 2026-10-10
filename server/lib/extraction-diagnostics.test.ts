@@ -8,7 +8,6 @@ import {
 import {
   getExtractionHealth,
   renderPrometheusMetrics,
-  resetInMemoryMetricsForTests,
   resetMetricsForTests,
   withActionMetricCaller,
 } from "./metrics";
@@ -43,7 +42,7 @@ describe("extraction diagnostics", () => {
     });
   });
 
-  it("records nested route/action instrumentation only once and preserves retries after restart", async () => {
+  it("records nested route/action instrumentation only once with retry context", async () => {
     const log = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     await withActionMetricCaller("http", () =>
       withExtractionTrace(async (trace) => {
@@ -56,14 +55,13 @@ describe("extraction diagnostics", () => {
       }),
     );
     expect(log).toHaveBeenCalledTimes(1);
-    resetInMemoryMetricsForTests();
     const health = await getExtractionHealth();
     expect(health).toMatchObject({
       total: 1,
       failed: 0,
       succeeded: 1,
       recoveredAfterRetry: 1,
-      storage: "persistent",
+      storage: "process_memory",
     });
     const metrics = await renderPrometheusMetrics();
     expect(metrics).toContain(

@@ -69,6 +69,15 @@ data/exports/
 
 .vercel/
 
+# Supabase CLI local state and developer-specific secrets.
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+.migration-artifacts/
+*.sqlite-snapshot.db
+.presentation-build/
+.codex-finalizer/
+
 # Fidelity-probe output (screenshots + report.html from tools/fidelity-report.ts)
 tools/fidelity-output/
 
