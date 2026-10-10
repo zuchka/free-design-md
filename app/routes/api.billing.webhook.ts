@@ -1,3 +1,4 @@
+import { projectPurchase } from "../../server/lib/analytics-maintenance.js";
 import type { Route } from "./+types/api.billing.webhook";
 import type Stripe from "stripe";
 import { grantPurchasedCredits } from "../../server/lib/quota.js";
@@ -10,7 +11,10 @@ export async function action({ request }: Route.ActionArgs) {
   const signature = request.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!signature || !webhookSecret) {
-    return Response.json({ error: "Stripe webhook is not configured." }, { status: 503 });
+    return Response.json(
+      { error: "Stripe webhook is not configured." },
+      { status: 503 },
+    );
   }
 
   let event: Stripe.Event;
@@ -37,7 +41,10 @@ export async function action({ request }: Route.ActionArgs) {
       const packId = checkout.metadata?.packId;
       const pack = packId ? getCreditPack(packId) : null;
       if (!ownerId || !pack) {
-        return Response.json({ error: "Checkout metadata is invalid." }, { status: 400 });
+        return Response.json(
+          { error: "Checkout metadata is invalid." },
+          { status: 400 },
+        );
       }
 
       const paymentIntentId =
@@ -55,6 +62,7 @@ export async function action({ request }: Route.ActionArgs) {
         amountTotal: checkout.amount_total,
         currency: checkout.currency,
       });
+      await projectPurchase(checkout.id);
     }
   }
 

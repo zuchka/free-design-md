@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  jsonb,
+  type AnyPgColumn,
   check,
   index,
   integer,
@@ -292,4 +294,132 @@ export const stripeEvents = appSchema.table("stripe_events", {
   eventId: text("event_id").primaryKey(),
   eventType: text("event_type").notNull(),
   processedAt: text("processed_at").notNull().default(textTimestampDefault),
+});
+
+export const analyticsIdentities = appSchema.table(
+  "analytics_identities",
+  {
+    id: uuid("id").primaryKey(),
+    kind: text("kind").notNull(),
+    userId: text("user_id").unique(),
+    canonicalId: uuid("canonical_id").references(
+      (): AnyPgColumn => analyticsIdentities.id,
+    ),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    firstVisitedAt: timestamp("first_visited_at", { withTimezone: true }),
+    firstActiveAt: timestamp("first_active_at", { withTimezone: true }),
+    internal: boolean("internal").notNull().default(false),
+  },
+  (t) => [
+    check(
+      "analytics_identities_kind_check",
+      sql`${t.kind} in ('anonymous','account')`,
+    ),
+    check(
+      "analytics_identities_check",
+      sql`${t.canonicalId} is null or (${t.kind}='anonymous' and ${t.canonicalId}<>${t.id})`,
+    ),
+    index("analytics_identity_canonical_idx").on(t.canonicalId),
+    index("analytics_identity_resolved_idx").on(
+      sql`coalesce(${t.canonicalId},${t.id})`,
+    ),
+  ],
+);
+export const analyticsVisitors = appSchema.table(
+  "analytics_visitors",
+  {
+    digest: text("digest").primaryKey(),
+    identityId: uuid("identity_id")
+      .notNull()
+      .references(() => analyticsIdentities.id),
+    anonymousUserId: text("anonymous_user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()+interval '180 days'`),
+    attribution: jsonb("attribution").notNull().default({}),
+  },
+  (t) => [
+    index("analytics_visitors_identity_idx").on(t.identityId),
+    index("analytics_visitors_expiry_idx").on(t.expiresAt),
+  ],
+);
+export const analyticsEvents = appSchema.table(
+  "analytics_events",
+  {
+    id: uuid("id").primaryKey(),
+    deduplicationKey: text("deduplication_key").notNull().unique(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    identityId: uuid("identity_id").references(() => analyticsIdentities.id),
+    name: text("name").notNull(),
+    source: text("source").notNull(),
+    audience: text("audience").notNull(),
+    trust: text("trust").notNull(),
+    authState: text("auth_state").notNull(),
+    definitionVersion: integer("definition_version").notNull().default(1),
+    artifactId: text("artifact_id"),
+    operationId: text("operation_id"),
+    durationMs: integer("duration_ms"),
+    properties: jsonb("properties").notNull().default({}),
+  },
+  (t) => [
+    check(
+      "analytics_events_source_check",
+      sql`${t.source} in ('browser','api','direct','historical')`,
+    ),
+    check(
+      "analytics_events_audience_check",
+      sql`${t.audience} in ('product','example','public_share','internal','bot','unknown')`,
+    ),
+    check(
+      "analytics_events_trust_check",
+      sql`${t.trust} in ('server','browser','billing')`,
+    ),
+    check(
+      "analytics_events_auth_state_check",
+      sql`${t.authState} in ('anonymous','verified','unknown')`,
+    ),
+    check("analytics_events_duration_ms_check", sql`${t.durationMs}>=0`),
+    index("analytics_events_time_idx").on(t.occurredAt),
+    index("analytics_events_identity_time_idx").on(t.identityId, t.occurredAt),
+    index("analytics_events_name_time_idx").on(t.name, t.occurredAt),
+    index("analytics_events_artifact_idx")
+      .on(t.artifactId)
+      .where(sql`${t.artifactId} is not null`),
+    index("analytics_events_operation_idx")
+      .on(t.operationId)
+      .where(sql`${t.operationId} is not null`),
+  ],
+);
+export const analyticsState = appSchema.table(
+  "analytics_state",
+  {
+    id: boolean("id").primaryKey().default(true),
+    collectionStartedAt: timestamp("collection_started_at", {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    lastMaintenanceAt: timestamp("last_maintenance_at", { withTimezone: true }),
+  },
+  (t) => [check("analytics_state_id_check", sql`${t.id}`)],
+);
+export const analyticsLinkIntents = appSchema.table("analytics_link_intents", {
+  anonymousUserId: text("anonymous_user_id").primaryKey(),
+  verifiedUserId: text("verified_user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });

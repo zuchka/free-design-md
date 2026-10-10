@@ -17,8 +17,8 @@ select is(
     where table_schema = 'app'
       and table_type = 'BASE TABLE'
   ),
-  14,
-  'app schema has exactly the 14 active runtime tables'
+  19,
+  'app schema has exactly the 19 active runtime tables'
 );
 
 select ok(to_regclass('app.enrichment_cache') is not null, 'enrichment_cache exists');
@@ -105,8 +105,8 @@ select is(
     where n.nspname = 'app'
       and c.contype = 'f'
   ),
-  2,
-  'only the two existing Better Auth foreign keys are introduced'
+  5,
+  'Better Auth and private analytics foreign keys exist'
 );
 
 select ok(

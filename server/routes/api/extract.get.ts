@@ -1,3 +1,4 @@
+import { recordGrowthEvent } from "../../lib/analytics.js";
 import {
   defineEventHandler,
   getQuery,
@@ -52,6 +53,11 @@ export default defineEventHandler(async (event) => {
 
   const trace = new ExtractionTrace();
   trace.setUrl(url);
+  await recordGrowthEvent({
+    name: "extraction_started",
+    key: `extraction:${trace.requestId}:started`,
+    artifactId: trace.requestId,
+  });
   setResponseHeader(event, "X-Request-Id", trace.requestId);
   setResponseHeader(event, "Cache-Control", "no-store");
 

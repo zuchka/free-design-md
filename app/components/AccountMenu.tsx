@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { IconLogin2, IconLogout, IconUser } from "@tabler/icons-react";
 import MagicLinkSignInForm from "@/components/MagicLinkSignInForm";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -35,6 +36,21 @@ export default function AccountMenu() {
   const sessionData = session.data as unknown as { user: SessionUser } | null;
   const user = sessionData?.user;
   const signedIn = Boolean(user && !user.isAnonymous);
+  const [analyticsAccess, setAnalyticsAccess] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setAnalyticsAccess(false);
+    if (signedIn)
+      void fetch("/api/admin/analytics-access")
+        .then((r) => r.json())
+        .then((r) => {
+          if (active) setAnalyticsAccess(Boolean(r.allowed));
+        })
+        .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [signedIn, user?.email]);
 
   async function signOut() {
     setSigningOut(true);
@@ -110,6 +126,11 @@ export default function AccountMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          {analyticsAccess && (
+            <DropdownMenuItem asChild>
+              <Link to="/admin/analytics">Growth analytics</Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             disabled={signingOut}
             onSelect={(event) => {

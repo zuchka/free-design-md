@@ -476,7 +476,11 @@ export default function SavedDesignRoute() {
                     html={artifactPreviewHtml}
                     mdx={artifactMdx}
                     baseFilename={saved.title}
-                    tracking={{ source: "saved_design", variant: view }}
+                    tracking={{
+                      source: "saved_design",
+                      variant: view,
+                      artifactId: saved.id,
+                    }}
                   />
                 </div>
               }

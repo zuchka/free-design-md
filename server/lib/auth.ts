@@ -1,4 +1,12 @@
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
+import {
+  linkAnalyticsVisitor,
+  resolveAnalyticsActor,
+  trackingAllowed,
+} from "./analytics-identity.js";
+import { recordGrowthEvent } from "./analytics.js";
+import { analyticsWrite } from "./analytics-db.js";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { anonymous, magicLink } from "better-auth/plugins";
 import { getDb, getDbExec, schema } from "../db/index.js";
@@ -109,12 +117,45 @@ export const auth = betterAuth({
   }),
   plugins: [
     anonymous({
-      onLinkAccount: async ({ anonymousUser, newUser }) => {
+      onLinkAccount: async ({ anonymousUser, newUser, ctx }) => {
+        const headers = ctx.headers || new Headers();
+        if (
+          trackingAllowed(headers) &&
+          newUser.user.emailVerified &&
+          !newUser.user.isAnonymous
+        ) {
+          await analyticsWrite((db) =>
+            db.execute({
+              sql: `INSERT INTO app.analytics_link_intents(anonymous_user_id,verified_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+              args: [anonymousUser.user.id, newUser.user.id],
+            }),
+          );
+          await linkAnalyticsVisitor(headers, newUser.user);
+        }
         await transferAnonymousData(anonymousUser.user.id, newUser.user.id);
       },
     }),
     magicLink({ sendMagicLink: sendMagicLinkEmail }),
   ],
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      const user = ctx.context.newSession?.user;
+      if (
+        !user?.emailVerified ||
+        user.isAnonymous ||
+        !ctx.headers ||
+        !trackingAllowed(ctx.headers)
+      )
+        return;
+      await linkAnalyticsVisitor(ctx.headers, user);
+      const request = new Request(baseURL, { headers: ctx.headers });
+      const actor = await resolveAnalyticsActor(request, user);
+      await recordGrowthEvent(
+        { name: "account_verified", key: `verified:${user.id}` },
+        actor,
+      );
+    }),
+  },
   advanced: {
     ipAddress: {
       // Railway overwrites this single-value header at its public edge.

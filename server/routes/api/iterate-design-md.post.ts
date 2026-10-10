@@ -1,3 +1,4 @@
+import { recordAiStarted } from "../../lib/analytics.js";
 import {
   defineEventHandler,
   getHeader,
@@ -274,6 +275,8 @@ export default defineEventHandler(async (event) => {
     await recordQuotaEvent({ route: "iterate", event: "decremented" });
   }
 
+  await recordAiStarted(dec?.operationId, "iterate");
+
   setResponseHeader(event, "Content-Type", "text/event-stream; charset=utf-8");
   setResponseHeader(event, "Cache-Control", "no-cache, no-transform");
   setResponseHeader(event, "Connection", "keep-alive");
@@ -344,6 +347,7 @@ export default defineEventHandler(async (event) => {
                   });
                   await recordDesignArtifactEvent({
                     action: "public_snapshot_saved",
+                    artifactId: saved.id,
                     source: "home",
                     variant: "iteration",
                     format: "snapshot",
