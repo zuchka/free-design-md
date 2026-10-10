@@ -8,6 +8,8 @@ The existing `/metrics` endpoint remains compatible: persisted operational count
 
 Apply `supabase/migrations/20261010043325_growth_analytics.sql` before enabling collection. Startup never applies schema changes.
 
+Behind a TLS-terminating proxy, set `PUBLIC_ORIGIN` to the public HTTPS origin (falling back to `BETTER_AUTH_URL`). Analytics uses that server configuration for same-origin validation and Secure visitor cookies, even when the internal request URL is HTTP.
+
 ```text
 GROWTH_ANALYTICS_ENABLED=1
 GROWTH_ANALYTICS_ADMIN_EMAILS=analytics-admin@example.com

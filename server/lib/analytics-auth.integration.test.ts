@@ -66,6 +66,42 @@ function cookies(response: Response) {
 }
 
 describe("analytics across real Better Auth and HTTP boundaries", () => {
+  it("bootstraps and retains a Secure visitor through an internal HTTP proxy URL", async () => {
+    vi.stubEnv("PUBLIC_ORIGIN", "https://free.design");
+    const { readAnalyticsBody } = await import("./analytics-http.js");
+    const request = (cookie = "") =>
+      new Request("http://internal:8080/api/analytics/visitor", {
+        method: "POST",
+        headers: {
+          origin: "https://free.design",
+          "content-type": "application/json",
+          "user-agent": userAgent,
+          cookie,
+        },
+        body: "{}",
+      });
+    const firstRequest = request();
+    const first = await bootstrapVisitor(
+      firstRequest,
+      null,
+      await readAnalyticsBody(firstRequest),
+    );
+    expect(first.enabled).toBe(true);
+    expect(first.cookie).toContain("; Secure");
+    const cookie = first.cookie!.split(";")[0];
+    const secondRequest = request(cookie);
+    const second = await bootstrapVisitor(
+      secondRequest,
+      null,
+      await readAnalyticsBody(secondRequest),
+    );
+    expect(second.enabled).toBe(true);
+    expect(second.cookie!.split(";")[0]).toBe(cookie);
+    expect(
+      (await getDbExec().execute("SELECT id FROM app.analytics_identities"))
+        .rows,
+    ).toHaveLength(1);
+  });
   it("links a real anonymous magic-link session, protects admin reports, and clears tracking on sign-out", async () => {
     const { auth } = await import("./auth.js");
     const { requireAnalyticsAdmin } = await import("./analytics-admin.js");

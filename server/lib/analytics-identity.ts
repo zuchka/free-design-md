@@ -82,9 +82,16 @@ export function visitorCookie(
 ) {
   return `${VISITOR_COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
 }
+export function analyticsOrigin(request: Request) {
+  // TLS terminates at Railway's proxy; the adapter's URL can use internal HTTP.
+  // Use server configuration, never client-supplied forwarding headers.
+  return new URL(
+    process.env.PUBLIC_ORIGIN || process.env.BETTER_AUTH_URL || request.url,
+  ).origin;
+}
 export function sameOrigin(request: Request) {
   return (
-    request.headers.get("origin") === new URL(request.url).origin &&
+    request.headers.get("origin") === analyticsOrigin(request) &&
     request.headers.get("sec-fetch-site") !== "cross-site"
   );
 }
@@ -192,7 +199,8 @@ export async function bootstrapVisitor(
   user?: AnalyticsUser | null,
   attribution: unknown = {},
 ) {
-  const secure = new URL(request.url).protocol === "https:";
+  const origin = analyticsOrigin(request);
+  const secure = new URL(origin).protocol === "https:";
   if (
     !trackingAllowed(request.headers) ||
     !secret() ||
@@ -239,7 +247,7 @@ export async function bootstrapVisitor(
             digestNew,
             id,
             user?.isAnonymous ? user.id : null,
-            JSON.stringify(sanitizeAttribution(attribution, request.url)),
+            JSON.stringify(sanitizeAttribution(attribution, origin)),
           ],
         });
         await tx.execute(
