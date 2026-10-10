@@ -15,7 +15,7 @@
   },
   {
     "slug": "bmw",
-    "file": "bmw.svg",
+    "file": "bmw-ab0085b5.svg",
     "source": "https://bmw.com",
     "provider": "Simple Icons 16.34.0",
     "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
@@ -43,7 +43,7 @@
   },
   {
     "slug": "claude",
-    "file": "claude.svg",
+    "file": "claude-aef68a9c.svg",
     "source": "https://claude.ai",
     "provider": "Simple Icons 16.34.0",
     "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
@@ -127,7 +127,7 @@
   },
   {
     "slug": "github",
-    "file": "github.svg",
+    "file": "github-4a6b3318.svg",
     "source": "https://github.com/logos",
     "provider": "Simple Icons 16.34.0",
     "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
@@ -176,7 +176,7 @@
   },
   {
     "slug": "linear.app",
-    "file": "linear.svg",
+    "file": "linear-0e60c740.svg",
     "source": "https://linear.app",
     "provider": "Simple Icons 16.34.0",
     "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
@@ -358,7 +358,7 @@
   },
   {
     "slug": "spotify",
-    "file": "spotify.svg",
+    "file": "spotify-f41740bf.svg",
     "source": "https://developer.spotify.com/documentation/general/design-and-branding/#using-our-logo",
     "provider": "Simple Icons 16.34.0",
     "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
@@ -372,7 +372,7 @@
   },
   {
     "slug": "supabase",
-    "file": "supabase.svg",
+    "file": "supabase-6e362ee5.svg",
     "source": "https://github.com/supabase/supabase/blob/4031a7549f5d46da7bc79c01d56be4177dc7c114/packages/common/assets/images/supabase-logo-wordmark--light.svg",
     "provider": "Simple Icons 16.34.0",
     "license": "https://github.com/simple-icons/simple-icons/blob/16.34.0/LICENSE.md"
