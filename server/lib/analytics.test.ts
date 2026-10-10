@@ -6,6 +6,9 @@ import {
   type GrowthReport,
 } from "./analytics-queries.js";
 import {
+  analyticsOrigin,
+  bootstrapVisitor,
+  sameOrigin,
   sanitizeAttribution,
   trackingAllowed,
   visitorDigest,
@@ -14,6 +17,43 @@ import { analyticsAdminUser } from "./analytics-admin.js";
 
 afterEach(() => vi.unstubAllEnvs());
 describe("growth analytics boundary rules", () => {
+  it("uses the configured public origin behind a TLS-terminating proxy", async () => {
+    vi.stubEnv("PUBLIC_ORIGIN", "https://free.design");
+    vi.stubEnv("GROWTH_ANALYTICS_ENABLED", "0");
+    const request = new Request("http://internal:8080/api/analytics/visitor", {
+      headers: { origin: "https://free.design" },
+    });
+    expect(sameOrigin(request)).toBe(true);
+    expect((await bootstrapVisitor(request)).cookie).toContain("; Secure");
+    for (const headers of [
+      { origin: "http://free.design" },
+      {
+        origin: "https://evil.example",
+        "x-forwarded-host": "evil.example",
+        "x-forwarded-proto": "https",
+      },
+      { origin: "https://free.design", "sec-fetch-site": "cross-site" },
+      {},
+    ]) {
+      expect(sameOrigin(new Request(request.url, { headers }))).toBe(false);
+    }
+  });
+  it("falls back to the auth origin or direct local URL without trusting forwarding headers", () => {
+    vi.stubEnv("PUBLIC_ORIGIN", "");
+    vi.stubEnv("BETTER_AUTH_URL", "https://free.design/api/auth");
+    const request = new Request("http://localhost:8080/api/analytics/visitor", {
+      headers: {
+        origin: "http://localhost:8080",
+        "x-forwarded-host": "evil.example",
+        "x-forwarded-proto": "https",
+      },
+    });
+    expect(analyticsOrigin(request)).toBe("https://free.design");
+    expect(sameOrigin(request)).toBe(false);
+    vi.stubEnv("BETTER_AUTH_URL", "");
+    expect(analyticsOrigin(request)).toBe("http://localhost:8080");
+    expect(sameOrigin(request)).toBe(true);
+  });
   it("only accepts browser-reportable events and no identity overrides", () => {
     const event = {
       id: crypto.randomUUID(),

@@ -3,6 +3,7 @@ import {
   recordGrowthEvent,
 } from "../../server/lib/analytics.js";
 import {
+  analyticsOrigin,
   resolveAnalyticsActor,
   visitorCookie,
   trackingAllowed,
@@ -25,7 +26,11 @@ export async function action({ request }: Route.ActionArgs) {
   if (response.ok && path.endsWith("/sign-out")) {
     response.headers.append(
       "Set-Cookie",
-      visitorCookie("", new URL(request.url).protocol === "https:", 0),
+      visitorCookie(
+        "",
+        new URL(analyticsOrigin(request)).protocol === "https:",
+        0,
+      ),
     );
   }
   if (
