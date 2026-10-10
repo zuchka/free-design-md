@@ -1,3 +1,5 @@
+> Implementation status: application, schema, reports, privacy controls, maintenance command and local verification are implemented. The production allowlist, collection flag and daily service are staged in Railway; schema/application deployment and live observation remain rollout steps. See [the implementation guide](growth-analytics.md) for exact definitions, tested behavior and deliberate limitations (historical ledger projections are unattributed; no lifetime report snapshots are retained).
+
 # Growth analytics implementation plan
 
 Status: proposed; implementation has not started.
@@ -18,19 +20,19 @@ Keep Better Auth, the private Postgres `app` schema, React Router resource route
 - [ ] Document each report's population, exclusions, denominator, time window, and collection start date in `docs/growth-analytics.md`.
 - [ ] Store timestamps as `timestamptz`; use UTC and half-open reporting intervals `[start, end)`. Label UTC in the dashboard.
 
-| Report | Definition |
-| --- | --- |
-| Active creator | A resolved identity with at least one successful free extraction, completed AI enrichment/revision, or explicit copy/download of its generated artifact. A page view, failed attempt, purchase alone, or automatic cache restore does not qualify. |
-| Calendar MAU | Distinct active creator identities during a calendar month. Completed months are the default growth comparison. |
-| Rolling activity | Distinct active creators in the trailing 24 hours, 7 days, and 30 days, calculated at the report's `as_of` timestamp. Never sum daily distinct counts to get MAU. |
-| New / returning | New means first observed qualifying activity is in the selected period; returning means first qualifying activity precedes it. Do not claim a newly observed anonymous browser is a new human. |
-| Weekly retention | Of identities first active in a UTC calendar week beginning Monday, the percentage active in the following calendar week. Exclude incomplete follow-up windows. |
-| Monthly retention | Of identities first active in a calendar month, the percentage active in the following calendar month. Show later-month cohorts as data accumulates. |
-| Activation funnel | Observed browser visitor → extraction success → copy/download of the corresponding generated artifact. Ordered events; seven-day conversion window from first observed visit. Also report extraction-to-export conversion within seven days of extraction. |
-| Purchase funnel | First observed activation → verified account → first fulfilled purchase, within 30 days of activation. Separately show checkout-created → fulfilled purchase within seven days, and direct purchasers without observed activation. |
-| Purchasers / sales | Unique fulfilled purchasers, first-time purchasers, repeat purchasers, fulfilled packs, and gross fulfilled Checkout amounts, grouped by currency and fulfillment date. |
-| Acquisition | First observed external referring hostname and allowlisted campaign source/medium/name; report their activation, retention, and purchase outcomes. Keep direct/unknown explicit. |
-| Coverage | Attributed versus unattributed requests, accepted/dropped events, excluded test/bot activity, collection availability, and historical coverage dates. |
+| Report             | Definition                                                                                                                                                                                                                                                 |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Active creator     | A resolved identity with at least one successful free extraction, completed AI enrichment/revision, or explicit copy/download of its generated artifact. A page view, failed attempt, purchase alone, or automatic cache restore does not qualify.         |
+| Calendar MAU       | Distinct active creator identities during a calendar month. Completed months are the default growth comparison.                                                                                                                                            |
+| Rolling activity   | Distinct active creators in the trailing 24 hours, 7 days, and 30 days, calculated at the report's `as_of` timestamp. Never sum daily distinct counts to get MAU.                                                                                          |
+| New / returning    | New means first observed qualifying activity is in the selected period; returning means first qualifying activity precedes it. Do not claim a newly observed anonymous browser is a new human.                                                             |
+| Weekly retention   | Of identities first active in a UTC calendar week beginning Monday, the percentage active in the following calendar week. Exclude incomplete follow-up windows.                                                                                            |
+| Monthly retention  | Of identities first active in a calendar month, the percentage active in the following calendar month. Show later-month cohorts as data accumulates.                                                                                                       |
+| Activation funnel  | Observed browser visitor → extraction success → copy/download of the corresponding generated artifact. Ordered events; seven-day conversion window from first observed visit. Also report extraction-to-export conversion within seven days of extraction. |
+| Purchase funnel    | First observed activation → verified account → first fulfilled purchase, within 30 days of activation. Separately show checkout-created → fulfilled purchase within seven days, and direct purchasers without observed activation.                         |
+| Purchasers / sales | Unique fulfilled purchasers, first-time purchasers, repeat purchasers, fulfilled packs, and gross fulfilled Checkout amounts, grouped by currency and fulfillment date.                                                                                    |
+| Acquisition        | First observed external referring hostname and allowlisted campaign source/medium/name; report their activation, retention, and purchase outcomes. Keep direct/unknown explicit.                                                                           |
+| Coverage           | Attributed versus unattributed requests, accepted/dropped events, excluded test/bot activity, collection availability, and historical coverage dates.                                                                                                      |
 
 Show anonymous browsers still unlinked, verified accounts, and their deduplicated combined estimate. For identity-based reports, classify using the current resolved identity; preserve the original anonymous/verified state on each event for funnel analysis. Explain that later verified linking may revise recent historical distinct counts.
 
@@ -46,11 +48,11 @@ Use actual retained payment amounts, not catalog prices. Label sales as gross Ch
 
 Proposed private tables:
 
-| Table | Purpose / key fields |
-| --- | --- |
-| `app.analytics_identities` | Internal identity ID, kind, optional unique Better Auth user ID, canonical identity reference, first seen/first active timestamps, and internal-test designation. Analytics identity survives anonymous-auth record deletion. |
-| `app.analytics_visitors` | Digest of an opaque browser cookie, associated anonymous identity, creation/last-seen/expiry timestamps, and bounded first-touch attribution. It is not an authorization credential. |
-| `app.analytics_events` | UUID, server event time and receipt time, observed identity, event name, source, environment, trust category, event-time auth state, definition version, deduplication key, optional operation/artifact reference, and allowlisted properties. |
+| Table                      | Purpose / key fields                                                                                                                                                                                                                           |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.analytics_identities` | Internal identity ID, kind, optional unique Better Auth user ID, canonical identity reference, first seen/first active timestamps, and internal-test designation. Analytics identity survives anonymous-auth record deletion.                  |
+| `app.analytics_visitors`   | Digest of an opaque browser cookie, associated anonymous identity, creation/last-seen/expiry timestamps, and bounded first-touch attribution. It is not an authorization credential.                                                           |
+| `app.analytics_events`     | UUID, server event time and receipt time, observed identity, event name, source, environment, trust category, event-time auth state, definition version, deduplication key, optional operation/artifact reference, and allowlisted properties. |
 
 Use a unique server deduplication key for request/operation outcomes and namespaced client UUIDs for browser events. Index time-window scans, identity/time lookups, event/time lookups, and operation/artifact references based on the actual report queries. Preserve merge aliases rather than rewriting every historical event. Prevent alias cycles and conflicting account links transactionally.
 
@@ -74,15 +76,15 @@ Do not accept owner IDs or canonical identity mappings from client event bodies.
 
 ## 4. Instrument the complete journey
 
-| Event | Authoritative capture point |
-| --- | --- |
-| `page_viewed` | Small browser collector in `app/root.tsx`, covering workspace, docs, examples, and public snapshots. Deduplicate hydration/router repeats; record page category rather than query strings. |
-| `extraction_started`, `extraction_succeeded`, `extraction_failed` | Existing extraction HTTP handler and trace boundary. One outcome per request despite internal retries; link by server request ID. Record bounded failure categories, not raw errors. |
-| `artifact_copied`, `artifact_downloaded`, `share_link_copied` | Existing artifact event helper and UI controls, after the action succeeds or a browser download is initiated. Label these as browser-reported actions. |
-| `public_snapshot_saved` | Server persistence success. A saved snapshot is not an additional extraction or automatic activation. |
-| `ai_started`, `ai_succeeded`, `ai_failed` | Existing enrichment and revision routes, keyed by credit operation. Hosted success requires successful stream completion and credit commit. Keep blocked attempts and failed refunds distinct. |
-| `sign_in_requested`, `account_verified` | Accepted magic-link request and server-observed successful verification. Verification is deduplicated per account; never include link tokens or email. |
-| `checkout_created`, `purchase_fulfilled` | Durable pending-purchase creation and verified fulfillment records. Idempotent projection keyed by Checkout Session; webhook retries do not create new sales. |
+| Event                                                             | Authoritative capture point                                                                                                                                                                    |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `page_viewed`                                                     | Small browser collector in `app/root.tsx`, covering workspace, docs, examples, and public snapshots. Deduplicate hydration/router repeats; record page category rather than query strings.     |
+| `extraction_started`, `extraction_succeeded`, `extraction_failed` | Existing extraction HTTP handler and trace boundary. One outcome per request despite internal retries; link by server request ID. Record bounded failure categories, not raw errors.           |
+| `artifact_copied`, `artifact_downloaded`, `share_link_copied`     | Existing artifact event helper and UI controls, after the action succeeds or a browser download is initiated. Label these as browser-reported actions.                                         |
+| `public_snapshot_saved`                                           | Server persistence success. A saved snapshot is not an additional extraction or automatic activation.                                                                                          |
+| `ai_started`, `ai_succeeded`, `ai_failed`                         | Existing enrichment and revision routes, keyed by credit operation. Hosted success requires successful stream completion and credit commit. Keep blocked attempts and failed refunds distinct. |
+| `sign_in_requested`, `account_verified`                           | Accepted magic-link request and server-observed successful verification. Verification is deduplicated per account; never include link tokens or email.                                         |
+| `checkout_created`, `purchase_fulfilled`                          | Durable pending-purchase creation and verified fulfillment records. Idempotent projection keyed by Checkout Session; webhook retries do not create new sales.                                  |
 
 - [ ] Extend the existing artifact-event flow so each click emits one event and continues updating its existing operational counter; avoid running two browser collectors for the same action.
 - [ ] Add the new browser ingestion resource route at `/api/analytics/events`. Allow only client-reportable events; clients cannot assert purchases, verified accounts, or server extraction/AI success.
@@ -126,11 +128,11 @@ Existing file touchpoints include `app/root.tsx`, `app/routes/_index.tsx`, `app/
 
 ## Delivery sequence and completion criteria
 
-| Increment | Deliverable | Completion evidence |
-| --- | --- | --- |
-| 1 | Definitions, private schema, anonymous identity, and account linking | Migration/access tests; stable anonymous identity beyond auth expiry; correct merge/sign-out cases. |
-| 2 | Server/browser events and durable billing projections | Complete journey in preview; retries do not duplicate; analytics failure cannot break extraction or billing. |
-| 3 | Queries, private dashboard, and CSV export | Known-answer fixture results for every metric; admin isolation; visual verification; query performance evidence. |
-| 4 | Cleanup/reconciliation, documentation, and production rollout | Collection coverage is visible, billing reconciles, deployment verified, rollout date and historical limitations shown. |
+| Increment | Deliverable                                                          | Completion evidence                                                                                                     |
+| --------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1         | Definitions, private schema, anonymous identity, and account linking | Migration/access tests; stable anonymous identity beyond auth expiry; correct merge/sign-out cases.                     |
+| 2         | Server/browser events and durable billing projections                | Complete journey in preview; retries do not duplicate; analytics failure cannot break extraction or billing.            |
+| 3         | Queries, private dashboard, and CSV export                           | Known-answer fixture results for every metric; admin isolation; visual verification; query performance evidence.        |
+| 4         | Cleanup/reconciliation, documentation, and production rollout        | Collection coverage is visible, billing reconciles, deployment verified, rollout date and historical limitations shown. |
 
 The plan is complete when every proposed metric has a defined population and verifiable source, anonymous usage is measurable without sign-in, identity transitions do not inflate counts, and the dashboard makes estimation and missing coverage explicit.

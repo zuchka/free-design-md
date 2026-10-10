@@ -254,6 +254,8 @@ export default function IndexRoute() {
         setEnriched({
           markdown: cached.enrichedMarkdown,
           model: cached.enrichedModel ?? "cached",
+          savedDesignId: cached.savedDesignId,
+          savedDesignUrl: cached.savedDesignUrl,
           latencyMs: 0,
           usage: {
             inputTokens: 0,
@@ -338,6 +340,7 @@ export default function IndexRoute() {
       setResult(data);
       writeCache({
         url: data.url,
+        diagnostics: data.diagnostics,
         markdown: data.markdown,
         designSystemData: data.designSystemData,
         signals: data.signals,
@@ -440,12 +443,15 @@ export default function IndexRoute() {
             if (result) {
               writeCache({
                 url: result.url,
+                diagnostics: result.diagnostics,
                 markdown: result.markdown,
                 designSystemData: result.designSystemData,
                 signals: result.signals,
                 screenshotDataUrl: result.screenshotDataUrl,
                 enrichedMarkdown: enrichResult.markdown,
                 enrichedModel: enrichResult.model,
+                savedDesignId: enrichResult.savedDesignId,
+                savedDesignUrl: enrichResult.savedDesignUrl,
               });
             }
           } else if (parsed.event === "error") {
@@ -662,12 +668,15 @@ export default function IndexRoute() {
     }
     writeCache({
       url: result.url,
+      diagnostics: result.diagnostics,
       markdown: result.markdown,
       designSystemData: result.designSystemData,
       signals: result.signals,
       screenshotDataUrl: result.screenshotDataUrl,
       enrichedMarkdown: candidateMarkdown,
       enrichedModel: enriched.model,
+      savedDesignId: candidateSavedDesignId ?? enriched.savedDesignId,
+      savedDesignUrl: candidateSavedDesignUrl ?? enriched.savedDesignUrl,
     });
     setIterationPrompt("");
     setCandidateMarkdown("");
@@ -950,6 +959,10 @@ export default function IndexRoute() {
                       baseFilename={result.signals?.title ?? result.url}
                       tracking={{
                         source: "home",
+                        artifactId:
+                          view === "enriched"
+                            ? enriched?.savedDesignId
+                            : result.diagnostics?.requestId,
                         variant:
                           view === "enriched" ? "enriched" : "deterministic",
                       }}

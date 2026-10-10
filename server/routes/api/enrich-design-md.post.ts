@@ -1,3 +1,4 @@
+import { recordAiStarted } from "../../lib/analytics.js";
 import {
   defineEventHandler,
   getHeader,
@@ -197,6 +198,8 @@ export default defineEventHandler(async (event) => {
     deterministicMarkdown: md,
   };
 
+  await recordAiStarted(dec?.operationId, "enrich");
+
   setResponseHeader(event, "Content-Type", "text/event-stream; charset=utf-8");
   setResponseHeader(event, "Cache-Control", "no-cache, no-transform");
   setResponseHeader(event, "Connection", "keep-alive");
@@ -234,6 +237,7 @@ export default defineEventHandler(async (event) => {
                 });
                 await recordDesignArtifactEvent({
                   action: "public_snapshot_saved",
+                  artifactId: saved.id,
                   source: "home",
                   variant: "enriched",
                   format: "snapshot",

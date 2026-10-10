@@ -3,6 +3,8 @@ import { ServerRouter } from "react-router";
 import ReactDOMServer from "react-dom/server.browser";
 const { renderToReadableStream } = ReactDOMServer;
 import { isbot } from "isbot";
+import { bootstrapVisitor } from "../server/lib/analytics-identity.js";
+import { analyticsSession } from "../server/lib/analytics.js";
 
 export const streamTimeout = 5_000;
 
@@ -21,6 +23,20 @@ export default async function handleRequest(
   }
 
   const userAgent = request.headers.get("user-agent");
+  if (new URL(request.url).pathname === "/") {
+    const session = await analyticsSession(request);
+    const params = new URL(request.url).searchParams;
+    const visitor = await bootstrapVisitor(request, session?.user, {
+      referrer: request.headers.get("referer") || undefined,
+      source: params.get("utm_source") || undefined,
+      medium: params.get("utm_medium") || undefined,
+      campaign: params.get("utm_campaign") || undefined,
+    });
+    if (visitor.cookie) {
+      responseHeaders.append("Set-Cookie", visitor.cookie);
+      responseHeaders.set("Cache-Control", "private, no-store");
+    }
+  }
   const waitForAll = (userAgent && isbot(userAgent)) || routerContext.isSpaMode;
 
   const abortController = new AbortController();

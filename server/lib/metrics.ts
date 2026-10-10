@@ -1,3 +1,4 @@
+import { recordAiOutcome, recordGrowthEvent } from "./analytics.js";
 import { getDbExec } from "../db/index.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { renderBillingMetrics } from "./billing-metrics.js";
@@ -523,7 +524,7 @@ export function recordExtractRequest(input: {
   return Promise.resolve();
 }
 
-export function recordEnrichRequest(input: {
+export async function recordEnrichRequest(input: {
   status: string;
   keySource: AiKeySource;
   quota: CreditOutcome;
@@ -534,6 +535,7 @@ export function recordEnrichRequest(input: {
     { route: "enrich", status },
     Math.max(0, nowSeconds() - input.startedAt),
   );
+  await recordAiOutcome({ ...input, route: "enrich" });
   return aiRequests.record({
     route: "enrich",
     status,
@@ -542,7 +544,7 @@ export function recordEnrichRequest(input: {
   });
 }
 
-export function recordIterateRequest(input: {
+export async function recordIterateRequest(input: {
   route: "iterate" | "saved_iterate";
   status: string;
   keySource: AiKeySource;
@@ -555,6 +557,7 @@ export function recordIterateRequest(input: {
     { route, status },
     Math.max(0, nowSeconds() - input.startedAt),
   );
+  await recordAiOutcome(input);
   return aiRequests.record({
     route,
     status,
@@ -570,12 +573,20 @@ export function recordQuotaEvent(input: {
   return quotaEvents.record({ route: input.route, event: input.event });
 }
 
-export function recordDesignArtifactEvent(input: {
+export async function recordDesignArtifactEvent(input: {
+  artifactId?: string;
   action: string;
   source: string;
   variant: string;
   format: string;
 }): Promise<void> {
+  if (input.action === "public_snapshot_saved" && input.artifactId) {
+    await recordGrowthEvent({
+      name: "public_snapshot_saved",
+      key: `snapshot:${input.artifactId}`,
+      artifactId: input.artifactId,
+    });
+  }
   return designArtifactEvents.record({
     action: safeMetricLabel(input.action),
     source: safeMetricLabel(input.source),

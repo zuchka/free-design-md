@@ -12,6 +12,7 @@
     "format.fix": "prettier --write .",
     "typecheck": "react-router typegen && tsc --noEmit",
     "action": "tsx actions/run.ts",
+    "analytics:maintain": "tsx scripts/analytics-maintenance.ts",
     "db:start": "npx --yes supabase@2.117.0 start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor",
     "db:stop": "npx --yes supabase@2.117.0 stop",
     "db:reset": "npx --yes supabase@2.117.0 db reset --local",
@@ -29,6 +30,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
     "@better-auth/drizzle-adapter": "^1.7.5",
+    "@radix-ui/react-select": "^2.3.8",
     "@react-router/serve": "7.14.0",
     "@tabler/icons-react": "^3.40.0",
     "@tanstack/react-query": "^5.100.10",

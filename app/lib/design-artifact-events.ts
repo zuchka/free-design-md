@@ -1,4 +1,5 @@
 import { appBasePath } from "./base-path";
+import { emitGrowthEvent } from "./growth-analytics";
 
 export type DesignArtifactEventAction =
   | "copy"
@@ -26,6 +27,7 @@ export type DesignArtifactEventFormat =
   | "cli";
 
 export interface DesignArtifactTrackingContext {
+  artifactId?: string;
   source: DesignArtifactEventSource;
   variant: DesignArtifactEventVariant;
 }
@@ -37,6 +39,31 @@ export interface DesignArtifactEvent extends DesignArtifactTrackingContext {
 
 export function recordDesignArtifactEvent(event: DesignArtifactEvent): void {
   if (typeof window === "undefined") return;
+
+  if (event.action !== "public_snapshot_saved" && event.format !== "snapshot") {
+    void emitGrowthEvent(
+      {
+        name:
+          event.action === "copy"
+            ? "artifact_copied"
+            : event.action === "download"
+              ? "artifact_downloaded"
+              : "share_link_copied",
+        artifactId: event.artifactId,
+        surface: event.source,
+        page:
+          event.source === "example"
+            ? "examples"
+            : event.source === "saved_design"
+              ? "public_snapshot"
+              : "workspace",
+        variant: event.variant,
+        format: event.format,
+      },
+      true,
+    );
+    return;
+  }
 
   const url = `${appBasePath()}/api/design-artifact-event`;
   const body = JSON.stringify(event);

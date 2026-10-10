@@ -1,3 +1,4 @@
+import { recordGrowthEvent } from "./analytics.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import {
@@ -122,6 +123,19 @@ export class ExtractionTrace {
       reason,
       stage,
       retried: this.retries.length > 0,
+    });
+    await recordGrowthEvent({
+      name: error ? "extraction_failed" : "extraction_succeeded",
+      key: `extraction:${this.requestId}:completed`,
+      artifactId: this.requestId,
+      durationMs,
+      properties: {
+        reason,
+        stage,
+        stagesMs: this.stages,
+        retries: this.retries,
+        warnings: this.warnings,
+      },
     });
     await recordExtractionHistory({
       requestId: this.requestId,

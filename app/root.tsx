@@ -1,5 +1,6 @@
 import {
   Links,
+  Link,
   Meta,
   Outlet,
   Scripts,
@@ -17,6 +18,7 @@ import { appPath } from "@/lib/base-path";
 import { authClient } from "@/lib/auth-client";
 import type { LinksFunction } from "react-router";
 import stylesheet from "./global.css?url";
+import AnalyticsCollector from "@/components/AnalyticsCollector";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -54,6 +56,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <AnalyticsCollector />
+        <footer className="mx-auto max-w-7xl px-6 py-6 text-xs text-muted-foreground">
+          <Link to="/privacy" className="underline underline-offset-4">
+            Privacy &amp; analytics preferences
+          </Link>
+        </footer>
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -119,7 +127,8 @@ function AnonymousSessionBootstrap() {
 }
 
 export function ErrorBoundary({ error }: { error: unknown }) {
-  const message = error instanceof Error ? error.message : "Something went wrong.";
+  const message =
+    error instanceof Error ? error.message : "Something went wrong.";
   return (
     <main className="mx-auto max-w-2xl px-6 py-24">
       <h1 className="text-2xl font-semibold">Unable to load this page</h1>

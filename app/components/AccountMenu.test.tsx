@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AccountMenu from "./AccountMenu";
 
 const authMocks = vi.hoisted(() => ({
@@ -23,7 +23,15 @@ vi.mock("@/lib/auth-client", () => ({
   },
 }));
 
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(Response.json({ allowed: false })),
+  );
+});
+
 afterEach(() => {
+  vi.unstubAllGlobals();
   cleanup();
   vi.clearAllMocks();
 });
