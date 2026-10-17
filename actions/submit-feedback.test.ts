@@ -3,12 +3,14 @@ import submitFeedback from "./submit-feedback";
 
 const ORIGINAL_FEEDBACK_WEBHOOK = process.env.FEEDBACK_DISCORD_WEBHOOK_URL;
 const ORIGINAL_DISCORD_WEBHOOK = process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+const ORIGINAL_SLACK_WEBHOOK = process.env.FEEDBACK_SLACK_WEBHOOK_URL;
 
 describe("submit-feedback action", () => {
   beforeEach(() => {
     process.env.FEEDBACK_DISCORD_WEBHOOK_URL =
       "https://discord.com/api/webhooks/123/token";
     delete process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+    delete process.env.FEEDBACK_SLACK_WEBHOOK_URL;
   });
 
   afterEach(() => {
@@ -23,6 +25,11 @@ describe("submit-feedback action", () => {
       process.env.DISCORD_FEEDBACK_WEBHOOK_URL = ORIGINAL_DISCORD_WEBHOOK;
     }
     vi.restoreAllMocks();
+    if (ORIGINAL_SLACK_WEBHOOK === undefined) {
+      delete process.env.FEEDBACK_SLACK_WEBHOOK_URL;
+    } else {
+      process.env.FEEDBACK_SLACK_WEBHOOK_URL = ORIGINAL_SLACK_WEBHOOK;
+    }
   });
 
   it("posts feedback to Discord without requiring email", async () => {
@@ -80,7 +87,78 @@ describe("submit-feedback action", () => {
         category: "other",
         message: "The button did not respond.",
       }),
-    ).rejects.toThrow("FEEDBACK_DISCORD_WEBHOOK_URL is not configured");
+    ).rejects.toThrow("feedback webhook is not configured");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("prefers Slack and preserves long feedback as plain text without mentions", async () => {
+    process.env.FEEDBACK_SLACK_WEBHOOK_URL =
+      "https://hooks.slack.com/services/T123/B123/testToken";
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("ok"));
+    const message = "<!channel> <@U123> & report " + "a".repeat(3900);
+    await submitFeedback.run({
+      category: "other",
+      message,
+      email: "feedback@example.com",
+      errorMessage: "<broken>",
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(process.env.FEEDBACK_SLACK_WEBHOOK_URL);
+    expect(init?.redirect).toBe("error");
+    const payload = JSON.parse(String(init?.body));
+    expect(payload.text).toBe("Free design.md feedback: Other");
+    expect(payload.unfurl_links).toBe(false);
+    const sections = payload.blocks.filter(
+      (block: { text?: { type: string }; type: string }) =>
+        block.type === "section" && block.text,
+    );
+    expect(
+      sections
+        .map((block: { text: { text: string } }) => block.text.text)
+        .join(""),
+    ).toBe(message);
+    for (const block of sections) {
+      expect(block.text.type).toBe("plain_text");
+      expect(block.text.text.length).toBeLessThanOrEqual(3000);
+    }
+    expect(payload.blocks.at(-1).fields).toEqual(
+      expect.arrayContaining([
+        {
+          type: "plain_text",
+          text: "Contact\nfeedback@example.com",
+          emoji: false,
+        },
+        { type: "plain_text", text: "Error\n<broken>", emoji: false },
+      ]),
+    );
+  });
+
+  it.each([
+    "http://hooks.slack.com/services/T1/B1/token",
+    "https://hooks.slack.com.evil.example/services/T1/B1/token",
+    "https://example.com/services/T1/B1/token",
+    "https://hooks.slack.com/anything",
+    "https://name:password@hooks.slack.com/services/T1/B1/token",
+    "https://hooks.slack.com/services/T1/B1/token?secret=value",
+  ])("rejects an invalid Slack destination: %s", async (url) => {
+    process.env.FEEDBACK_SLACK_WEBHOOK_URL = url;
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    await expect(
+      submitFeedback.run({ category: "other", message: "Test feedback" }),
+    ).rejects.toThrow("must be a Slack webhook");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reports a delivery failure without exposing upstream response details", async () => {
+    process.env.FEEDBACK_SLACK_WEBHOOK_URL =
+      "https://hooks.slack.com/services/T123/B123/testToken";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("private response details", { status: 403 }),
+    );
+    await expect(
+      submitFeedback.run({ category: "other", message: "Test feedback" }),
+    ).rejects.toThrow("Slack feedback webhook returned 403.");
   });
 });

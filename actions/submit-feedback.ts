@@ -29,31 +29,46 @@ const CATEGORY_LABELS: Record<z.infer<typeof FeedbackCategory>, string> = {
   other: "Other",
 };
 
-function getWebhookUrl(): string {
+function getWebhook(): { url: string; provider: "Slack" | "Discord" } {
+  const slackUrl = process.env.FEEDBACK_SLACK_WEBHOOK_URL?.trim();
+  const provider = slackUrl ? "Slack" : "Discord";
   const raw =
+    slackUrl ||
     process.env.FEEDBACK_DISCORD_WEBHOOK_URL ||
     process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
   const url = raw?.trim();
   if (!url) {
-    throw new Error("FEEDBACK_DISCORD_WEBHOOK_URL is not configured.");
+    throw new Error("A Slack or Discord feedback webhook is not configured.");
   }
 
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
-    throw new Error("Configured Discord feedback webhook URL is invalid.");
+    throw new Error(`Configured ${provider} feedback webhook URL is invalid.`);
   }
 
   if (
     parsed.protocol !== "https:" ||
-    !["discord.com", "discordapp.com"].includes(parsed.hostname) ||
-    !parsed.pathname.startsWith("/api/webhooks/")
+    parsed.username ||
+    parsed.password ||
+    parsed.port ||
+    parsed.search ||
+    parsed.hash ||
+    (provider === "Slack"
+      ? parsed.hostname !== "hooks.slack.com" ||
+        !/^\/services\/[A-Za-z0-9]+\/[A-Za-z0-9]+\/[A-Za-z0-9]+$/.test(
+          parsed.pathname,
+        )
+      : !["discord.com", "discordapp.com"].includes(parsed.hostname) ||
+        !parsed.pathname.startsWith("/api/webhooks/"))
   ) {
-    throw new Error("Configured feedback webhook must be a Discord webhook.");
+    throw new Error(
+      `Configured feedback webhook must be a ${provider} webhook.`,
+    );
   }
 
-  return url;
+  return { url, provider };
 }
 
 function clean(value: string | undefined): string | undefined {
@@ -92,11 +107,11 @@ function addField(
 
 export default defineAction({
   description:
-    "Submit Free design.md product feedback or an error report to the configured Discord feedback webhook.",
+    "Submit Free design.md product feedback or an error report to the configured Slack or Discord webhook.",
   schema: InputSchema,
   readOnly: false,
   run: async (input) => {
-    const webhookUrl = getWebhookUrl();
+    const webhook = getWebhook();
     const email = optionalEmail(input.email);
     const fields: Array<{ name: string; value: string; inline?: boolean }> = [
       {
@@ -116,34 +131,61 @@ export default defineAction({
     addField(fields, "Viewport", input.viewport, true);
     addField(fields, "Timezone", input.timezone, true);
 
-    const response = await fetch(webhookUrl, {
+    const slackSections = input.message.match(/[\s\S]{1,3000}/g) ?? [];
+    const payload =
+      webhook.provider === "Slack"
+        ? {
+            text: `Free design.md feedback: ${CATEGORY_LABELS[input.category]}`,
+            unfurl_links: false,
+            unfurl_media: false,
+            blocks: [
+              {
+                type: "header",
+                text: { type: "plain_text", text: "Free design.md feedback" },
+              },
+              ...slackSections.map((text) => ({
+                type: "section",
+                text: { type: "plain_text", text, emoji: false },
+              })),
+              {
+                type: "section",
+                fields: fields.map((field) => ({
+                  type: "plain_text",
+                  text: `${field.name}\n${field.value}`,
+                  emoji: false,
+                })),
+              },
+            ],
+          }
+        : {
+            username: "Free design.md feedback",
+            allowed_mentions: { parse: [] },
+            embeds: [
+              {
+                title:
+                  input.category === "something_broke"
+                    ? "Feedback: something broke"
+                    : "Feedback",
+                description: truncate(input.message, 4000),
+                color:
+                  input.category === "something_broke" ? 0xef4444 : 0x18b6f6,
+                timestamp: new Date().toISOString(),
+                fields,
+              },
+            ],
+          };
+
+    const response = await fetch(webhook.url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: "Free design.md feedback",
-        allowed_mentions: { parse: [] },
-        embeds: [
-          {
-            title:
-              input.category === "something_broke"
-                ? "Feedback: something broke"
-                : "Feedback",
-            description: truncate(input.message, 4000),
-            color:
-              input.category === "something_broke" ? 0xef4444 : 0x18b6f6,
-            timestamp: new Date().toISOString(),
-            fields,
-          },
-        ],
-      }),
+      body: JSON.stringify(payload),
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) {
-      const body = await response.text().catch(() => "");
       throw new Error(
-        body
-          ? `Discord feedback webhook returned ${response.status}: ${truncate(body, 180)}`
-          : `Discord feedback webhook returned ${response.status}.`,
+        `${webhook.provider} feedback webhook returned ${response.status}.`,
       );
     }
 
