@@ -37,8 +37,9 @@ describe("HomepageLanding", () => {
     expect(screen.getByText("HTTP")).toBeTruthy();
     expect(screen.getByText("CLI")).toBeTruthy();
     expect(screen.getByText("Docker")).toBeTruthy();
-    expect(screen.getByText(/ghcr\.io\/zuchka\/free-design-md:latest/))
-      .toBeTruthy();
+    expect(
+      screen.getByText(/ghcr\.io\/zuchka\/free-design-md:latest/),
+    ).toBeTruthy();
     expect(screen.getByText(/optional AI enrichment/i)).toBeTruthy();
     expect(screen.getByText("Free example library")).toBeTruthy();
     expect(screen.queryByText("Artifact preview")).toBeNull();
@@ -54,7 +55,7 @@ describe("HomepageLanding", () => {
     ).toBeTruthy();
   });
 
-  it("launches extraction when a curated sample chip is selected", () => {
+  it("launches extraction when a curated sample is selected", () => {
     const onSampleSelect = vi.fn();
 
     render(

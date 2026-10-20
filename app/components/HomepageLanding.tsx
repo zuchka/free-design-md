@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import {
   IconApi,
+  IconArrowRight,
   IconBrandDocker,
   IconCheck,
   IconCopy,
@@ -79,6 +80,9 @@ export default function HomepageLanding({
   onSubmit,
   onSampleSelect,
 }: HomepageLandingProps) {
+  const samples = examples.filter((example) =>
+    ["stripe", "apple", "shopify"].includes(example.slug),
+  );
   return (
     <div className="flex flex-col gap-10 pb-10">
       <section className="grid gap-8 py-4 min-[1800px]:grid-cols-[minmax(0,1fr)_420px] min-[1800px]:items-start">
@@ -96,52 +100,56 @@ export default function HomepageLanding({
             agents, docs, repos, or local workflows.
           </p>
 
-          <form
-            onSubmit={onSubmit}
-            className="mt-7 flex max-w-4xl flex-col gap-3 rounded-md border bg-secondary/25 p-3 shadow-sm sm:flex-row"
-          >
-            <Input
-              value={url}
-              onChange={(event) => onUrlChange(event.target.value)}
-              placeholder="stripe.com"
-              aria-label="Website URL"
-              required
-              disabled={isLoading}
-              className="h-11 flex-1 border-0 bg-secondary/50 shadow-none focus-visible:ring-1"
-              autoFocus
-            />
-            <Button
-              type="submit"
-              size="lg"
-              disabled={isLoading}
-              className="shrink-0"
-            >
-              {isLoading ? "Extracting..." : "Extract design.md"}
-            </Button>
-          </form>
+          <div className="mt-7 max-w-4xl">
+            <form onSubmit={onSubmit} className="flex flex-col gap-2.5">
+              <label htmlFor="homepage-url" className="text-sm font-medium">
+                Website URL
+              </label>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Input
+                  id="homepage-url"
+                  value={url}
+                  onChange={(event) => onUrlChange(event.target.value)}
+                  placeholder="stripe.com"
+                  aria-label="Website URL"
+                  required
+                  disabled={isLoading}
+                  className="h-11 min-w-0 flex-1 bg-background"
+                  autoFocus
+                />
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={isLoading}
+                  className="shrink-0"
+                >
+                  {isLoading ? "Extracting..." : "Extract design.md"}
+                </Button>
+              </div>
+            </form>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-              Try
-            </span>
-            {examples.slice(0, 5).map((example) => (
-              <button
-                key={example.slug}
-                type="button"
-                onClick={() => onSampleSelect(example.sourceUrl)}
-                className="rounded-full border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-secondary"
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <span>Try</span>
+              {samples.map((example) => (
+                <button
+                  key={example.slug}
+                  type="button"
+                  onClick={() => onSampleSelect(example.sourceUrl)}
+                  className="rounded-sm py-1 underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 pointer-coarse:min-h-11"
+                >
+                  {example.title}
+                </button>
+              ))}
+              <Link
+                to="/examples"
+                className="ml-auto inline-flex items-center gap-1 rounded-sm py-1 underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 pointer-coarse:min-h-11"
               >
-                {example.title}
-              </button>
-            ))}
-            <Link
-              to="/examples"
-              className="rounded-full border border-primary/30 px-4 py-2 text-sm font-medium text-brand-text transition-colors hover:bg-primary/10"
-            >
-              Browse library
-            </Link>
+                Browse library
+                <IconArrowRight size={14} aria-hidden="true" />
+              </Link>
+            </div>
+            <InstallSkillButton />
           </div>
-          <InstallSkillButton />
         </div>
 
         <PopularExamplesPanel examples={examples.slice(0, 6)} />
