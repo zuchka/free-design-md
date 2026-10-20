@@ -25,12 +25,15 @@ const mocks = vi.hoisted(() => {
   return { page, browser, launch: vi.fn() };
 });
 vi.mock("playwright", () => ({ chromium: { launch: mocks.launch } }));
-vi.mock("../shared/design-md", () => ({
+vi.mock("../skills/extract-design-md/scripts/lib/design-md", () => ({
   designSystemToDesignMd: () => "# Fixture design",
 }));
-vi.mock("../shared/extract-design-system", () => ({
-  synthesizeDesignSystem: () => ({}),
-}));
+vi.mock(
+  "../skills/extract-design-md/scripts/lib/extract-design-system",
+  () => ({
+    synthesizeDesignSystem: () => ({}),
+  }),
+);
 const { default: extract } = await import("./extract-design-md");
 
 describe("extraction action lifecycle", () => {
