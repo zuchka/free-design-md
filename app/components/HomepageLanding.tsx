@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import InstallSkillButton from "@/components/InstallSkillButton";
 import {
   ExampleCardGrid,
   ExampleColorSwatches,
@@ -140,6 +141,7 @@ export default function HomepageLanding({
               Browse library
             </Link>
           </div>
+          <InstallSkillButton />
         </div>
 
         <PopularExamplesPanel examples={examples.slice(0, 6)} />
