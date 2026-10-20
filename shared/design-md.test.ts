@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { designSystemToDesignMd } from "./design-md";
 import type { DesignSystemData } from "./api";
 
@@ -32,6 +33,34 @@ const fullData: DesignSystemData = {
 };
 
 describe("designSystemToDesignMd", () => {
+  it.each([
+    "Acme: Tools #1",
+    "true",
+    "Brand\n---\ncolors:\n  primary: injected",
+  ])("keeps arbitrary page metadata inside YAML string values: %s", (title) => {
+    const description = "Build: tools # fast\nWith more details";
+    const markdown = designSystemToDesignMd({
+      title,
+      description,
+      data: {
+        ...fullData,
+        typography: {
+          ...fullData.typography,
+          headingFont: "Brand: Display",
+          bodyFont: "123",
+        },
+      },
+    });
+    const frontmatter = parse(markdown.slice(4).split("\n---\n")[0]);
+    expect(frontmatter.name).toBe(title);
+    expect(frontmatter.description).toBe(description);
+    expect(frontmatter.typography["heading-1"].fontFamily).toBe(
+      "Brand: Display",
+    );
+    expect(frontmatter.typography.body.fontFamily).toBe("123");
+    expect(frontmatter.colors.primary).toBe(fullData.colors.primary);
+  });
+
   it("renders the full spec for a complete design system", () => {
     const md = designSystemToDesignMd({
       title: "Acme Brand",
@@ -41,8 +70,8 @@ describe("designSystemToDesignMd", () => {
     });
     expect(md).toMatchInlineSnapshot(`
       "---
-      name: Acme Brand
-      description: Extracted from acme.com
+      name: "Acme Brand"
+      description: "Extracted from acme.com"
       colors:
         primary: "#00E5FF"
         secondary: "#0EA5E9"
@@ -53,19 +82,19 @@ describe("designSystemToDesignMd", () => {
         text-muted: "rgba(255,255,255,0.55)"
       typography:
         heading-1:
-          fontFamily: Poppins
+          fontFamily: "Poppins"
           fontSize: 64px
           fontWeight: 900
         heading-2:
-          fontFamily: Poppins
+          fontFamily: "Poppins"
           fontSize: 40px
           fontWeight: 900
         heading-3:
-          fontFamily: Poppins
+          fontFamily: "Poppins"
           fontSize: 28px
           fontWeight: 900
         body:
-          fontFamily: Poppins
+          fontFamily: "Poppins"
           fontWeight: 400
       rounded:
         md: 12px

@@ -218,8 +218,8 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
 
   const lines: string[] = [];
   lines.push("---");
-  lines.push(`name: ${title}`);
-  if (desc) lines.push(`description: ${desc}`);
+  lines.push(`name: ${quote(title)}`);
+  if (desc) lines.push(`description: ${quote(desc)}`);
 
   lines.push("colors:");
   for (const { key, token } of COLOR_LABELS) {
@@ -241,7 +241,7 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
   for (const [name, size] of headingEntries) {
     if (!tp.headingFont && !size && !hWeight) continue;
     lines.push(`  ${name}:`);
-    if (tp.headingFont) lines.push(`    fontFamily: ${tp.headingFont}`);
+    if (tp.headingFont) lines.push(`    fontFamily: ${quote(tp.headingFont)}`);
     // Emit the full fallback stack so agents reading design.md see the
     // brand's intended chain (e.g. "ui-serif, Georgia, ..., serif") rather
     // than guessing from the primary font name alone.
@@ -253,7 +253,7 @@ export function designSystemToDesignMd(input: DesignMdInput): string {
   }
   if (tp.bodyFont || bWeight) {
     lines.push("  body:");
-    if (tp.bodyFont) lines.push(`    fontFamily: ${tp.bodyFont}`);
+    if (tp.bodyFont) lines.push(`    fontFamily: ${quote(tp.bodyFont)}`);
     if (bodyStack && bodyStack !== tp.bodyFont) {
       lines.push(`    fontFamilyStack: ${quote(bodyStack)}`);
     }
