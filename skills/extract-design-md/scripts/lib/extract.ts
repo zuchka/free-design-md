@@ -5,6 +5,7 @@ import {
   type ExtractedSignals,
 } from "./extract-design-system.js";
 import { ExtractionError, ExtractionTrace } from "./trace.js";
+export { ExtractionTrace } from "./trace.js";
 import {
   assertSafeExtractionUrl,
   navigateForExtraction,
