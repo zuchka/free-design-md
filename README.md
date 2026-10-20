@@ -142,6 +142,46 @@ pnpm action iterate-design-md \
 
 CLI AI actions read `ANTHROPIC_API_KEY` from the environment. Action output is JSON on stdout.
 
+## Standalone agent skill
+
+[`skills/extract-design-md`](skills/extract-design-md/SKILL.md) is a self-contained
+skill for extracting a public website's design inside a coding agent. It saves
+`design.md`, raw signals and tokens in `extraction.json`, and a screenshot when
+available. Optional enrichment uses the agent's own model. The skill needs no
+app server, account, database, Anthropic key, or hosted credits.
+
+Install from a checkout with the Skills CLI:
+
+```bash
+npx skills add . --skill extract-design-md
+```
+
+Once the skill is published on the repository's default branch, others can install it with:
+
+```bash
+npx skills add zuchka/free-design-md --skill extract-design-md
+```
+
+Alternatively, copy the entire `skills/extract-design-md` directory into your
+agent's skills directory. Node.js 22.12+ and npm are required. The skill's setup
+instructions install its pinned dependencies and Playwright Chromium on first
+use. Then ask the agent to extract a URL, optionally requesting enrichment.
+
+To run it directly from this checkout:
+
+```bash
+npm ci --prefix skills/extract-design-md
+npm --prefix skills/extract-design-md run install-browser
+node skills/extract-design-md/scripts/extract.mjs \
+  --url https://example.com \
+  --output ./design-extractions/example-com
+```
+
+Use a new output directory for each extraction. The command prints one JSON
+summary with artifact paths and diagnostics. The app and the skill share the
+extraction implementation in the skill's `scripts/lib/` directory; the app adds
+its own metrics around that implementation.
+
 ## API summary
 
 | Method | Path                                 | Purpose                                        |

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Extract design.md"
+  short_description: "Extract website styles with optional agent enrichment"
+  default_prompt: "Use $extract-design-md to extract the visual design from a public URL into design.md."
