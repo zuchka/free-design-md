@@ -32,6 +32,7 @@ import {
 } from "@tabler/icons-react";
 import CreditsRecoveryBanner from "@/components/CreditsRecoveryBanner";
 import ArtifactActions from "@/components/ArtifactActions";
+import OwnAiBundleDownload from "@/components/OwnAiBundleDownload";
 import HomepageLanding from "@/components/HomepageLanding";
 import {
   classifyAiAccessErrorMessage,
@@ -878,6 +879,7 @@ export default function IndexRoute() {
 
         {result && !isLoading && (
           <div className="flex flex-col gap-6">
+            <OwnAiBundleDownload extraction={result} />
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <Pane title="Real site" className="lg:flex-1 lg:min-w-0">
                 {result.screenshotDataUrl ? (
