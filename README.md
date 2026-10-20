@@ -153,13 +153,13 @@ app server, account, database, Anthropic key, or hosted credits.
 Install from a checkout with the Skills CLI:
 
 ```bash
-npx skills add . --skill extract-design-md
+npx skills add . --skill extract-design-md --global
 ```
 
-Once the skill is published on the repository's default branch, others can install it with:
+Install directly from GitHub without cloning this repository:
 
 ```bash
-npx skills add zuchka/free-design-md --skill extract-design-md
+npx skills add zuchka/free-design-md --skill extract-design-md --global
 ```
 
 Alternatively, copy the entire `skills/extract-design-md` directory into your
