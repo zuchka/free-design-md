@@ -17,9 +17,9 @@ import { DOCS_SITE_URL, docsUrl } from "@/lib/docs-content";
 
 const PAGE_PATH = "/docs/api-and-cli";
 const PAGE_URL = docsUrl(PAGE_PATH);
-const PAGE_TITLE = "Free design.md API and CLI: Extract design.md from a URL";
+const PAGE_TITLE = "Advanced usage: API, CLI & self-hosting — Free design.md";
 const PAGE_DESCRIPTION =
-  "Use Free design.md from HTTP APIs, the command line, or the public Docker image. Learn keyless hosted extraction, JSON, Markdown, and MDX outputs, purchased AI runs, local Anthropic environment keys, SSE responses, and CLI actions.";
+  "Developer reference for the hosted extraction API, curated catalog CLI, repository actions, and optional self-hosting with PostgreSQL and Docker.";
 
 export const links: LinksFunction = () => [
   { rel: "canonical", href: PAGE_URL },
@@ -71,33 +71,42 @@ npx free-design-md add stripe --out specs/stripe.design.md`;
 
 const PUBLIC_CATALOG_URL = "https://github.com/zuchka/free-design-md-catalog";
 
-const LOCAL_EXAMPLE = `# Deterministic extraction from a local checkout.
-pnpm action extract-design-md --url stripe.com > extract.json
+const LOCAL_EXAMPLE = `# Requires Node.js 22.12 and pnpm. Clone and install first.
+git clone https://github.com/zuchka/free-design-md.git
+cd free-design-md
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
+
+# Deterministic extraction from the checkout.
+pnpm --silent action extract-design-md --url stripe.com > extract.json
 
 # The action returns JSON. Save only the design.md text with jq.
-pnpm action extract-design-md --url stripe.com | jq -r '.markdown' > design.md
+pnpm --silent action extract-design-md --url stripe.com | jq -r '.markdown' > design.md
 
 # For AI enrichment, load ANTHROPIC_API_KEY into your local environment first.
-pnpm action enrich-design-md \\
+pnpm --silent action enrich-design-md \\
   --url stripe.com \\
   --designSystemData '<json from extract>' \\
   --signals '<json from extract>' \\
   --screenshotDataUrl '<data URL from extract>' \\
   --deterministicMarkdown '<markdown from extract>'`;
 
-const SELF_HOST_EXAMPLE = `# Local UI / self-host mode.
-# Load ANTHROPIC_API_KEY into this environment first.
-FREE_DESIGN_MD_SELF_HOSTED=1 pnpm dev`;
+const DOCKER_EXAMPLE = `# First set DATABASE_URL to a PostgreSQL database with the app migrations applied.
+# Generate this secret once and reuse it across restarts.
+export BETTER_AUTH_SECRET="$(openssl rand -hex 32)"
+export PUBLIC_ORIGIN="http://localhost:3000"
+export BETTER_AUTH_URL="$PUBLIC_ORIGIN"
 
-const DOCKER_EXAMPLE = `# Pull the public image from GitHub Container Registry.
+# Optional: set ANTHROPIC_API_KEY for self-hosted AI enrichment.
 docker pull ghcr.io/zuchka/free-design-md:latest
-
-# Load ANTHROPIC_API_KEY into your shell or secret manager first.
 docker run --rm \\
-  -p 3000:3000 \\
+  -p 127.0.0.1:3000:3000 \\
   -e FREE_DESIGN_MD_SELF_HOSTED=1 \\
+  -e DATABASE_URL \\
+  -e BETTER_AUTH_SECRET \\
+  -e BETTER_AUTH_URL \\
+  -e PUBLIC_ORIGIN \\
   -e ANTHROPIC_API_KEY \\
-  -e DATABASE_URL=postgresql://user:password@postgres-host:5432/database \\
   ghcr.io/zuchka/free-design-md:latest`;
 
 const DOCKER_BUILD_EXAMPLE = `# Optional: build locally from a repository checkout.
@@ -178,9 +187,14 @@ const RESPONSE_FORMATS = [
 
 const FAQS = [
   {
+    question: "Do I need Docker to use the agent skill?",
+    answer:
+      "No. The standalone skill needs Node.js and installs its own extraction dependencies and Chromium. It needs no app server, database, or AI API key; optional enrichment uses your coding agent’s model.",
+  },
+  {
     question: "Can I use Free design.md without the browser UI?",
     answer:
-      "Yes. Use GET /api/extract for deterministic extraction, or run pnpm action extract-design-md from a local checkout.",
+      "Yes. Install the standalone extract-design-md skill in your coding agent, use GET /api/extract, or run the repository actions from a local checkout.",
   },
   {
     question: "Can I browse curated design.md files from the CLI?",
@@ -208,14 +222,14 @@ const FAQS = [
       "No. The hosted API rejects user-supplied Anthropic keys. Hosted AI uses purchased AI runs.",
   },
   {
-    question: "Is there a Brew package or desktop binary?",
+    question: "Does the npm CLI extract a new URL?",
     answer:
-      "Not yet. A packaged local app is a future distribution path; today's packaged local path is the public Docker image.",
+      "The free-design-md npm package browses and downloads the curated catalog. Use the standalone skill, HTTP API, or repository actions to extract a fresh URL.",
   },
   {
     question: "How do I download, install, and run Free design.md with Docker?",
     answer:
-      "Pull ghcr.io/zuchka/free-design-md:latest, run it with FREE_DESIGN_MD_SELF_HOSTED=1 and ANTHROPIC_API_KEY, then open http://localhost:3000.",
+      "Prepare a migrated PostgreSQL database, set DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, and PUBLIC_ORIGIN, then run the image with FREE_DESIGN_MD_SELF_HOSTED=1. ANTHROPIC_API_KEY is only needed for AI enrichment.",
   },
   {
     question: "Which operating systems can run the Docker image?",
@@ -339,30 +353,40 @@ export default function ApiAndCliRoute() {
                 Docs
               </Link>
               <IconArrowRight size={14} />
-              <span>API and CLI</span>
+              <span>Advanced usage</span>
             </div>
             <h1 className="mt-6 max-w-3xl text-4xl font-semibold text-foreground sm:text-5xl">
-              Free design.md API and CLI
+              Advanced usage
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground sm:text-lg">
-              You can use Free design.md without the browser UI. The
-              deterministic extractor works over HTTP and CLI with no AI key,
-              and the HTTP API can return JSON, raw design.md Markdown, or MDX.
-              Hosted AI enrichment uses purchased AI runs, while local Docker
-              and self-hosted deployments can use your own environment key.
+              Use this guide for scripts, catalog downloads, repository actions,
+              and hosting the full website or API yourself. For everyday
+              extraction, use the website or install the standalone skill in
+              your coding agent.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
+              The skill runs locally and can use your agent’s model for
+              enrichment. It needs no Docker, database, or AI API key.{" "}
+              <Link
+                to="/"
+                className="font-medium text-brand-text hover:underline"
+              >
+                Use the website or install the skill
+              </Link>
+              .
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Button asChild size="lg">
                 <a href="#http-api">
-                  See HTTP examples
+                  HTTP API
                   <IconArrowRight size={16} />
                 </a>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <a href="#cli">See CLI examples</a>
+                <a href="#cli">Catalog CLI</a>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <a href="#docker">Run with Docker</a>
+                <a href="#docker">Self-hosting</a>
               </Button>
             </div>
           </div>
@@ -420,7 +444,10 @@ export default function ApiAndCliRoute() {
         </div>
       </section>
 
-      <section id="http-api" className="border-y border-border bg-muted/25">
+      <section
+        id="http-api"
+        className="scroll-mt-20 border-y border-border bg-muted/25"
+      >
         <div className="grid min-w-0 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
           <div>
             <SectionHeading eyebrow="HTTP" title="Hosted extraction is keyless">
@@ -457,16 +484,17 @@ export default function ApiAndCliRoute() {
 
       <section
         id="cli"
-        className="grid min-w-0 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]"
+        className="grid min-w-0 scroll-mt-20 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]"
       >
         <div>
           <SectionHeading
-            eyebrow="CLI"
-            title="Browse curated design.md artifacts"
+            eyebrow="Catalog CLI"
+            title="Download existing designs with npm"
           >
-            The published CLI can list every curated downloadable design.md
-            artifact, filter by category or search text, print JSON for agents,
-            and download a chosen slug into your project.
+            The free-design-md npm package lists curated designs, filters by
+            category or search text, and downloads a chosen artifact into your
+            project. Use the skill or HTTP API when you want to extract a fresh
+            URL.
           </SectionHeading>
           <a
             href={PUBLIC_CATALOG_URL}
@@ -515,14 +543,13 @@ export default function ApiAndCliRoute() {
         <div className="grid min-w-0 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
           <div>
             <SectionHeading
-              eyebrow="Local actions"
-              title="Use your key locally"
+              eyebrow="Repository actions"
+              title="Run the extractor from a checkout"
             >
-              The action layer is the same core surface the UI wraps. In local
-              or private deployments, extraction returns structured JSON on
-              stdout; pipe `.markdown` into a file when you want only design.md
-              text. Set ANTHROPIC_API_KEY in the environment for AI enrichment
-              so the key never passes through the hosted Free design.md service.
+              These commands require this repository and its dependencies. Use
+              pnpm --silent when saving or piping JSON so the package manager’s
+              banner stays out of the result. Extraction needs no AI key; local
+              enrichment reads ANTHROPIC_API_KEY from your environment.
             </SectionHeading>
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {[
@@ -557,35 +584,20 @@ export default function ApiAndCliRoute() {
         </div>
       </section>
 
-      <section className="border-t border-border bg-muted/25">
-        <div className="grid min-w-0 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
-          <SectionHeading
-            eyebrow="Self-host"
-            title="Run private AI behind your own key"
-          >
-            Self-host mode is explicit. It uses ANTHROPIC_API_KEY from the
-            deployment environment and does not spend hosted Free design.md AI
-            runs. Packaged binaries and Homebrew installs are a future
-            distribution path, not something this branch promises.
-          </SectionHeading>
-
-          <pre className="min-w-0 overflow-auto rounded-lg border bg-[#111111] p-5 text-xs leading-6 text-white shadow-sm">
-            <code>{SELF_HOST_EXAMPLE}</code>
-          </pre>
-        </div>
-      </section>
-
-      <section id="docker" className="border-t border-border bg-background">
+      <section
+        id="docker"
+        className="scroll-mt-20 border-t border-border bg-background"
+      >
         <div className="grid min-w-0 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
           <div>
             <SectionHeading
-              eyebrow="Docker"
-              title="Download and run locally with Docker"
+              eyebrow="Optional self-hosting"
+              title="Run the full website and API with Docker"
             >
-              Pull the public image from GitHub Container Registry and run the
-              local UI on port 3000. The latest tag publishes Linux amd64 and
-              arm64 images, so Docker pulls the matching image on macOS,
-              Windows, and Linux developer machines.
+              Self-hosting runs the complete application and requires PostgreSQL
+              and auth configuration. For extraction inside your coding agent,
+              use the standalone skill. The public image includes Linux amd64
+              and arm64 builds.
             </SectionHeading>
             <a
               href="https://github.com/zuchka/free-design-md/pkgs/container/free-design-md"
@@ -596,6 +608,20 @@ export default function ApiAndCliRoute() {
               View the GHCR package
             </a>
 
+            <p className="mt-5 text-sm leading-7 text-muted-foreground">
+              Before starting, apply the repository’s{" "}
+              <a
+                href="https://github.com/zuchka/free-design-md/tree/main/supabase/migrations"
+                className="font-medium text-brand-text hover:underline"
+              >
+                SQL migrations
+              </a>{" "}
+              in filename order to a dedicated database. The migrations expect
+              the anon and authenticated roles, which Supabase provides. Create
+              those roles first when using plain PostgreSQL, and grant your
+              runtime login membership in free_design_app. Use a TLS-enabled
+              connection for a database on a remote host.
+            </p>
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {[
                 {
@@ -605,7 +631,7 @@ export default function ApiAndCliRoute() {
                 },
                 {
                   title: "External Postgres",
-                  body: "Point DATABASE_URL at a migrated Postgres database; application startup never changes schema.",
+                  body: "Set DATABASE_URL to a migrated PostgreSQL database. Startup never applies migrations. Set a persistent BETTER_AUTH_SECRET and the public origin too.",
                   icon: IconBrandDocker,
                 },
               ].map((item) => {
@@ -628,17 +654,20 @@ export default function ApiAndCliRoute() {
               <code>{DOCKER_EXAMPLE}</code>
             </pre>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              After the container starts, open http://localhost:3000. The
-              command passes the ANTHROPIC_API_KEY variable name to Docker, not
-              the key value; if the variable is missing, self-host mode returns
-              a setup error.
+              Open http://localhost:3000 after startup. For a hosted deployment,
+              set both origin variables to its public URL and configure your
+              network access. Deterministic extraction works without an AI key;
+              AI enrichment requires ANTHROPIC_API_KEY in the container
+              environment. Self-hosted AI uses that key without spending hosted
+              AI runs.
             </p>
             <pre className="mt-4 min-w-0 overflow-auto rounded-lg border bg-muted p-4 text-xs leading-6 text-muted-foreground">
               <code>{DOCKER_BUILD_EXAMPLE}</code>
             </pre>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Build locally only when you are developing from a checkout or need
-              to test unreleased changes.
+              The Dockerfile also builds our production deployment. Build
+              locally when developing from a checkout or testing unreleased
+              changes.
             </p>
           </div>
         </div>

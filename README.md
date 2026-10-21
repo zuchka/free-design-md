@@ -2,6 +2,13 @@
 
 Paste any public URL and get a portable `design.md` specification. The deterministic extraction is free. AI enrichment and follow-up revisions use AI runs purchased as one-time packs through Stripe.
 
+## Get started
+
+- [Use the website](https://freedesign.md) for free extraction and optional hosted AI enrichment.
+- [Install the standalone skill](#standalone-agent-skill) to extract inside Claude Code or Codex and optionally enrich with your agent’s own model.
+
+The HTTP API, catalog CLI, repository actions, and self-hosting are advanced options.
+
 ## Product model
 
 - Deterministic extraction uses Playwright and computed CSS. It does not require an account or an LLM.
@@ -113,29 +120,55 @@ AUTH_EMAIL_FROM="Free design.md <noreply@your-domain.example>"
 
 In development, magic links are printed to the server console when `RESEND_API_KEY` is unset.
 
-## Self-hosting
+## Optional: self-host the full application
+
+The standalone skill needs no Docker, database, or app server. Use Docker when
+hosting the complete website and HTTP API yourself. The Dockerfile is also used
+for our production deployment.
+
+Prepare a dedicated PostgreSQL database and apply `supabase/migrations/*.sql`
+in filename order before startup. Supabase provides the `anon` and `authenticated`
+roles; create those roles first when using plain PostgreSQL. Set `DATABASE_URL`
+to that database, using a TLS-enabled connection for a remote host. A runtime
+login needs membership in the `free_design_app` role created by the migrations.
 
 ```bash
-docker pull ghcr.io/zuchka/free-design-md:latest
+# First set DATABASE_URL to a PostgreSQL database with the app migrations applied.
+# Generate this secret once and reuse it across restarts.
+export BETTER_AUTH_SECRET="$(openssl rand -hex 32)"
+export PUBLIC_ORIGIN="http://localhost:3000"
+export BETTER_AUTH_URL="$PUBLIC_ORIGIN"
 
+# Optional: set ANTHROPIC_API_KEY for self-hosted AI enrichment.
+docker pull ghcr.io/zuchka/free-design-md:latest
 docker run --rm \
-  -p 3000:3000 \
+  -p 127.0.0.1:3000:3000 \
   -e FREE_DESIGN_MD_SELF_HOSTED=1 \
+  -e DATABASE_URL \
+  -e BETTER_AUTH_SECRET \
+  -e BETTER_AUTH_URL \
+  -e PUBLIC_ORIGIN \
   -e ANTHROPIC_API_KEY \
-  -e DATABASE_URL=postgresql://user:password@postgres-host:5432/database \
   ghcr.io/zuchka/free-design-md:latest
 ```
 
-Self-hosted AI calls are unmetered and do not require Stripe or email
-configuration. Apply the SQL migrations before starting the container.
+Keep `BETTER_AUTH_SECRET` stable across restarts. For a public deployment, set
+`PUBLIC_ORIGIN` and `BETTER_AUTH_URL` to its public URL and configure network
+access. The example binds the app to localhost. Deterministic extraction needs
+no Anthropic key; self-hosted AI requires `ANTHROPIC_API_KEY` and does not spend
+hosted AI runs. Stripe and email configuration are unnecessary for self-hosted
+extraction and AI enrichment.
 
-## CLI actions
+## Repository CLI actions
 
-The browser and CLI share the same extraction and AI modules:
+These commands require a cloned repository, Node.js 22.12, pnpm dependencies,
+and Playwright Chromium. See [local development](#local-development) for setup.
+They share the website’s extraction and AI modules. Use `--silent` to keep pnpm’s
+banner out of JSON output:
 
 ```bash
-pnpm action extract-design-md --url stripe.com
-pnpm action iterate-design-md \
+pnpm --silent action extract-design-md --url stripe.com > extract.json
+pnpm --silent action iterate-design-md \
   --previousMarkdown '<design.md>' \
   --userPrompt 'Tighten the spacing scale'
 ```
@@ -194,7 +227,15 @@ its own metrics around that implementation.
 | `POST` | `/api/billing/webhook`               | Fulfill paid Checkout Sessions                 |
 | `GET`  | `/api/saved-enrichments/:id`         | Read a public saved artifact                   |
 
-The public CLI and curated catalog live in [`zuchka/free-design-md-catalog`](https://github.com/zuchka/free-design-md-catalog).
+The `free-design-md` npm package browses and downloads curated artifacts:
+
+```bash
+npx free-design-md list
+npx free-design-md add stripe --out specs/stripe.design.md
+```
+
+Its source and catalog live in [`zuchka/free-design-md-catalog`](https://github.com/zuchka/free-design-md-catalog).
+For a fresh URL extraction, use the skill, HTTP API, or repository actions.
 
 ## Monitoring
 
