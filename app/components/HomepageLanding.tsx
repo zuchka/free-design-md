@@ -1,14 +1,5 @@
-import { useState } from "react";
 import { Link } from "react-router";
-import {
-  IconApi,
-  IconArrowRight,
-  IconBrandDocker,
-  IconCheck,
-  IconCopy,
-  IconRocket,
-  IconTerminal2,
-} from "@tabler/icons-react";
+import { IconArrowRight, IconRocket } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import InstallSkillButton from "@/components/InstallSkillButton";
@@ -27,50 +18,6 @@ interface HomepageLandingProps {
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   onSampleSelect: (url: string) => void;
 }
-
-const CODE_SNIPPETS = [
-  {
-    id: "http",
-    label: "HTTP",
-    icon: IconApi,
-    code: 'curl "https://freedesign.md/api/extract?url=https://stripe.com&format=json"',
-  },
-  {
-    id: "cli",
-    label: "CLI",
-    icon: IconTerminal2,
-    code: "pnpm action extract-design-md --url stripe.com",
-  },
-  {
-    id: "docker",
-    label: "Docker",
-    icon: IconBrandDocker,
-    code: "docker run --rm -p 3000:3000 -e FREE_DESIGN_MD_SELF_HOSTED=1 -e ANTHROPIC_API_KEY ghcr.io/zuchka/free-design-md:latest",
-  },
-];
-
-const PROOF_CARDS = [
-  {
-    title: "Any public URL",
-    body: "Generate a fresh deterministic artifact instead of waiting for a static catalog to cover the brand.",
-  },
-  {
-    title: "API-ready",
-    body: "Hosted extraction is keyless, and the same path works from scripts and agent workflows.",
-  },
-  {
-    title: "Docker/self-host",
-    body: "Run your own local environment and keep Anthropic keys in server environment variables.",
-  },
-  {
-    title: "MDX export",
-    body: "Download Markdown, HTML, or MDX when the design spec needs to travel into docs or a repo.",
-  },
-  {
-    title: "Quality report",
-    body: "Compare the generated output against known design.md references before adopting it in a workflow.",
-  },
-];
 
 export default function HomepageLanding({
   url,
@@ -155,49 +102,6 @@ export default function HomepageLanding({
         <PopularExamplesPanel examples={examples.slice(0, 6)} />
       </section>
 
-      <section className="grid min-w-0 gap-6 rounded-md border bg-secondary/25 p-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-brand-text">
-            Use it from code
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-            The browser UI is only one entry point.
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Hosted extraction does not need an Anthropic key. Local and
-            self-hosted AI flows keep keys in environment variables instead of
-            request bodies.
-          </p>
-          <Link
-            to="/docs/api-and-cli"
-            className="mt-5 inline-flex text-sm font-medium text-brand-text hover:underline"
-          >
-            Read the API and Docker guide
-          </Link>
-        </div>
-        <div className="grid min-w-0 gap-3">
-          {CODE_SNIPPETS.map((snippet) => (
-            <CopyCodeBlock key={snippet.id} snippet={snippet} />
-          ))}
-        </div>
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        {PROOF_CARDS.map((card) => (
-          <div
-            key={card.title}
-            className="rounded-md border bg-secondary/25 p-4"
-          >
-            <h3 className="text-sm font-semibold text-foreground">
-              {card.title}
-            </h3>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {card.body}
-            </p>
-          </div>
-        ))}
-      </section>
-
       <section className="flex flex-col gap-5 rounded-md border bg-secondary/25 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -247,7 +151,7 @@ export default function HomepageLanding({
               Docs
             </Link>
             <Link to="/docs/api-and-cli" className="hover:text-foreground">
-              API and Docker
+              Advanced usage
             </Link>
             <Link to="/quality" className="hover:text-foreground">
               Quality
@@ -307,43 +211,5 @@ function PopularExamplesPanel({
         ))}
       </div>
     </aside>
-  );
-}
-
-function CopyCodeBlock({
-  snippet,
-}: {
-  snippet: (typeof CODE_SNIPPETS)[number];
-}) {
-  const [copied, setCopied] = useState(false);
-  const Icon = snippet.icon;
-
-  async function copyCode() {
-    await navigator.clipboard?.writeText(snippet.code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1400);
-  }
-
-  return (
-    <div className="min-w-0 overflow-hidden rounded-md border bg-secondary/25">
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
-          <Icon size={16} className="text-brand-text" />
-          <span className="truncate">{snippet.label}</span>
-        </div>
-        <button
-          type="button"
-          onClick={copyCode}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-          aria-label={`Copy ${snippet.label} example`}
-        >
-          {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-          {copied ? "Copied" : "Copy"}
-        </button>
-      </div>
-      <pre className="w-full overflow-x-auto p-3 text-xs leading-6 text-muted-foreground">
-        <code>{snippet.code}</code>
-      </pre>
-    </div>
   );
 }
