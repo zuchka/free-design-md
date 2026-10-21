@@ -27,15 +27,15 @@ export const DOCS_ARTICLES = [
   },
   {
     path: "/docs/api-and-cli",
-    shortTitle: "API and CLI",
-    title: "Free design.md API and CLI: Extract design.md from a URL",
-    seoTitle: "Free design.md API and CLI: Extract design.md from a URL",
+    shortTitle: "Advanced usage",
+    title: "Advanced usage: API, CLI & self-hosting — Free design.md",
+    seoTitle: "Advanced usage: API, CLI & self-hosting — Free design.md",
     description:
-      "Use Free design.md from HTTP APIs, the command line, or the public Docker image. Learn JSON, Markdown, and MDX outputs plus purchased AI runs, local keys, SSE responses, and CLI actions.",
+      "Developer reference for the HTTP API, catalog CLI, repository actions, and optional self-hosting with PostgreSQL and Docker.",
     intent: "Developer guide",
     topic: "API",
     summary:
-      "Use hosted keyless extraction with JSON, Markdown, or MDX outputs, plus purchased AI runs and Docker/self-hosted environment keys for private AI enrichment.",
+      "Integrate the hosted extraction API, download curated artifacts with npm, or configure the full application for self-hosting.",
   },
   {
     path: "/docs/markdown-vs-mdx",
