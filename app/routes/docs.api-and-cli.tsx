@@ -719,12 +719,15 @@ export default function ApiAndCliRoute() {
               <code>{METRICS_EXAMPLE}</code>
             </pre>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              When PROMETHEUS_METRICS_TOKEN is set, /api/metrics requires either
-              an Authorization: Bearer token or an x-prometheus-token header. If
-              you run multiple app processes, scrape each process for latency
-              histograms. Database-backed counters and billing totals are
-              shared; scrape one replica or deduplicate those series before
-              aggregating.
+              Hosted production /api/metrics requires PROMETHEUS_METRICS_TOKEN
+              and either an Authorization: Bearer token or an x-prometheus-token
+              header. Self-hosted instances can opt in to this protection. The
+              aggregate extraction-health summary stays public; recent request
+              URLs always require a token. Database snapshots refresh every two
+              minutes, while latency histograms remain live. If you run multiple
+              app processes, scrape each process for latency histograms.
+              Database-backed counters and billing totals are shared; scrape one
+              replica or deduplicate those series before aggregating.
             </p>
           </div>
         </div>

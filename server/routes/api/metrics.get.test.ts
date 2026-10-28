@@ -60,6 +60,22 @@ describe("GET /api/metrics", () => {
     expect(result).not.toContain("fdmd_extract_requests_total");
   });
 
+  it("rejects hosted production scrapes when the deployment token is missing", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("FREE_DESIGN_MD_SELF_HOSTED", "0");
+    try {
+      const event = {} as {
+        _statusCode?: number;
+        _headers?: Record<string, string>;
+      };
+      expect(await routeHandler(event as never)).toBe("metrics token required");
+      expect(event._statusCode).toBe(401);
+      expect(event._headers?.["Cache-Control"]).toContain("no-store");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("requires a token when configured", async () => {
     process.env.PROMETHEUS_METRICS_TOKEN = "secret";
 

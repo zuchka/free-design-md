@@ -1,9 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { getExtractionHealth } from "../../server/lib/metrics.js";
-import {
-  hasMetricsAccess,
-  hasPrivateMetricsAccess,
-} from "../../server/lib/metrics-access.js";
+import { hasPrivateMetricsAccess } from "../../server/lib/metrics-access.js";
 import { getExtractionHistory } from "../../server/lib/extraction-history.js";
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -11,7 +8,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const params = new URL(request.url).searchParams;
   const includeRecent = params.get("include") === "recent";
   if (
-    !(includeRecent ? hasPrivateMetricsAccess : hasMetricsAccess)(
+    includeRecent &&
+    !hasPrivateMetricsAccess(
       request.headers.get("authorization"),
       request.headers.get("x-prometheus-token"),
     )

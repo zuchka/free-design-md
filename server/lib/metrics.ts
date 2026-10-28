@@ -1,7 +1,11 @@
 import { recordAiOutcome, recordGrowthEvent } from "./analytics.js";
 import { getDbExec } from "../db/index.js";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { renderBillingMetrics } from "./billing-metrics.js";
+import {
+  renderBillingMetrics,
+  resetBillingMetricsCache,
+} from "./billing-metrics.js";
+import { createMonitoringCache } from "./monitoring-cache.js";
 import {
   extractionFailures,
   type ExtractionFailureCode,
@@ -334,9 +338,17 @@ async function persistCounterIncrement(
             updated_at = to_char(timezone('utc', statement_timestamp()), 'YYYY-MM-DD HH24:MI:SS')`,
     args: [metric.name, key, JSON.stringify(labels), value],
   });
+  counterSnapshot.clear();
 }
 
-async function loadPersistedCounters(): Promise<
+const counterSnapshot =
+  createMonitoringCache<Map<string, PersistedCounterRow[]>>();
+
+function loadPersistedCounters() {
+  return counterSnapshot.get(readPersistedCounters);
+}
+
+async function readPersistedCounters(): Promise<
   Map<string, PersistedCounterRow[]>
 > {
   if (persistentMetricsDisabledForTests()) {
@@ -634,6 +646,8 @@ export async function renderPrometheusMetrics(): Promise<string> {
 }
 
 export function resetInMemoryMetricsForTests(): void {
+  counterSnapshot.clear();
+  resetBillingMetricsCache();
   for (const metric of metrics) metric.reset();
 }
 

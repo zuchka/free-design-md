@@ -1,3 +1,4 @@
+import { createMonitoringCache } from "./monitoring-cache.js";
 import { AI_RUN_PACKS } from "../../shared/billing.js";
 import { getDbExec } from "../db/index.js";
 
@@ -17,8 +18,20 @@ function family(
   ].join("\n");
 }
 
+const billingSnapshot = createMonitoringCache<string>();
+
+export function resetBillingMetricsCache() {
+  billingSnapshot.clear();
+}
+
 /** Read the billing source of truth; never count a webhook delivery as a sale. */
 export async function renderBillingMetrics(): Promise<string> {
+  return billingSnapshot.get(collectBillingMetrics, (value) =>
+    value.includes("fdmd_billing_metrics_available 1"),
+  );
+}
+
+async function collectBillingMetrics(): Promise<string> {
   const healthName = "fdmd_billing_metrics_available";
   try {
     // A single statement uses one Postgres snapshot, even under READ COMMITTED.
