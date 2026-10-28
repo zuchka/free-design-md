@@ -240,6 +240,10 @@ For a fresh URL extraction, use the skill, HTTP API, or repository actions.
 ## Monitoring
 
 `GET /api/metrics` exposes Prometheus metrics for extraction, AI outcomes, fulfilled
-credit packs, and wallet reservations, commits, and refunds. Set
-`PROMETHEUS_METRICS_TOKEN` to protect the endpoint. See [the metrics guide](docs/prometheus.md)
-for metric names, example queries, and replica deduplication requirements.
+credit packs, and wallet reservations, commits, and refunds. Hosted production
+requires `PROMETHEUS_METRICS_TOKEN`; self-hosted instances can opt in to the same
+protection. The aggregate-only `/api/extraction-health` summary remains public;
+recent request URLs always require the token. Database-backed monitoring
+snapshots refresh at most every two minutes between local counter updates.
+See [the metrics guide](docs/prometheus.md) for authentication, example queries,
+and replica deduplication requirements.
