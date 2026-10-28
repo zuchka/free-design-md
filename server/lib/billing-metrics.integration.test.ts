@@ -1,7 +1,10 @@
 import { resetMetricsDatabase } from "./metrics-test-database.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDbExec, resetDbClientForTests } from "../db/client.js";
-import { renderBillingMetrics } from "./billing-metrics.js";
+import {
+  renderBillingMetrics,
+  resetBillingMetricsCache,
+} from "./billing-metrics.js";
 import {
   commitCredit,
   decrementCredits,
@@ -25,6 +28,7 @@ const purchase = {
 };
 
 beforeEach(async () => {
+  resetBillingMetricsCache();
   await resetMetricsDatabase();
   vi.stubEnv("DATABASE_TESTS", "true");
   await resetDbClientForTests();

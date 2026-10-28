@@ -2,7 +2,15 @@
 
 Scrape `GET /api/metrics`. When `PROMETHEUS_METRICS_TOKEN` is configured, send
 `Authorization: Bearer <token>` or `x-prometheus-token: <token>`. The endpoint
-does not require an account session and returns uncached Prometheus text.
+does not require an account session. Responses use `Cache-Control: no-store`;
+database counters and billing aggregates share per-process snapshots for up to
+two minutes. Concurrent scrapes share an in-flight read, and failed collections
+are retried rather than cached. Duration histograms remain live.
+
+Use a two-minute scrape interval for this low-volume service. Queries using
+`rate` or `increase` should span at least four scrape intervals (for example,
+`[10m]`). Monitor the availability gauges; database outages become visible on
+the first collection after the current snapshot expires.
 
 The business model is one-time credit packs, not recurring subscriptions. Free
 URL extraction spends no credit. Hosted enrichment and revisions reserve one
