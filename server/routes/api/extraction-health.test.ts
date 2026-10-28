@@ -28,6 +28,19 @@ describe("extraction health", () => {
       expect(history).not.toHaveBeenCalled();
     },
   );
+  it("keeps the aggregate summary public in hosted production without a token", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("FREE_DESIGN_MD_SELF_HOSTED", "0");
+    vi.stubEnv("PROMETHEUS_METRICS_TOKEN", "");
+    const response = await loader({
+      request: new Request("http://localhost/api/extraction-health"),
+    } as never);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).not.toHaveProperty("recentRequests");
+    expect(history).not.toHaveBeenCalled();
+  });
+
   it("keeps the public summary aggregate-only", async () => {
     vi.stubEnv("PROMETHEUS_METRICS_TOKEN", "");
     const response = await loader({
@@ -96,13 +109,15 @@ describe("extraction health", () => {
     expect(response.status).toBe(503);
     expect(await response.text()).not.toContain("sensitive");
   });
-  it("uses the same optional token protection as Prometheus", async () => {
+  it("keeps the aggregate summary public even when business metrics are protected", async () => {
     vi.stubEnv("PROMETHEUS_METRICS_TOKEN", "private-token");
     const response = await loader({
       request: new Request("http://localhost/api/extraction-health"),
     } as never);
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).not.toHaveProperty("recentRequests");
+    expect(history).not.toHaveBeenCalled();
   });
   it("makes the reporting window explicit and reports no data rather than a false zero failure rate", async () => {
     await resetMetricsForTests();

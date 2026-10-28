@@ -8,6 +8,7 @@ import { renderPrometheusMetrics } from "../../lib/metrics.js";
 import { hasMetricsAccess } from "../../lib/metrics-access.js";
 
 export default defineEventHandler(async (event) => {
+  setResponseHeader(event, "Cache-Control", "no-cache, no-store");
   if (
     !hasMetricsAccess(
       getHeader(event, "authorization"),
@@ -24,6 +25,5 @@ export default defineEventHandler(async (event) => {
     "Content-Type",
     "text/plain; version=0.0.4; charset=utf-8",
   );
-  setResponseHeader(event, "Cache-Control", "no-cache, no-store");
   return await renderPrometheusMetrics();
 });

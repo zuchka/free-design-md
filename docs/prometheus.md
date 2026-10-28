@@ -1,7 +1,11 @@
 # Prometheus metrics
 
-Scrape `GET /api/metrics`. When `PROMETHEUS_METRICS_TOKEN` is configured, send
-`Authorization: Bearer <token>` or `x-prometheus-token: <token>`. The endpoint
+Scrape `GET /api/metrics`. Hosted production requires `PROMETHEUS_METRICS_TOKEN`;
+missing or blank tokens deny access. Send `Authorization: Bearer <token>` or
+`x-prometheus-token: <token>`. `/api/extraction-health` intentionally keeps its
+aggregate-only summary public for health watches; adding `?include=recent`
+always requires a configured token. Development and self-hosted Prometheus
+metrics remain public unless a token is configured. The endpoint
 does not require an account session. Responses use `Cache-Control: no-store`;
 database counters and billing aggregates share per-process snapshots for up to
 two minutes. Concurrent scrapes share an in-flight read, and failed collections
@@ -101,3 +105,36 @@ check the runtime role can read the billing tables. After deploying the new
 image, verify both availability gauges are 1 and reconcile purchased credits,
 committed operations, outstanding reservations and wallet balances. Pushing a
 GitHub branch alone does not change the image pinned in Railway.
+
+## Coordinated production rollout
+
+Configure a long random token in both the app and any authorized Prometheus
+client. Add client headers first while the old endpoint still accepts anonymous
+scrapes, then activate the app token and deploy. Verify anonymous metrics and
+recent-history requests receive 401, authenticated scrapes return 200, and the
+public extraction-health watch keeps receiving fresh observations. Retired or
+unconfigured Prometheus scrapers will receive 401 and cannot collect business
+metrics.
+Never put tokens in target URLs, Git, dashboards, logs, or shell history.
+
+```yaml
+scrape_configs:
+  - job_name: freedesign
+    scrape_interval: 2m
+    scrape_timeout: 10s
+    scheme: https
+    metrics_path: /api/metrics
+    authorization:
+      type: Bearer
+      credentials_file: /run/secrets/freedesign_metrics_token
+    static_configs:
+      - targets: [freedesign.md]
+```
+
+Ding polls the public aggregate-only extraction-health endpoint every two
+minutes, with `maxGap: 6m`. It needs no token and cannot retrieve recent request
+URLs or billing metrics. Preserve its alert condition and destinations.
+
+Unknown application URLs return a plain-text 404 without rendering the React
+shell. This bounds response size and avoids SSR stack traces for scanner probes;
+it does not block the intentionally public extraction or snapshot routes.
