@@ -1,7 +1,6 @@
 import type { AppLoadContext, EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
-import ReactDOMServer from "react-dom/server.browser";
-const { renderToReadableStream } = ReactDOMServer;
+import { renderToReadableStream } from "react-dom/server";
 import { isbot } from "isbot";
 import { bootstrapVisitor } from "../server/lib/analytics-identity.js";
 import { analyticsSession } from "../server/lib/analytics.js";
