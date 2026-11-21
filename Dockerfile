@@ -20,9 +20,15 @@ RUN pnpm build
 ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers
 RUN pnpm exec playwright install --with-deps chromium
 
+# Reap orphaned Chromium children after extractions.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tini \
+    && rm -rf /var/lib/apt/lists/*
+
 # Runtime
 EXPOSE 3000
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
-CMD ["pnpm", "start"]
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["./node_modules/.bin/react-router-serve", "build/server/index.js"]
